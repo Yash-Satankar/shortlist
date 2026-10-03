@@ -1,0 +1,30 @@
+{
+  "name": "job-tracker",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @jt/api --filter @jt/web dev",
+    "build": "pnpm --filter @jt/web build && pnpm --filter @jt/api build",
+    "start": "pnpm --filter @jt/api start",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @jt/api db:generate",
+    "db:migrate": "pnpm --filter @jt/api db:migrate",
+    "db:seed": "pnpm --filter @jt/api db:seed",
+    "user:create": "pnpm --filter @jt/api user:create",
+    "user:password": "pnpm --filter @jt/api user:password",
+    "keygen": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

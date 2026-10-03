@@ -1,0 +1,47 @@
+import type { ResolvedUserSettings } from '@jt/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, ApiError } from '../api/client';
+
+export interface CurrentUser {
+  id: string;
+  email: string;
+  name: string | null;
+  settings: ResolvedUserSettings;
+}
+
+const ME_KEY = ['auth', 'me'] as const;
+
+export function useCurrentUser() {
+  return useQuery({
+    queryKey: ME_KEY,
+    queryFn: async () => {
+      try {
+        return (await api<{ user: CurrentUser }>('/auth/me')).user;
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) return null;
+        throw err;
+      }
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { email: string; password: string }) =>
+      api<{ user: CurrentUser }>('/auth/login', { method: 'POST', json: input }),
+    onSuccess: ({ user }) => qc.setQueryData(ME_KEY, user),
+  });
+}
+
+export function useLogout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<void>('/auth/logout', { method: 'POST' }),
+    onSuccess: () => {
+      qc.clear();
+      qc.setQueryData(ME_KEY, null);
+    },
+  });
+}
