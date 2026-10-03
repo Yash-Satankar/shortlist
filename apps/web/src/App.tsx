@@ -1,19 +1,29 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { useCurrentUser } from './auth/useAuth';
-import { HomePage } from './pages/HomePage';
+import { Layout } from './components/Layout';
+import { Spinner } from './components/ui';
+import { ApplicationPage } from './pages/ApplicationPage';
+import { ApplicationsPage } from './pages/ApplicationsPage';
+import { FollowUpsPage } from './pages/FollowUpsPage';
 import { LoginPage } from './pages/LoginPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 export function App() {
   const { data: user, isPending, error } = useCurrentUser();
 
-  if (isPending) return <div className="p-6 text-slate-500">Loading…</div>;
-  if (error) return <div className="p-6 text-red-600">Could not reach the server: {error.message}</div>;
+  if (isPending) return <Spinner />;
+  if (error) return <div className="p-6 text-rose-600">Could not reach the server: {error.message}</div>;
   if (!user) return <LoginPage />;
 
   return (
     <Routes>
-      <Route path="/" element={<HomePage user={user} />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route element={<Layout />}>
+        <Route index element={<ApplicationsPage />} />
+        <Route path="applications/:id" element={<ApplicationPage />} />
+        <Route path="follow-ups" element={<FollowUpsPage />} />
+        <Route path="settings" element={<SettingsPage user={user} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
     </Routes>
   );
 }
