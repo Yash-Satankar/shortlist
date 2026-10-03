@@ -1,9 +1,19 @@
-import { canonicalJobUrl, normalizeCompanyName, normalizeQuestion, normalizeRoleTitle } from '@jt/shared';
+import {
+  canonicalJobUrl,
+  normalizeCompanyName,
+  normalizeQuestion,
+  normalizeRoleTitle,
+  parseExperienceYears,
+  parseNoticePeriodDays,
+  profileFieldForQuestion,
+  type ProfileAnswerKey,
+} from '@jt/shared';
 import { eq } from 'drizzle-orm';
 import { findDuplicateMatches } from '../applications/service';
 import { findOrCreateCompany } from '../companies/service';
 import type { Db, DbOrTx } from '../db/client';
-import { answerLibrary, applications, profiles, statusEvents } from '../db/schema';
+import { answerLibrary, applications, statusEvents } from '../db/schema';
+import { getProfile, updateProfile, type ProfilePatch } from '../profile/service';
 import type { ImportIssue, ParsedAnswer, ParsedApplicationRow, ParsedWorkbook } from './tracker-xlsx';
 
 /**
@@ -22,37 +32,23 @@ export interface PlannedRow {
   match?: { id?: string; label: string };
 }
 
-type ProfileField = 'currentCtcEnc' | 'expectedCtcEnc' | 'noticePeriodDays' | 'relocation' | 'currentLocation' | 'totalExperienceYears';
-
-interface ProfileRule {
-  match: RegExp;
-  field: ProfileField;
-  parse?: (answer: string) => string | number | null;
-  /** Sensitive values (CTC) stay out of the plaintext answer library; they're encrypted on the profile. */
-  library: boolean;
-}
-
-const PROFILE_RULES: ProfileRule[] = [
-  { match: /^current (ctc|salary|compensation)/i, field: 'currentCtcEnc', library: false },
-  { match: /^(expected|desired) (ctc|salary|compensation)/i, field: 'expectedCtcEnc', library: false },
-  { match: /^notice period/i, field: 'noticePeriodDays', parse: parseNoticeDays, library: true },
-  { match: /^relocat/i, field: 'relocation', library: true },
-  { match: /^current location/i, field: 'currentLocation', library: true },
-  { match: /^total experience/i, field: 'totalExperienceYears', parse: (a) => /(\d+(?:\.\d+)?)/.exec(a)?.[1] ?? null, library: true },
-];
+/**
+ * Answers that are facts about me (notice period, CTC, location...) go to the profile,
+ * the single source of truth; the answer library shows them as generated entries.
+ * Everything else becomes a library entry. CTC-like questions that don't map to a
+ * profile field are skipped rather than stored in the plaintext library.
+ */
 const SENSITIVE_QUESTION = /\b(ctc|salary|compensation|package)\b/i;
 
-export function parseNoticeDays(answer: string): number | null {
-  if (/immediate/i.test(answer)) return 0;
-  const days = /(\d+)\s*days?/i.exec(answer);
-  if (days) return Number(days[1]);
-  const months = /(\d+)\s*months?/i.exec(answer);
-  return months ? Number(months[1]) * 30 : null;
+function profileValue(key: ProfileAnswerKey, answer: string): string | number | null {
+  if (key === 'noticePeriodDays') return parseNoticePeriodDays(answer);
+  if (key === 'totalExperienceYears') return parseExperienceYears(answer);
+  return answer;
 }
 
 export interface AnswerPlan {
   library: Array<{ question: string; answer: string; action: 'create' | 'exists' }>;
-  profile: Array<{ question: string; field: ProfileField; action: 'set' | 'already_set' }>;
+  profile: Array<{ question: string; field: ProfileAnswerKey; action: 'set' | 'already_set' }>;
   skippedSensitive: string[];
 }
 
@@ -71,6 +67,8 @@ export interface ImportPlan {
     libraryCreate: number;
     libraryExists: number;
     profileFields: number;
+    /** Rows per platform, from the "Applied Via" column. */
+    sources: Record<string, number>;
   };
 }
 
@@ -136,6 +134,9 @@ export async function planImport(db: DbOrTx, userId: string, parsed: ParsedWorkb
       libraryCreate: answers.library.filter((a) => a.action === 'create').length,
       libraryExists: answers.library.filter((a) => a.action === 'exists').length,
       profileFields: answers.profile.filter((p) => p.action === 'set').length,
+      sources: Object.fromEntries(
+        [...new Set(parsed.applications.map((a) => a.source))].map((src) => [src, parsed.applications.filter((a) => a.source === src).length]),
+      ),
     },
   };
 }
@@ -143,17 +144,18 @@ export async function planImport(db: DbOrTx, userId: string, parsed: ParsedWorkb
 async function planAnswers(db: DbOrTx, userId: string, answers: ParsedAnswer[]): Promise<AnswerPlan> {
   const [libraryRows, profile] = await Promise.all([
     db.select({ q: answerLibrary.questionNormalized }).from(answerLibrary).where(eq(answerLibrary.userId, userId)),
-    db.query.profiles.findFirst({ where: eq(profiles.userId, userId) }),
+    getProfile(db, userId),
   ]);
   const inLibrary = new Set(libraryRows.map((r) => r.q));
   const plan: AnswerPlan = { library: [], profile: [], skippedSensitive: [] };
 
   for (const { question, answer } of answers) {
-    const rule = PROFILE_RULES.find((r) => r.match.test(question));
-    if (rule) {
-      plan.profile.push({ question, field: rule.field, action: profile?.[rule.field] == null ? 'set' : 'already_set' });
-      if (!rule.library) continue;
-    } else if (SENSITIVE_QUESTION.test(question)) {
+    const field = profileFieldForQuestion(question);
+    if (field) {
+      plan.profile.push({ question, field, action: profile[field] == null ? 'set' : 'already_set' });
+      continue;
+    }
+    if (SENSITIVE_QUESTION.test(question)) {
       plan.skippedSensitive.push(question);
       continue;
     }
@@ -241,15 +243,12 @@ async function commitAnswers(tx: DbOrTx, userId: string, answers: ParsedAnswer[]
       .onConflictDoNothing();
   }
 
-  const set: Partial<typeof profiles.$inferInsert> = {};
+  const patch: Record<string, unknown> = {};
   for (const p of plan.profile) {
     if (p.action !== 'set') continue;
-    const rule = PROFILE_RULES.find((r) => r.field === p.field)!;
     const answer = answers.find((a) => a.question === p.question)!.answer;
-    const value = rule.parse ? rule.parse(answer) : answer;
-    if (value !== null) (set as Record<string, unknown>)[p.field] = value;
+    const value = profileValue(p.field, answer);
+    if (value !== null) patch[p.field] = value;
   }
-  if (Object.keys(set).length) {
-    await tx.insert(profiles).values({ userId, ...set }).onConflictDoUpdate({ target: profiles.userId, set });
-  }
+  if (Object.keys(patch).length) await updateProfile(tx, userId, patch as ProfilePatch);
 }

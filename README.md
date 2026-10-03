@@ -89,7 +89,8 @@ All under `/api`, JSON, authenticated by session cookie (web) or `Authorization:
 | `POST /applications/:id/jd` · `GET /applications/:id/jd/:jdId` | Add / read JD snapshots (deduped by content) |
 | `PUT /applications/:id/answers` | Replace the Q&A submitted for this application |
 | `POST /applications/:id/contacts` · `PATCH/DELETE /contacts/:id` | Recruiter contacts (encrypted) |
-| `GET/POST /answer-library` · `PATCH/DELETE /answer-library/:id` | Standard answers |
+| `GET/POST /answer-library` · `PATCH/DELETE /answer-library/:id` | Standard answers. GET merges read-only entries generated from the profile (`origin: "profile"`); questions owned by the profile return 409 `profile_field` |
+| `GET/PATCH /profile` | Profile: the single source of truth for experience, notice period, relocation, location, CTC (encrypted) and resume text |
 | `GET /follow-ups` | Due follow-ups, no-response items, ghost suggestions (never auto-applied) |
 | `GET /reviews` | Automatic changes waiting for review |
 | `GET /companies?q=` | Company autocomplete |

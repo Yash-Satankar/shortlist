@@ -1,4 +1,5 @@
 import {
+  APPLICATION_SOURCE_LABELS,
   APPLICATION_STATUSES,
   canonicalJobUrl,
   type ApplicationSource,
@@ -291,7 +292,18 @@ function parseApplications(ws: ExcelJS.Worksheet, issues: ImportIssue[]): Parsed
       issue('Job Link', 'warning', 'Job link is not a web URL; imported without a link');
     }
 
-    let source = mapSource(via) ?? canonical?.source ?? null;
+    // "Applied Via" is where I applied and always wins. The link is only where the job
+    // was posted (e.g. Easy Apply on a LinkedIn listing of a Greenhouse job), so a
+    // disagreement is reported, never "fixed".
+    const columnSource = mapSource(via);
+    let source = columnSource ?? canonical?.source ?? null;
+    if (columnSource && canonical?.source && canonical.source !== columnSource) {
+      issue(
+        'Applied Via',
+        'warning',
+        `Applied via ${APPLICATION_SOURCE_LABELS[columnSource]} but the link is a ${APPLICATION_SOURCE_LABELS[canonical.source]} posting; kept ${APPLICATION_SOURCE_LABELS[columnSource]}`,
+      );
+    }
     if (!source) {
       if (via) issue('Applied Via', 'warning', `Unrecognised platform "${via}"; saved as Other`);
       source = 'other';

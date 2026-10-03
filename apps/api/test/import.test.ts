@@ -9,7 +9,8 @@ import { createApp } from '../src/app';
 import { createApplication } from '../src/applications/service';
 import { closeDb, getDb } from '../src/db/client';
 import { answerLibrary, applications, profiles, statusEvents } from '../src/db/schema';
-import { commitImport, parseNoticeDays, planImport } from '../src/import/service';
+import { parseNoticePeriodDays as parseNoticeDays } from '@jt/shared';
+import { commitImport, planImport } from '../src/import/service';
 import { cleanAppliedVia, mapStatus, parseTrackerWorkbook, toDateOnly } from '../src/import/tracker-xlsx';
 import { createUser } from '../src/users/service';
 import { ORIGIN, resetDb } from './helpers';
@@ -138,6 +139,25 @@ describe('parseTrackerWorkbook (synthetic file)', () => {
     expect(parsed.answers.map((a) => a.question)).toEqual(ANSWERS.map(([q]) => q));
   });
 
+  it('"Applied Via" decides the source; a different link host is kept as-is and reported', async () => {
+    // Like #34 G-P: applied through Greenhouse, but the saved link is the LinkedIn listing.
+    const parsed = await parseTrackerWorkbook(
+      await buildWorkbook([
+        [34, 'W-G (Worldwide Group)', 'Software Engineer II', 'Remote', 'Remote', '', 'Greenhouse', utcDate(2026, 10, 2), 'https://www.linkedin.com/jobs/view/4100000102/', 'Applied'],
+        [35, 'Easy Co', 'Developer', 'Remote', 'Remote', '', 'LinkedIn Easy Apply', utcDate(2026, 10, 2), 'https://job-boards.greenhouse.io/easyco/jobs/123', 'Applied'],
+        [36, 'Agree Co', 'Developer', 'Remote', 'Remote', '', 'Greenhouse', utcDate(2026, 10, 2), 'https://job-boards.greenhouse.io/agreeco/jobs/456', 'Applied'],
+      ]),
+    );
+    const [gp, easy, agree] = parsed.applications;
+    expect(gp).toMatchObject({ source: 'greenhouse', jobUrl: 'https://www.linkedin.com/jobs/view/4100000102/' });
+    expect(easy).toMatchObject({ source: 'linkedin', jobUrl: 'https://job-boards.greenhouse.io/easyco/jobs/123' });
+    expect(agree).toMatchObject({ source: 'greenhouse' });
+
+    const warnings = parsed.issues.filter((i) => i.field === 'Applied Via');
+    expect(warnings.map((w) => w.ref)).toEqual(['34', '35']);
+    expect(warnings[0]).toMatchObject({ severity: 'warning', message: 'Applied via Greenhouse but the link is a LinkedIn posting; kept Greenhouse' });
+  });
+
   it('reports problem rows instead of failing', async () => {
     const parsed = await parseTrackerWorkbook(
       await buildWorkbook([
@@ -161,6 +181,18 @@ describe.runIf(existsSync(REAL_FILE))('my real tracker file', () => {
     expect(byRef('1')).toMatchObject({ companyName: 'Contoso India', appliedOn: '2026-09-30' });
     expect(byRef('25')).toMatchObject({ companyName: 'Tessera', appliedOn: '2026-10-02' });
     expect(byRef('39')).toMatchObject({ companyName: 'Brightwave', appliedOn: '2026-09-30', sourceDetail: 'LinkedIn Easy Apply' });
+  });
+
+  it('classifies sources by "Applied Via": 34 LinkedIn, 4 Greenhouse, 2 Lever', async () => {
+    const parsed = await parseTrackerWorkbook(await readFile(REAL_FILE));
+    const count = (s: string) => parsed.applications.filter((a) => a.source === s).length;
+    expect({ linkedin: count('linkedin'), greenhouse: count('greenhouse'), lever: count('lever') }).toEqual({ linkedin: 34, greenhouse: 4, lever: 2 });
+    expect(parsed.applications.filter((a) => a.source === 'greenhouse').map((a) => a.companyName)).toEqual([
+      'Tessera',
+      'Adatum',
+      'Fabrikam',
+      'W-G (Worldwide Group)',
+    ]);
   });
 
   it('parses all 40 rows with real links and no errors', async () => {
@@ -223,9 +255,10 @@ describe('import into the database', () => {
     const second = await commitImport(db, userId, parsed, 'tracker.xlsx');
 
     expect(second.summary).toMatchObject({ create: 0, exists: 7, libraryCreate: 0, profileFields: 0 });
+    expect(second.answers.profile.every((p) => p.action === 'already_set')).toBe(true);
     expect(await db.select().from(applications)).toHaveLength(7);
     expect(await db.select().from(statusEvents)).toHaveLength(7);
-    expect((await db.select().from(answerLibrary)).length).toBe(5);
+    expect((await db.select().from(answerLibrary)).length).toBe(1); // only "Node.js"; the rest live on the profile
   });
 
   it('imports Lumen Browser and Northwind Data role pairs as separate applications', async () => {
@@ -261,11 +294,12 @@ describe('import into the database', () => {
     expect(plan.rows.map((r) => r.action)).toEqual(['create', 'duplicate_in_file']);
   });
 
-  it('standard answers → answer library; CTC goes to the encrypted profile, never the plaintext library', async () => {
+  it('profile facts go to the profile only (CTC encrypted); everything else to the answer library', async () => {
     const plan = await commitImport(db, userId, await parseTrackerWorkbook(await buildWorkbook([], ANSWERS)), 'tracker.xlsx');
     const library = await db.select().from(answerLibrary);
-    expect(library.map((l) => l.question).sort()).toEqual(['Current location', 'Node.js', 'Notice period', 'Relocation', 'Total experience']);
-    expect(JSON.stringify(library)).not.toMatch(/LPA/);
+    // No copies of profile facts in the library table
+    expect(library.map((l) => l.question)).toEqual(['Node.js']);
+    expect(JSON.stringify(library)).not.toMatch(/LPA|Immediate|Indore/);
 
     const [profile] = await db.select().from(profiles);
     expect(profile).toMatchObject({

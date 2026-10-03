@@ -522,13 +522,54 @@ describe('follow-ups and ghost suggestions', () => {
 
 describe('answer library', () => {
   it('CRUD with case-insensitive uniqueness', async () => {
-    const created = await post('/api/answer-library', { question: 'Notice period?', answer: 'Immediate (0 days)' });
+    const created = await post('/api/answer-library', { question: 'Years of React?', answer: '3' });
     expect(created.status).toBe(201);
-    expect((await post('/api/answer-library', { question: 'notice PERIOD', answer: 'x' })).status).toBe(409);
+    expect((await post('/api/answer-library', { question: 'years of REACT', answer: 'x' })).status).toBe(409);
 
-    await agent.patch(`/api/answer-library/${created.body.item.id}`).set('Origin', ORIGIN).send({ answer: '15 days' }).expect(200);
-    expect((await agent.get('/api/answer-library')).body.items[0].answer).toBe('15 days');
+    await agent.patch(`/api/answer-library/${created.body.item.id}`).set('Origin', ORIGIN).send({ answer: '4' }).expect(200);
+    expect((await agent.get('/api/answer-library')).body.items[0].answer).toBe('4');
     await agent.delete(`/api/answer-library/${created.body.item.id}`).set('Origin', ORIGIN).expect(204);
+  });
+});
+
+describe('profile as the single source of truth for profile facts', () => {
+  it('library lists generated, read-only entries from the profile, which follow profile edits', async () => {
+    await agent
+      .patch('/api/profile')
+      .set('Origin', ORIGIN)
+      .send({ noticePeriodDays: 0, totalExperienceYears: 3, relocation: 'Yes (Hyderabad preferred)', expectedCtc: '12 LPA' })
+      .expect(200);
+    await post('/api/answer-library', { question: 'Node.js', answer: '3 years' }).expect(201);
+
+    let items = (await agent.get('/api/answer-library')).body.items;
+    expect(items).toEqual([
+      expect.objectContaining({ id: 'profile:totalExperienceYears', origin: 'profile', question: 'Total experience', answer: '3 years' }),
+      expect.objectContaining({ id: 'profile:noticePeriodDays', origin: 'profile', answer: 'Immediate (0 days)' }),
+      expect.objectContaining({ id: 'profile:relocation', origin: 'profile', answer: 'Yes (Hyderabad preferred)' }),
+      expect.objectContaining({ id: 'profile:expectedCtc', origin: 'profile', answer: '12 LPA', sensitive: true }),
+      expect.objectContaining({ origin: 'library', question: 'Node.js' }),
+    ]);
+
+    await agent.patch('/api/profile').set('Origin', ORIGIN).send({ noticePeriodDays: 30 }).expect(200);
+    items = (await agent.get('/api/answer-library')).body.items;
+    expect(items.find((i: { id: string }) => i.id === 'profile:noticePeriodDays').answer).toBe('30 days');
+  });
+
+  it('refuses library copies of profile questions', async () => {
+    for (const question of ['Notice period', 'notice period?', 'Expected CTC (LPA)', 'Current location', 'Total experience', 'Willing to relocate?']) {
+      const res = await post('/api/answer-library', { question, answer: 'x' });
+      expect(res.status, question).toBe(409);
+      expect(res.body.error.code).toBe('profile_field');
+    }
+    const { item } = (await post('/api/answer-library', { question: 'React', answer: '3 years' })).body;
+    expect((await agent.patch(`/api/answer-library/${item.id}`).set('Origin', ORIGIN).send({ question: 'Notice period' })).status).toBe(409);
+  });
+
+  it('profile CTC is encrypted at rest', async () => {
+    await agent.patch('/api/profile').set('Origin', ORIGIN).send({ currentCtc: '5 LPA' }).expect(200);
+    const raw = await db.execute<{ current_ctc_enc: string }>(sql`select current_ctc_enc from profiles`);
+    expect(raw.rows[0]!.current_ctc_enc).toMatch(/^v1\./);
+    expect((await agent.get('/api/profile')).body.profile.currentCtc).toBe('5 LPA');
   });
 });
 
