@@ -2,6 +2,7 @@ import {
   APPLICATION_SOURCES,
   APPLICATION_STATUSES,
   CONTACT_ROLES,
+  EVENT_DISPOSITIONS,
   EVENT_SOURCES,
   WORK_MODES,
   type UserSettings,
@@ -48,6 +49,7 @@ const userId = () =>
 
 export const applicationStatus = pgEnum('application_status', APPLICATION_STATUSES);
 export const eventSource = pgEnum('event_source', EVENT_SOURCES);
+export const eventDisposition = pgEnum('event_disposition', EVENT_DISPOSITIONS);
 export const workMode = pgEnum('work_mode', WORK_MODES);
 export const applicationSource = pgEnum('application_source', APPLICATION_SOURCES);
 export const contactRole = pgEnum('contact_role', CONTACT_ROLES);
@@ -219,6 +221,10 @@ export const jobDescriptions = pgTable(
 /**
  * Append-only status timeline. Undo never deletes: it appends a new event with
  * reverts_event_id set and stamps reverted_at on the original.
+ *
+ * Every proposed change is recorded, including ones that did not change the status:
+ * disposition = applied | ignored (e.g. stale "Applied" email after Interview) |
+ * pending_review (automatic signal on a locked status) | dismissed (review rejected).
  */
 export const statusEvents = pgTable(
   'status_events',
@@ -231,6 +237,9 @@ export const statusEvents = pgTable(
     fromStatus: applicationStatus('from_status'),
     toStatus: applicationStatus('to_status').notNull(),
     source: eventSource('source').notNull(),
+    disposition: eventDisposition('disposition').notNull().default('applied'),
+    /** Why the rules chose this disposition (see decideStatusChange in @jt/shared). */
+    reason: text('reason'),
     /** When it happened in the real world (e.g. email date); recorded_at is when we learned it. */
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
@@ -241,7 +250,12 @@ export const statusEvents = pgTable(
     revertsEventId: uuid('reverts_event_id').references((): AnyPgColumn => statusEvents.id, { onDelete: 'set null' }),
     revertedAt: timestamp('reverted_at', { withTimezone: true }),
   },
-  (t) => [index('status_events_application_idx').on(t.applicationId, t.occurredAt)],
+  (t) => [
+    index('status_events_application_idx').on(t.applicationId, t.occurredAt),
+    index('status_events_pending_review_idx')
+      .on(t.userId)
+      .where(sql`${t.disposition} = 'pending_review'`),
+  ],
 );
 
 /** Recruiters / hiring managers. Personal details are encrypted. */

@@ -6,7 +6,9 @@ import { sql } from 'drizzle-orm';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
-import { authenticate, sameOriginGuard } from './auth/middleware';
+import { answerLibraryRouter } from './answers/routes';
+import { applicationsRouter, contactsRouter, trackerRouter } from './applications/routes';
+import { authenticate, requireAuth, sameOriginGuard } from './auth/middleware';
 import { authRouter } from './auth/routes';
 import { env } from './config/env';
 import type { Db } from './db/client';
@@ -44,6 +46,10 @@ export function createApp({ db }: { db: Db }) {
 
   api.use(authenticate(db));
   api.use('/auth', authRouter(db));
+  api.use('/applications', requireAuth, applicationsRouter(db));
+  api.use('/contacts', requireAuth, contactsRouter(db));
+  api.use('/answer-library', requireAuth, answerLibraryRouter(db));
+  api.use(trackerRouter(db)); // /follow-ups, /reviews, /companies (each requires auth)
 
   api.use((_req, _res, next) => next(notFound('Unknown API route')));
   app.use('/api', api);

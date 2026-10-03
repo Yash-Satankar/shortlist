@@ -1,7 +1,7 @@
 import type { ResolvedUserSettings, UserSettings } from '@jt/shared';
 import { and, eq, ne } from 'drizzle-orm';
 import { env } from '../config/env';
-import type { Db } from '../db/client';
+import type { Db, DbOrTx } from '../db/client';
 import { profiles, sessions, users } from '../db/schema';
 import { badRequest, conflict } from '../lib/http';
 import { hashPassword, MIN_PASSWORD_LENGTH } from '../lib/password';
@@ -61,4 +61,9 @@ export function resolveSettings(settings: UserSettings | null | undefined): Reso
     followUpAfterDays: settings?.followUpAfterDays ?? e.FOLLOW_UP_AFTER_DAYS,
     timezone: settings?.timezone ?? e.DEFAULT_TIMEZONE,
   };
+}
+
+export async function getUserSettings(db: DbOrTx, userId: string): Promise<ResolvedUserSettings> {
+  const [row] = await db.select({ settings: users.settings }).from(users).where(eq(users.id, userId));
+  return resolveSettings(row?.settings);
 }

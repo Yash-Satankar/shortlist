@@ -69,6 +69,42 @@ pnpm dev                      # API :3000 + web :5173 → open http://localhost:
 - **Config.** Everything tunable is an env var, validated at boot in
   `apps/api/src/config/env.ts`. See `.env.example`.
 
+## API overview
+
+All under `/api`, JSON, authenticated by session cookie (web) or `Authorization: Bearer jt_…` (extension).
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /auth/login` · `/auth/logout` · `GET /auth/me` · `POST /auth/password` | Session auth |
+| `GET/POST /auth/tokens` · `DELETE /auth/tokens/:id` | Extension API tokens (session only) |
+| `GET /applications` | List: `status`, `source`, `workMode` (comma lists), `city`, `q` (full-text over role, notes, JDs, Q&A + company), `appliedFrom/To`, `archived`, `sort`, `limit/offset` |
+| `POST /applications` | Create (+ optional `jd`, `answers`). 409 `duplicate_exact` (same posting) or `duplicate_likely` (resend with `confirmDuplicate: true`); same-company/other-role matches come back as `hints` |
+| `POST /applications/check-duplicates` | Preview duplicate matches without saving |
+| `GET/PATCH/DELETE /applications/:id` | Detail (company, latest JD + history, timeline, Q&A, contacts) / update / delete (`archived: true` to archive) |
+| `POST /applications/:id/status` | Propose a status change; the response has the rule `decision` |
+| `POST /applications/:id/events/:eventId/undo` | Undo the latest effective change (undo again = redo) |
+| `POST /applications/:id/events/:eventId/review` | `accept` / `dismiss` a flagged automatic change |
+| `PATCH /applications/:id/events/:eventId` | Edit a timeline entry's note / date |
+| `POST /applications/:id/jd` · `GET /applications/:id/jd/:jdId` | Add / read JD snapshots (deduped by content) |
+| `PUT /applications/:id/answers` | Replace the Q&A submitted for this application |
+| `POST /applications/:id/contacts` · `PATCH/DELETE /contacts/:id` | Recruiter contacts (encrypted) |
+| `GET/POST /answer-library` · `PATCH/DELETE /answer-library/:id` | Standard answers |
+| `GET /follow-ups` | Due follow-ups, no-response items, ghost suggestions (never auto-applied) |
+| `GET /reviews` | Automatic changes waiting for review |
+| `GET /companies?q=` | Company autocomplete |
+
+### Status rules (`packages/shared/src/status.ts`)
+
+- Manual, import and share-sheet changes always apply.
+- Automatic sources (extension, portal sync, email, system) only move **forward** in
+  Saved → Applied → Viewed → Assessment → Shortlisted → Interview. Backward signals are recorded
+  as `ignored` (e.g. a late "Applied" email after Interview). Offer and Rejected apply from any
+  open stage.
+- **Offer, Rejected and Withdrawn are locked**: automatic signals are only flagged
+  (`pending_review`). Ghosted and Withdrawn are never set automatically.
+- A real signal (Viewed or later) reopens a Ghosted application.
+- Every proposal lands on the timeline with its source, disposition and reason.
+
 ## Deployment (Railway)
 
 One service runs the API and the web app (and later a second service from the same repo for the
@@ -80,7 +116,7 @@ Create your account once with `pnpm user:create` from a Railway shell.
 ## Roadmap
 
 - [x] **Phase 1.1**: scaffold, schema + migrations, auth, seed, tests
-- [ ] 1.2: applications API (CRUD, status events + undo, Q&A, answer library, duplicate check, search)
+- [x] 1.2: applications API (CRUD, status events + undo + review, Q&A, answer library, duplicate check, search, follow-ups)
 - [ ] 1.3: .xlsx importer (preview, idempotent; "My Standard Answers" → answer library)
 - [ ] 1.4: web UI: list/kanban, detail + timeline, follow-ups, PWA + Web Share Target quick-add
   (share target must be `method: GET` with title/text/url params: a POST share would arrive

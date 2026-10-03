@@ -63,16 +63,26 @@ const ROLE_SYNONYMS: Array<[RegExp, string]> = [
   [/\bsde\b/g, 'software development engineer'],
   [/\bnode(?:[ .]?js)?\b/g, 'nodejs'],
   [/\breact(?:[ .]?js)?\b/g, 'react'],
+  [/\bts\b/g, 'typescript'],
+  [/\bjs\b/g, 'javascript'],
   [/\bback ?end\b/g, 'backend'],
   [/\bfront ?end\b/g, 'frontend'],
   [/\bfull ?stack\b/g, 'fullstack'],
 ];
 
-/** "Sr. Node.js Back-end Dev (Remote)" → "senior nodejs backend developer". */
+/** Words that never distinguish one role from another (work mode, filler). */
+const ROLE_NOISE =
+  /\b(?:remote|hybrid|on ?site|onsite|wfh|work from home|full ?time|permanent|contract|immediate joiners?|urgent|hiring|and|of|the|for|with|in|at|to)\b/g;
+
+/**
+ * "Sr. Node.js Back-end Dev (Remote)" → "senior nodejs backend developer".
+ * Parenthesized qualifiers are kept ("Full Stack Engineer (SDE II)" is a different role
+ * from "Full Stack Engineer"); only noise words like "remote" are dropped.
+ */
 export function normalizeRoleTitle(title: string): string {
-  let value = basicFold(title.replace(/\([^)]*\)/g, ' ').replace(/-/g, ' '));
+  let value = basicFold(title.replace(/[()[\]\-–—/|,]/g, ' '));
   for (const [pattern, replacement] of ROLE_SYNONYMS) value = value.replace(pattern, replacement);
-  return value.replace(/\s+/g, ' ').trim();
+  return value.replace(ROLE_NOISE, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Screening questions: case/punctuation-insensitive key for the answer library. */

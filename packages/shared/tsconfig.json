@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Runs in Node, the browser and the extension; URL/URLSearchParams come from DOM typings.
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src", "test"]
 }
