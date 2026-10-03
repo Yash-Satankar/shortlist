@@ -1,0 +1,1 @@
+ALTER TABLE "applications" ADD COLUMN "ghost_dismissed_at" timestamp with time zone;

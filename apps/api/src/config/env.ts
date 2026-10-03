@@ -56,6 +56,8 @@ const envSchema = z
     FOLLOW_UP_AFTER_DAYS: z.coerce.number().int().positive().default(10),
     POST_INTERVIEW_FOLLOW_UP_DAYS: z.coerce.number().int().positive().default(5),
     /** Automatic signals with confidence >= this count as "high" (e.g. auto-apply a rejection). */
+    /** After "Not yet" on a ghost suggestion, ask again after this many days (or on new activity). */
+    GHOST_SUGGEST_DAYS: z.coerce.number().int().positive().default(7),
     CONFIDENCE_HIGH_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
   })

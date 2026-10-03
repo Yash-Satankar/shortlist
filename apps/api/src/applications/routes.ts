@@ -29,6 +29,7 @@ import {
   getApplication,
   getJobDescription,
   listApplications,
+  dismissGhostSuggestion,
   replaceAnswers,
   serializeEvent,
   updateApplication,
@@ -113,6 +114,13 @@ export function applicationsRouter(db: Db): Router {
     const id = uuid(req.params.id);
     await editEvent(db, req.auth!.userId, id, uuid(req.params.eventId), parse(eventEditSchema, req.body));
     res.json({ application: await getApplication(db, req.auth!.userId, id) });
+  });
+
+  // ---- ghost suggestion "Not yet" (stored per application, so it holds on every device)
+  router.post('/:id/ghost/dismiss', async (req, res) => {
+    resolveSource(req, USER_ONLY);
+    const dismissedAt = await dismissGhostSuggestion(db, req.auth!.userId, uuid(req.params.id));
+    res.json({ dismissedAt });
   });
 
   // ---- JD snapshots

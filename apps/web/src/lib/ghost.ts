@@ -1,41 +1,41 @@
-import { useSyncExternalStore } from 'react';
+import { api } from '../api/client';
+import { keys } from '../api/hooks';
+import { queryClient } from '../api/queryClient';
+import type { FollowUps } from '../api/types';
 
 /**
- * "Not yet" on a ghost suggestion. The API has no dismissal for suggestions (they are
- * derived from last activity), so this is remembered on this device only, and only
- * until the application has new activity: the key includes lastActivityAt.
+ * "Not yet" on a ghost suggestion. Stored on the server per application
+ * (POST /applications/:id/ghost/dismiss), so it holds on every device; the server stops
+ * suggesting it until there's new activity or GHOST_SUGGEST_DAYS pass.
  */
-const KEY = 'jt-ghost-not-yet';
-const listeners = new Set<() => void>();
 
-function read(): string[] {
-  try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? '[]');
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
+// One-time cleanup of the old device-local list.
+try {
+  localStorage.removeItem('jt-ghost-not-yet');
+} catch {
+  // storage unavailable: nothing to clean
 }
 
-let snapshot = read();
-
-const ghostKey = (item: { id: string; lastActivityAt: string }) => `${item.id}@${item.lastActivityAt}`;
-
-export function dismissGhost(item: { id: string; lastActivityAt: string }) {
-  snapshot = [...snapshot.filter((k) => !k.startsWith(`${item.id}@`)), ghostKey(item)].slice(-200);
-  try {
-    localStorage.setItem(KEY, JSON.stringify(snapshot));
-  } catch {
-    // Private mode: dismissal lasts for this session only.
+export function dismissGhost(item: { id: string }) {
+  // Hide it immediately, as before; the server is the source of truth from here on.
+  const previous = queryClient.getQueryData<FollowUps>(keys.followUps);
+  if (previous) {
+    queryClient.setQueryData<FollowUps>(keys.followUps, {
+      ...previous,
+      ghostSuggestions: previous.ghostSuggestions.filter((g) => g.id !== item.id),
+    });
   }
-  listeners.forEach((l) => l());
+  api(`/applications/${item.id}/ghost/dismiss`, { method: 'POST' })
+    .catch(() => {
+      if (previous) queryClient.setQueryData(keys.followUps, previous);
+    })
+    .finally(() => {
+      void queryClient.invalidateQueries({ queryKey: keys.followUps });
+      void queryClient.invalidateQueries({ queryKey: ['stats'] });
+    });
 }
 
-/** Filters out suggestions the user said "Not yet" to (until their activity changes). */
-export function useVisibleGhosts<T extends { id: string; lastActivityAt: string }>(items: T[] | undefined): T[] {
-  const dismissed = useSyncExternalStore(
-    (l) => (listeners.add(l), () => listeners.delete(l)),
-    () => snapshot,
-  );
-  return (items ?? []).filter((i) => !dismissed.includes(ghostKey(i)));
+/** The server already leaves dismissed suggestions out; kept so callers stay unchanged. */
+export function useVisibleGhosts<T>(items: T[] | undefined): T[] {
+  return items ?? [];
 }

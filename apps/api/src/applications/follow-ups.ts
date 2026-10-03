@@ -1,9 +1,20 @@
 import { AWAITING_RESPONSE_STATUSES, OPEN_STATUSES, type FollowUpReason } from '@jt/shared';
-import { and, asc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
 import { applications, companies } from '../db/schema';
 import { daysBetween, DAY_MS, todayIn } from '../lib/dates';
+import { env } from '../config/env';
 import { getUserSettings } from '../users/service';
+
+/** Not dismissed, or the dismissal has lapsed (new activity since, or GHOST_SUGGEST_DAYS passed). */
+export function ghostNotDismissed(now: Date) {
+  const until = new Date(now.getTime() - env().GHOST_SUGGEST_DAYS * DAY_MS);
+  return or(
+    isNull(applications.ghostDismissedAt),
+    gt(applications.lastActivityAt, applications.ghostDismissedAt),
+    lte(applications.ghostDismissedAt, until),
+  );
+}
 
 /**
  * "Needs follow-up":
@@ -13,6 +24,8 @@ import { getUserSettings } from '../users/service';
  *
  * "Ghost suggestions": open applications with no activity for ghostAfterDays.
  * These are only suggestions; marking Ghosted is always a manual status change.
+ * "Not yet" (ghost_dismissed_at) hides one until new activity on that application or
+ * GHOST_SUGGEST_DAYS after the dismissal, whichever comes first.
  */
 export async function getFollowUps(db: DbOrTx, userId: string, now = new Date()) {
   const settings = await getUserSettings(db, userId);
@@ -62,7 +75,7 @@ export async function getFollowUps(db: DbOrTx, userId: string, now = new Date())
       .select(select)
       .from(applications)
       .innerJoin(companies, eq(companies.id, applications.companyId))
-      .where(and(base, lte(applications.lastActivityAt, ghostCutoff)))
+      .where(and(base, lte(applications.lastActivityAt, ghostCutoff), ghostNotDismissed(now)))
       .orderBy(asc(applications.lastActivityAt)),
   ]);
 

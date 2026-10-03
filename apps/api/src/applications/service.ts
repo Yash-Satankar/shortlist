@@ -547,3 +547,14 @@ export async function deleteContact(db: Db, userId: string, contactId: string) {
     .returning({ id: contacts.id });
   if (!deleted.length) throw notFound('Contact not found');
 }
+
+/** "Not yet" on a ghost suggestion for this application. */
+export async function dismissGhostSuggestion(db: Db, userId: string, applicationId: string): Promise<Date> {
+  const [row] = await db
+    .update(applications)
+    .set({ ghostDismissedAt: new Date() })
+    .where(and(eq(applications.id, applicationId), eq(applications.userId, userId)))
+    .returning({ dismissedAt: applications.ghostDismissedAt });
+  if (!row) throw notFound('Application not found');
+  return row.dismissedAt!;
+}

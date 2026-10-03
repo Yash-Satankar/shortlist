@@ -179,6 +179,8 @@ export const applications = pgTable(
     lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
     notes: text('notes'),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
+    /** "Not yet" on a ghost suggestion. Hidden until new activity or GHOST_SUGGEST_DAYS pass. */
+    ghostDismissedAt: timestamp('ghost_dismissed_at', { withTimezone: true }),
     isDemo: boolean('is_demo').notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
