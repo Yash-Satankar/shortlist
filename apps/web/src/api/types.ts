@@ -161,4 +161,14 @@ export interface Stats {
   interviews: number;
   /** Returned for later use; not displayed. */
   repliesThisWeek: number;
+  /** Next follow-up not due yet (explicit date or automatic rule). */
+  nextFollowUp: NextFollowUp | null;
+}
+
+export interface NextFollowUp {
+  applicationId: string;
+  companyName: string;
+  roleTitle: string;
+  date: string;
+  reason: import('@jt/shared').FollowUpReason;
 }

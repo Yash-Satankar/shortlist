@@ -2,6 +2,7 @@ import type { ApplicationStatus } from '@jt/shared';
 import { and, count, countDistinct, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
 import { applications, statusEvents } from '../db/schema';
+import { getNextFollowUp } from '../applications/follow-ups';
 import { todayIn } from '../lib/dates';
 import { getUserSettings } from '../users/service';
 
@@ -28,7 +29,7 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
   const week = await weekStart(db, timezone, now);
   const mine = and(eq(applications.userId, userId), isNull(applications.archivedAt));
 
-  const [[applied], [active], [interviews], [replies]] = await Promise.all([
+  const [[applied], [active], [interviews], [replies], nextFollowUp] = await Promise.all([
     db
       .select({ n: count() })
       .from(applications)
@@ -51,6 +52,7 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
           lte(statusEvents.occurredAt, now),
         ),
       ),
+    getNextFollowUp(db, userId, now),
   ]);
 
   return {
@@ -59,5 +61,7 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
     active: active!.n,
     interviews: interviews!.n,
     repliesThisWeek: replies!.n,
+    /** The next follow-up not due yet (explicit date or automatic rule), for "Next one: …". */
+    nextFollowUp,
   };
 }

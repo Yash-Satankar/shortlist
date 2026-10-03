@@ -1,14 +1,13 @@
 import type { FollowUpReason } from '@jt/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useApplications, useFollowUps, useQuickUpdate, useReviewAny, useReviews, useStats } from '../api/hooks';
+import { useFollowUps, useQuickUpdate, useReviewAny, useReviews, useStats } from '../api/hooks';
 import type { FollowUpItem, FollowUps } from '../api/types';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
 import { Button, Confidence, ErrorNote, EventSourceBadge, SectionLabel, Sheet, SkeletonRows, StatusPill, useToast } from '../components/ui';
 import { formatDate, formatDay, formatEventTime, isoDateFromToday, REASON_LABELS, shortAge } from '../lib/format';
 import { dismissGhost, useVisibleGhosts } from '../lib/ghost';
-import { ACTIVE_STATUSES } from '../lib/status';
 
 const REASON: Record<FollowUpReason, { icon: IconName; label: (s: FollowUps['settings']) => string }> = {
   due: { icon: 'calendar', label: () => 'Follow-up date due' },
@@ -16,7 +15,6 @@ const REASON: Record<FollowUpReason, { icon: IconName; label: (s: FollowUps['set
   post_interview: { icon: 'chat', label: () => 'Post-interview check-in' },
 };
 
-const LIST_PARAMS = new URLSearchParams({ limit: '500', sort: 'updated_desc' });
 
 /** Everything that needs me: flagged automatic changes, follow-ups, and possible ghosting. */
 export function FollowUpsPage() {
@@ -244,22 +242,21 @@ export function FollowUpsPage() {
   );
 }
 
-/** Empty inbox. The three numbers come from GET /api/stats (week = Monday 00:00, user timezone). */
-function AllClear({ settings }: { settings: FollowUps['settings'] }) {
-  const { data } = useApplications(LIST_PARAMS);
+/**
+ * Empty inbox. Numbers and "Next one" come from GET /api/stats (week = Monday 00:00 in the
+ * user's timezone; next follow-up uses the same rules as the Follow-ups list).
+ */
+function AllClear(_props: { settings: FollowUps['settings'] }) {
   const { data: counts } = useStats();
   const stats = useMemo(() => {
-    const items = data?.items ?? [];
-    const next = items
-      .filter((i) => i.followUpOn && i.followUpOn > settings.today && ACTIVE_STATUSES.includes(i.status))
-      .sort((a, b) => a.followUpOn!.localeCompare(b.followUpOn!))[0];
+    const n = counts?.nextFollowUp;
     return {
-      next,
+      next: n ? { companyName: n.companyName, followUpOn: n.date } : undefined,
       appliedWeek: counts?.appliedThisWeek ?? 0,
       active: counts?.active ?? 0,
       interviews: counts?.interviews ?? 0,
     };
-  }, [data, counts, settings.today]);
+  }, [counts]);
 
   return (
     <div className="flex flex-col items-center px-8 pt-16 pb-10 text-center">

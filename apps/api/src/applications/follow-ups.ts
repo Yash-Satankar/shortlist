@@ -97,3 +97,52 @@ function followUpReason(row: { followUpOn: string | null; status: string }, toda
   if (row.followUpOn && row.followUpOn <= today) return 'due';
   return row.status === 'interview' ? 'post_interview' : 'no_response';
 }
+
+export interface NextFollowUp {
+  applicationId: string;
+  companyName: string;
+  roleTitle: string;
+  /** Calendar date (YYYY-MM-DD, user timezone) the follow-up becomes due. */
+  date: string;
+  reason: FollowUpReason;
+}
+
+/**
+ * The next follow-up that is not due yet, using the same rules as getFollowUps:
+ * an explicit follow-up date, else the automatic one (last activity + followUpAfterDays
+ * for Applied/Viewed, + postInterviewFollowUpDays for Interview).
+ */
+export async function getNextFollowUp(db: DbOrTx, userId: string, now = new Date()): Promise<NextFollowUp | null> {
+  const settings = await getUserSettings(db, userId);
+  const today = todayIn(settings.timezone, now);
+  const rows = await db
+    .select({
+      id: applications.id,
+      companyName: companies.name,
+      roleTitle: applications.roleTitle,
+      status: applications.status,
+      followUpOn: applications.followUpOn,
+      lastActivityAt: applications.lastActivityAt,
+    })
+    .from(applications)
+    .innerJoin(companies, eq(companies.id, applications.companyId))
+    .where(and(eq(applications.userId, userId), isNull(applications.archivedAt), inArray(applications.status, [...OPEN_STATUSES])));
+
+  const candidates: NextFollowUp[] = [];
+  for (const r of rows) {
+    let date: string | null = null;
+    let reason: FollowUpReason = 'due';
+    if (r.followUpOn) {
+      date = r.followUpOn;
+    } else if ((AWAITING_RESPONSE_STATUSES as readonly string[]).includes(r.status)) {
+      date = todayIn(settings.timezone, new Date(r.lastActivityAt.getTime() + settings.followUpAfterDays * DAY_MS));
+      reason = 'no_response';
+    } else if (r.status === 'interview') {
+      date = todayIn(settings.timezone, new Date(r.lastActivityAt.getTime() + settings.postInterviewFollowUpDays * DAY_MS));
+      reason = 'post_interview';
+    }
+    if (date && date > today) candidates.push({ applicationId: r.id, companyName: r.companyName, roleTitle: r.roleTitle, date, reason });
+  }
+  candidates.sort((a, b) => a.date.localeCompare(b.date) || a.companyName.localeCompare(b.companyName));
+  return candidates[0] ?? null;
+}

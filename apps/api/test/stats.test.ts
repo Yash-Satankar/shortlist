@@ -128,3 +128,35 @@ describe('access', () => {
     expect((await request(app).get('/api/stats')).status).toBe(401);
   });
 });
+
+describe('nextFollowUp (for "Next one: …" in the empty inbox)', () => {
+  // NOW is Monday 5 Oct 2026 (IST). Defaults: no-response after 10 days, post-interview after 5.
+  const at = (iso: string) => new Date(iso);
+
+  it('includes automatic due dates, not just explicit follow-up dates, and picks the earliest', async () => {
+    const explicit = await make('applied', '2026-10-01', 'Explicit Co');
+    await db.update(applications).set({ followUpOn: '2026-10-12', lastActivityAt: at('2026-10-01T06:00:00Z') }).where(eq(applications.id, explicit));
+
+    const auto = await make('applied', '2026-09-30', 'Auto Co');
+    // Quiet since 30 Sep → no-response follow-up due 10 Oct (earlier than the explicit 12 Oct).
+    await db.update(applications).set({ lastActivityAt: at('2026-09-30T06:00:00Z') }).where(eq(applications.id, auto));
+
+    expect((await getStats(db, userId, NOW)).nextFollowUp).toMatchObject({ companyName: 'Auto Co', date: '2026-10-10', reason: 'no_response' });
+  });
+
+  it('uses the post-interview rule for Interview', async () => {
+    const id = await make('interview', '2026-09-20', 'Interview Co');
+    await db.update(applications).set({ lastActivityAt: at('2026-10-03T06:00:00Z') }).where(eq(applications.id, id));
+    expect((await getStats(db, userId, NOW)).nextFollowUp).toMatchObject({ companyName: 'Interview Co', date: '2026-10-08', reason: 'post_interview' });
+  });
+
+  it('skips ones already due (they are in Follow-ups), closed and archived ones', async () => {
+    const due = await make('applied', '2026-09-01', 'Due Co');
+    await db.update(applications).set({ lastActivityAt: at('2026-09-01T06:00:00Z') }).where(eq(applications.id, due));
+    const closed = await make('rejected', '2026-10-04', 'Closed Co');
+    await db.update(applications).set({ followUpOn: '2026-10-20' }).where(eq(applications.id, closed));
+    const archived = await make('applied', '2026-10-04', 'Archived Co');
+    await db.update(applications).set({ archivedAt: new Date() }).where(eq(applications.id, archived));
+    expect((await getStats(db, userId, NOW)).nextFollowUp).toBeNull();
+  });
+});
