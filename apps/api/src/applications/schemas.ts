@@ -60,12 +60,15 @@ export const updateApplicationSchema = z
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update');
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
 
-export const duplicateCheckSchema = z.object({
-  companyName: z.string().trim().min(1).max(200),
-  roleTitle: z.string().trim().min(1).max(300),
-  jobUrl: z.string().max(2000).nullish(),
-  excludeId: z.uuid().optional(),
-});
+/** Either company + role (fuzzy) or a job URL (exact) is enough to check. */
+export const duplicateCheckSchema = z
+  .object({
+    companyName: z.string().trim().max(200).default(''),
+    roleTitle: z.string().trim().max(300).default(''),
+    jobUrl: z.string().max(2000).nullish(),
+    excludeId: z.uuid().optional(),
+  })
+  .refine((v) => (v.companyName && v.roleTitle) || v.jobUrl, 'Provide company and role, or a job URL');
 
 const csv = <T extends readonly [string, ...string[]]>(values: T) =>
   z

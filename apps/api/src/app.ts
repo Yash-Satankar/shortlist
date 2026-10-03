@@ -73,7 +73,17 @@ function serveWeb(app: express.Express, configuredDir?: string) {
     logger.warn({ dir }, 'SERVE_WEB is on but the web build was not found; run `pnpm build`');
     return;
   }
-  app.use(express.static(dir, { index: false, maxAge: '1y', immutable: true }));
+  app.use(
+    express.static(dir, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        // Hashed build assets never change; everything else (sw.js, manifest, icons)
+        // must revalidate or a deploy would never reach installed PWAs.
+        const hashed = filePath.includes(`${path.sep}assets${path.sep}`);
+        res.setHeader('Cache-Control', hashed ? 'public, max-age=31536000, immutable' : 'no-cache');
+      },
+    }),
+  );
   // SPA fallback: every non-API GET returns index.html (never cached, so deploys show up).
   app.get(/^(?!\/api\/).*/, (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache');

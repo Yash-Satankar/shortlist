@@ -2,11 +2,13 @@ import { Navigate, Route, Routes } from 'react-router';
 import { useCurrentUser } from './auth/useAuth';
 import { Layout } from './components/Layout';
 import { Spinner } from './components/ui';
+import { AddPage } from './pages/AddPage';
 import { ApplicationPage } from './pages/ApplicationPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
 import { FollowUpsPage } from './pages/FollowUpsPage';
 import { LoginPage } from './pages/LoginPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SharePage } from './pages/SharePage';
 
 export function App() {
   const { data: user, isPending, error } = useCurrentUser();
@@ -21,6 +23,8 @@ export function App() {
         <Route index element={<ApplicationsPage />} />
         <Route path="applications/:id" element={<ApplicationPage />} />
         <Route path="follow-ups" element={<FollowUpsPage />} />
+        <Route path="add" element={<AddPage />} />
+        <Route path="share" element={<SharePage />} />
         <Route path="settings" element={<SettingsPage user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
