@@ -127,7 +127,8 @@ services created after its Config-as-Code deprecation, so they are not kept in t
 
 Dashboard deploy settings: **Pre-deploy command** `node apps/api/dist/scripts/migrate.js`,
 **Healthcheck path** `/api/health` (timeout 60 s), restart policy *On failure*. The start command is
-the Dockerfile's `CMD`.
+the Dockerfile's `CMD`. Note: Railway's **Redeploy** reuses the previous deployment's settings snapshot;
+after changing service settings, ship a new deployment (git push) for them to apply.
 
 Service variables: `NODE_ENV=production`, `TRUST_PROXY=2` (Railway's edge adds a hop; verify with
 `GET /api/health/request`), `SERVE_WEB=true`,

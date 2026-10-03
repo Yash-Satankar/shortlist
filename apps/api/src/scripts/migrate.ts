@@ -1,4 +1,5 @@
-import { closeDb } from '../db/client';
+import { sql } from 'drizzle-orm';
+import { closeDb, getDb } from '../db/client';
 import { preflight, REQUIRED_EXTENSIONS, runMigrations } from '../db/migrate';
 
 /**
@@ -10,7 +11,9 @@ async function main() {
   const { serverVersion } = await preflight();
   console.log(`Postgres ${serverVersion}; required extensions available (${REQUIRED_EXTENSIONS.join(', ')}).`);
   await runMigrations();
-  console.log('Migrations applied.');
+  // A count only (no identities): lets a deploy log prove how many accounts exist.
+  const { rows } = await getDb().execute<{ n: number }>(sql`select count(*)::int as n from users`);
+  console.log(`Migrations applied. Accounts: ${rows[0]!.n}`);
 }
 
 main()
