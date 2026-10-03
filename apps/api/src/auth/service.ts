@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, lt } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, lt, ne } from 'drizzle-orm';
 import { env } from '../config/env';
 import type { Db } from '../db/client';
 import { apiTokens, sessions, users } from '../db/schema';
@@ -97,4 +97,21 @@ export async function revokeApiToken(db: Db, userId: string, tokenId: string): P
     .where(and(eq(apiTokens.id, tokenId), eq(apiTokens.userId, userId), isNull(apiTokens.revokedAt)))
     .returning({ id: apiTokens.id });
   return result.length > 0;
+}
+
+export function listSessions(db: Db, userId: string) {
+  return db
+    .select({ id: sessions.id, userAgent: sessions.userAgent, createdAt: sessions.createdAt, lastSeenAt: sessions.lastSeenAt, expiresAt: sessions.expiresAt })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), gt(sessions.expiresAt, new Date())))
+    .orderBy(desc(sessions.lastSeenAt));
+}
+
+/** Signs out one device (or, with `exceptId`, every other device). */
+export async function revokeSessions(db: Db, userId: string, opts: { id?: string; exceptId?: string }): Promise<number> {
+  const where = opts.id
+    ? and(eq(sessions.userId, userId), eq(sessions.id, opts.id))
+    : and(eq(sessions.userId, userId), opts.exceptId ? ne(sessions.id, opts.exceptId) : undefined);
+  const deleted = await db.delete(sessions).where(where).returning({ id: sessions.id });
+  return deleted.length;
 }

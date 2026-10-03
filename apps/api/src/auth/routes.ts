@@ -9,7 +9,16 @@ import { badRequest, forbidden, notFound, parse, unauthorized } from '../lib/htt
 import { MIN_PASSWORD_LENGTH, verifyPassword } from '../lib/password';
 import { changePassword, createUser, resolveSettings } from '../users/service';
 import { requireAuth, requireSession, sessionCookieName, sessionCookieOptions } from './middleware';
-import { authenticateUser, createApiToken, createSession, deleteSession, listApiTokens, revokeApiToken } from './service';
+import {
+  authenticateUser,
+  createApiToken,
+  createSession,
+  deleteSession,
+  listApiTokens,
+  listSessions,
+  revokeApiToken,
+  revokeSessions,
+} from './service';
 
 const credentialsSchema = z.object({
   email: z.email().max(254),
@@ -75,6 +84,24 @@ export function authRouter(db: Db): Router {
     }
     await changePassword(db, user.id, newPassword, { keepSessionId: req.auth!.sessionId });
     res.status(204).end();
+  });
+
+  // Signed-in devices. Sessions slide (SESSION_TTL_DAYS from last use) but can be revoked here.
+  router.get('/sessions', requireSession, async (req, res) => {
+    const rows = await listSessions(db, req.auth!.userId);
+    res.json({ sessions: rows.map((s) => ({ ...s, current: s.id === req.auth!.sessionId })) });
+  });
+
+  router.delete('/sessions/:id', requireSession, async (req, res) => {
+    const id = parse(z.uuid(), req.params.id);
+    if (!(await revokeSessions(db, req.auth!.userId, { id }))) throw notFound('Session not found');
+    if (id === req.auth!.sessionId) res.clearCookie(sessionCookieName(), { path: '/' });
+    res.status(204).end();
+  });
+
+  router.post('/sessions/revoke-others', requireSession, async (req, res) => {
+    const revoked = await revokeSessions(db, req.auth!.userId, { exceptId: req.auth!.sessionId });
+    res.json({ revoked });
   });
 
   // API tokens for the Chrome extension. Managing tokens requires a real session.

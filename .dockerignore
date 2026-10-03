@@ -1,0 +1,17 @@
+# Never send secrets or personal data into the build context
+.env
+.env.*
+!.env.example
+*.xlsx
+*.pdf
+*.docx
+uploads/
+.railway-token
+
+node_modules/
+**/node_modules/
+**/dist/
+coverage/
+.git/
+.vscode/
+*.log

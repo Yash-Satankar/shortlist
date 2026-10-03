@@ -8,7 +8,7 @@
     "pnpm": ">=10"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @jt/api --filter @jt/web dev",
+    "dev": "pnpm db:migrate && pnpm --parallel --filter @jt/api --filter @jt/web dev",
     "build": "pnpm --filter @jt/web build && pnpm --filter @jt/api build",
     "start": "pnpm --filter @jt/api start",
     "typecheck": "pnpm -r typecheck",

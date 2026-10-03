@@ -47,6 +47,22 @@ export function createApp({ db }: { db: Db }) {
     res.json({ ok: true });
   });
 
+  // Proxy diagnostics: how this server resolves the caller's own request. Behind
+  // Railway (TRUST_PROXY=1) ip must be your public IP and protocol "https".
+  api.get('/health/request', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ ip: req.ip, protocol: req.protocol, secure: req.secure, trustProxy: app.get('trust proxy') });
+  });
+
+  let loggedFirstRequest = false;
+  api.use((req, _res, next) => {
+    if (!loggedFirstRequest && e.NODE_ENV !== 'test') {
+      loggedFirstRequest = true;
+      logger.info({ ip: req.ip, protocol: req.protocol, secure: req.secure, xff: req.get('x-forwarded-for') }, 'First request: resolved client');
+    }
+    next();
+  });
+
   api.use(authenticate(db));
   api.use('/auth', authRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));

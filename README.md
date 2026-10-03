@@ -46,7 +46,7 @@ pnpm import:xlsx -- --file ../../Job_Applications_Tracker.xlsx   # dry run; add 
 | `pnpm test` | All tests (API tests use `DATABASE_URL_TEST`; Postgres must be up) |
 | `pnpm typecheck` | Type-check every package |
 | `pnpm db:generate` | Generate a SQL migration after editing `apps/api/src/db/schema.ts` |
-| `pnpm db:migrate` | Apply migrations (also runs automatically on server start) |
+| `pnpm db:migrate` | Apply migrations (`pnpm dev` runs this first; production runs it as the pre-deploy step) |
 | `pnpm user:create -- --email a@b.com` | Create a user (prompts for password). Use this in production; `db:seed` is dev-only and refuses `NODE_ENV=production` |
 | `pnpm import:xlsx -- --file <path.xlsx> [--commit]` | Import the tracker spreadsheet. Dry run by default (counts + problem rows); `--commit` writes. Safe to re-run |
 | `pnpm user:password -- --email a@b.com` | Set a new password and sign out all sessions (in the app: `POST /api/auth/password`) |
@@ -113,11 +113,37 @@ All under `/api`, JSON, authenticated by session cookie (web) or `Authorization:
 
 ## Deployment (Railway)
 
-One service runs the API and the web app (and later a second service from the same repo for the
-pg-boss worker). Build: `pnpm install --frozen-lockfile && pnpm build`. Start: `pnpm start`.
-Env: everything in `.env.example`, plus `NODE_ENV=production`, `SERVE_WEB=true`, `TRUST_PROXY=1`,
-and `APP_ORIGIN=https://<your-app>.up.railway.app`. Migrations run on boot; seeding never does.
-Create your account once with `pnpm user:create` from a Railway shell.
+One service runs everything (API + web app; background jobs will run in-process when the first one
+lands). Configured by `railway.json` + `Dockerfile`:
+
+| Stage | What runs | On failure |
+| --- | --- | --- |
+| Build | `Dockerfile`: install, `pnpm build`, reinstall production deps only | build fails |
+| Pre-deploy | `node apps/api/dist/scripts/migrate.js`: checks `pg_trgm` is available, applies migrations. **Never seeds.** | deploy fails, old version keeps running |
+| Start | `node apps/api/dist/server.js` (does not migrate) | restarted (5 retries) |
+| Health | `GET /api/health` (queries the DB) | deploy not promoted |
+
+Service variables: `NODE_ENV=production`, `TRUST_PROXY=1`, `SERVE_WEB=true`,
+`APP_ORIGIN=https://<domain>`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`, a **production-only**
+`ENCRYPTION_KEYS` / `ENCRYPTION_ACTIVE_KEY_ID`, plus any tunables from `.env.example`.
+Postgres: Railway's standard image works (only `pg_trgm` is needed; pgvector is not used yet).
+
+First-time data (never copies the dev DB): create the account with `create-user.js` against the
+production DB, then import the spreadsheet through the app's API (dry run first, then `?commit=true`).
+
+Rehearse locally: `docker build -t jobtracker:local .`, then run the pre-deploy and start commands
+against a scratch database.
+
+### Backups
+
+Prefer Railway's own Postgres backups (service → Backups) if your plan includes them. Otherwise
+`.github/workflows/backup.yml` runs a nightly encrypted `pg_dump` to a private workflow artifact
+once the repo secrets `PROD_DATABASE_URL` and `BACKUP_PASSPHRASE` are set. Restore:
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in jobtracker-<stamp>.pgc.enc -out dump.pgc
+pg_restore --clean --if-exists --no-owner -d "$TARGET_DATABASE_URL" dump.pgc
+```
 
 ## Roadmap
 

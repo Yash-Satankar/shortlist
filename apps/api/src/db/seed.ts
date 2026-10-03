@@ -1,6 +1,4 @@
 import { createHash } from 'node:crypto';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   normalizeCompanyName,
   normalizeQuestion,
@@ -10,10 +8,8 @@ import {
   type WorkMode,
 } from '@jt/shared';
 import { and, eq, notExists, sql } from 'drizzle-orm';
-import { env } from '../config/env';
 import { normalizeEmail, createUser } from '../users/service';
-import { closeDb, getDb, type Db } from './client';
-import { runMigrations } from './migrate';
+import type { Db } from './client';
 import {
   answerLibrary,
   applicationAnswers,
@@ -232,27 +228,4 @@ export async function removeDemo(db: Db, userId: string) {
       .where(and(eq(companies.userId, userId), eq(companies.isDemo, true)));
     return { applications: apps.length, answers: answers.length, companies: companiesRemoved.length };
   });
-}
-
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  (async () => {
-    if (env().NODE_ENV === 'production') {
-      throw new Error('db:seed is development-only. In production use `pnpm user:create`.');
-    }
-    const db = getDb();
-    await runMigrations();
-    const userId = await ensureSeedUser(db);
-    if (process.argv.includes('--remove-demo')) {
-      const removed = await removeDemo(db, userId);
-      console.log(`Removed demo rows: ${JSON.stringify(removed)}`);
-    } else if (process.argv.includes('--demo')) {
-      await seedDemo(db, userId);
-    }
-  })()
-    .catch((err) => {
-      console.error(err instanceof Error ? err.message : err);
-      process.exitCode = 1;
-    })
-    .finally(closeDb);
 }

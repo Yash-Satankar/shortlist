@@ -133,6 +133,51 @@ describe('password change', () => {
   });
 });
 
+describe('signed-in devices (sliding, revocable sessions)', () => {
+  it('slides the expiry forward on use, to SESSION_TTL_DAYS from now', async () => {
+    const agent = await login();
+    // Pretend the session was last used 2 days ago and expires in 28.
+    await db.execute(sql`update sessions set last_seen_at = now() - interval '2 days', expires_at = now() + interval '28 days'`);
+    await agent.get('/api/auth/me').expect(200);
+    const [row] = (await db.execute<{ days: number }>(sql`select extract(epoch from expires_at - now()) / 86400 as days from sessions`)).rows;
+    expect(Number(row!.days)).toBeGreaterThan(29.9);
+  });
+
+  it('lists devices, marking the current one, and revokes another device', async () => {
+    const phone = await login();
+    const laptop = await login();
+    const { sessions } = (await laptop.get('/api/auth/sessions').expect(200)).body;
+    expect(sessions).toHaveLength(2);
+    expect(sessions.filter((s: { current: boolean }) => s.current)).toHaveLength(1);
+
+    const other = sessions.find((s: { current: boolean }) => !s.current);
+    await laptop.delete(`/api/auth/sessions/${other.id}`).set('Origin', ORIGIN).expect(204);
+    expect((await phone.get('/api/auth/me')).status).toBe(401);
+    expect((await laptop.get('/api/auth/me')).status).toBe(200);
+  });
+
+  it('"sign out other devices" keeps only the current session', async () => {
+    const a = await login();
+    const b = await login();
+    const c = await login();
+    expect((await c.post('/api/auth/sessions/revoke-others').set('Origin', ORIGIN)).body).toEqual({ revoked: 2 });
+    expect((await a.get('/api/auth/me')).status).toBe(401);
+    expect((await b.get('/api/auth/me')).status).toBe(401);
+    expect((await c.get('/api/auth/me')).status).toBe(200);
+  });
+
+  it("cannot revoke another user's session", async () => {
+    await createUser(db, { email: 'other@example.com', password: PASSWORD });
+    const other = request.agent(app);
+    await other.post('/api/auth/login').set('Origin', ORIGIN).send({ email: 'other@example.com', password: PASSWORD }).expect(200);
+    const otherSessionId = (await other.get('/api/auth/sessions')).body.sessions[0].id;
+
+    const mine = await login();
+    expect((await mine.delete(`/api/auth/sessions/${otherSessionId}`).set('Origin', ORIGIN)).status).toBe(404);
+    expect((await other.get('/api/auth/me')).status).toBe(200);
+  });
+});
+
 describe('CSRF / same-origin guard', () => {
   it('blocks cookie-authenticated writes from another origin', async () => {
     const agent = await login();

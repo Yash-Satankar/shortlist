@@ -225,3 +225,26 @@ export function useChangePassword() {
     mutationFn: (vars: { currentPassword: string; newPassword: string }) => api<void>('/auth/password', { method: 'POST', json: vars }),
   });
 }
+
+// ---------------------------------------------------------------- signed-in devices
+
+export interface DeviceSession {
+  id: string;
+  userAgent: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  current: boolean;
+}
+
+export const useSessions = () =>
+  useQuery({ queryKey: ['sessions'], queryFn: async () => (await api<{ sessions: DeviceSession[] }>('/auth/sessions')).sessions });
+
+export function useRevokeSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string } | 'others') =>
+      vars === 'others' ? api('/auth/sessions/revoke-others', { method: 'POST' }) : api<void>(`/auth/sessions/${vars.id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['sessions'] }),
+  });
+}

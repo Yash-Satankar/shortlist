@@ -10,8 +10,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
-    "db:seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts",
+    "db:migrate": "tsx --env-file-if-exists=../../.env src/scripts/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=../../.env src/scripts/seed.ts",
     "user:create": "tsx --env-file-if-exists=../../.env src/scripts/create-user.ts",
     "user:password": "tsx --env-file-if-exists=../../.env src/scripts/set-password.ts",
     "import:xlsx": "tsx --env-file-if-exists=../../.env src/scripts/import-xlsx.ts"

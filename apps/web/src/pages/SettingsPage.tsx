@@ -1,12 +1,21 @@
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { useChangePassword, useLibrary, useLibraryWrite, useProfile, useUpdateProfile, useUploadResume } from '../api/hooks';
+import {
+  useChangePassword,
+  useLibrary,
+  useLibraryWrite,
+  useProfile,
+  useRevokeSession,
+  useSessions,
+  useUpdateProfile,
+  useUploadResume,
+} from '../api/hooks';
 import type { LibraryItem, Profile } from '../api/types';
 import type { CurrentUser } from '../auth/useAuth';
 import { useLogout } from '../auth/useAuth';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/Layout';
 import { Button, Card, ErrorNote, Field, inputClass, Spinner, useToast } from '../components/ui';
-import { formatDate } from '../lib/format';
+import { formatDate, relativeDays } from '../lib/format';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
   const logout = useLogout();
@@ -46,6 +55,7 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
               suggest ghosted after {user.settings.ghostAfterDays} days
             </p>
           </Card>
+          <Devices />
           <PasswordForm />
           <Button onClick={() => logout.mutate()}>
             <Icon name="logout" className="h-4 w-4" /> Sign out
@@ -331,6 +341,61 @@ function PasswordForm() {
           </Button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------- devices
+
+/** "Chrome on Android" from a user-agent string; good enough to recognise your own devices. */
+function describeDevice(ua: string | null): string {
+  if (!ua) return 'Unknown device';
+  const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+  return os ? `${browser} on ${os}` : browser;
+}
+
+function Devices() {
+  const sessions = useSessions();
+  const revoke = useRevokeSession();
+  const toast = useToast();
+  const onError = (err: Error) => toast({ message: err.message, tone: 'error' });
+  const others = (sessions.data ?? []).filter((s) => !s.current).length;
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 dark:border-slate-800">
+        <p className="text-sm font-medium">Signed-in devices</p>
+        {others > 0 && (
+          <Button size="sm" variant="ghost" disabled={revoke.isPending} onClick={() => revoke.mutate('others', { onError, onSuccess: () => toast({ message: 'Other devices signed out', tone: 'info' }) })}>
+            Sign out others
+          </Button>
+        )}
+      </div>
+      {sessions.isPending ? (
+        <Spinner />
+      ) : (
+        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+          {sessions.data?.map((s) => (
+            <li key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm">
+                  {describeDevice(s.userAgent)}
+                  {s.current && <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">this device</span>}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Active {relativeDays(s.lastSeenAt)} · signed in {formatDate(s.createdAt)} · stays signed in until {formatDate(s.expiresAt)} unless unused
+                </p>
+              </div>
+              {!s.current && (
+                <Button size="sm" variant="ghost" disabled={revoke.isPending} onClick={() => revoke.mutate({ id: s.id }, { onError })}>
+                  Sign out
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

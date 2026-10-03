@@ -1,0 +1,55 @@
+# Nightly off-Railway backup: pg_dump → AES-256 encrypted → private workflow artifact (30 days).
+# Inactive until both repository secrets exist:
+#   PROD_DATABASE_URL   Railway Postgres "DATABASE_PUBLIC_URL" (needs the Postgres TCP proxy enabled)
+#   BACKUP_PASSPHRASE   long random passphrase; keep it in your password manager
+# Restore: see README → Backups.
+name: nightly-db-backup
+
+on:
+  schedule:
+    - cron: '30 20 * * *' # 02:00 IST
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Skip when not configured
+        id: check
+        run: |
+          if [ -z "$PROD_DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "Backup secrets not set; skipping."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dump and encrypt
+        if: steps.check.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          # Newer pg_dump can dump older servers; custom format supports selective restore.
+          docker run --rm -e PGCONNECT_TIMEOUT=20 postgres:18 \
+            pg_dump --format=custom --no-owner --no-privileges "$PROD_DATABASE_URL" > dump.pgc
+          test -s dump.pgc
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_PASSPHRASE -in dump.pgc -out "jobtracker-$stamp.pgc.enc"
+          rm dump.pgc
+          ls -la "jobtracker-$stamp.pgc.enc"
+
+      - name: Upload encrypted dump
+        if: steps.check.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobtracker-db-${{ env.STAMP }}
+          path: jobtracker-*.pgc.enc
+          retention-days: 30
+          if-no-files-found: error
