@@ -96,8 +96,8 @@ export const statusChangeSchema = z.object({
   status: z.enum(APPLICATION_STATUSES),
   note: text(2000),
   occurredAt: z.iso.datetime({ offset: true }).optional(),
-  /** Only meaningful for automatic intent; ignored for user actions. */
-  confidence: z.enum(SIGNAL_CONFIDENCES).optional(),
+  /** Automatic intent only (ignored for user actions): a 0–1 score, or legacy "high"/"low". */
+  confidence: z.union([z.number().min(0).max(1), z.enum(SIGNAL_CONFIDENCES)]).optional(),
 });
 
 export const eventEditSchema = z

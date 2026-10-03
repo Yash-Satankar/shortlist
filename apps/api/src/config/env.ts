@@ -55,6 +55,8 @@ const envSchema = z
     GHOST_AFTER_DAYS: z.coerce.number().int().positive().default(21),
     FOLLOW_UP_AFTER_DAYS: z.coerce.number().int().positive().default(10),
     POST_INTERVIEW_FOLLOW_UP_DAYS: z.coerce.number().int().positive().default(5),
+    /** Automatic signals with confidence >= this count as "high" (e.g. auto-apply a rejection). */
+    CONFIDENCE_HIGH_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
   })
   .refine((e) => e.ENCRYPTION_KEYS.has(e.ENCRYPTION_ACTIVE_KEY_ID), {

@@ -1,12 +1,16 @@
 import {
+  confidenceLevel,
   decideStatusChange,
   isAutomaticSource,
+  LEGACY_CONFIDENCE_SCORE,
+  UNSPECIFIED_CONFIDENCE_SCORE,
   type ApplicationStatus,
   type EventSource,
   type SignalConfidence,
   type StatusDecision,
 } from '@jt/shared';
 import { and, desc, eq, isNull } from 'drizzle-orm';
+import { env } from '../config/env';
 import type { Db, Tx } from '../db/client';
 import { applications, companies, statusEvents } from '../db/schema';
 import { dateIn } from '../lib/dates';
@@ -18,11 +22,16 @@ export interface ProposeStatusInput {
   applicationId: string;
   status: ApplicationStatus;
   source: EventSource;
-  /** Automatic sources only; unspecified = low. */
-  confidence?: SignalConfidence;
+  /** Automatic sources only: a 0–1 score (or a legacy "high"/"low"). Unspecified = 0.5 (low). */
+  confidence?: number | SignalConfidence;
   note?: string | null;
   occurredAt?: Date;
   evidence?: { type: string; id: string };
+}
+
+function toScore(confidence: number | SignalConfidence | undefined): number {
+  if (confidence === undefined) return UNSPECIFIED_CONFIDENCE_SCORE;
+  return typeof confidence === 'number' ? confidence : LEGACY_CONFIDENCE_SCORE[confidence];
 }
 
 /** Locks the application row for the rest of the transaction (status changes are serialized). */
@@ -59,13 +68,14 @@ async function applyStatus(tx: Tx, app: typeof applications.$inferSelect, to: Ap
 export async function proposeStatus(db: Db, input: ProposeStatusInput) {
   return db.transaction(async (tx) => {
     const app = await lockApplication(tx, input.userId, input.applicationId);
+    // Store the numeric score; the rules still see high/low via the configured threshold.
+    const score = isAutomaticSource(input.source) ? toScore(input.confidence) : null;
     const decision: StatusDecision = decideStatusChange({
       current: app.status,
       proposed: input.status,
       source: input.source,
-      confidence: input.confidence,
+      confidence: score === null ? undefined : confidenceLevel(score, env().CONFIDENCE_HIGH_THRESHOLD),
     });
-    const confidence = isAutomaticSource(input.source) ? (input.confidence ?? 'low') : null;
 
     // A manual "change" to the current status is just a no-op, not worth a timeline entry.
     if (decision.reason === 'no_change' && !input.evidence) return { decision, event: null };
@@ -81,7 +91,7 @@ export async function proposeStatus(db: Db, input: ProposeStatusInput) {
         source: input.source,
         disposition: decision.disposition,
         reason: decision.reason,
-        confidence,
+        confidenceScore: score,
         occurredAt,
         note: input.note ?? null,
         evidenceType: input.evidence?.type ?? null,

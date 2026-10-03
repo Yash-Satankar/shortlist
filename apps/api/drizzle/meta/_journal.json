@@ -43,6 +43,13 @@
       "when": 1791002658190,
       "tag": "0005_import_key",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791051624323,
+      "tag": "0006_confidence_score",
+      "breakpoints": true
     }
   ]
 }

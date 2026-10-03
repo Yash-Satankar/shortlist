@@ -12,6 +12,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -246,8 +247,10 @@ export const statusEvents = pgTable(
     disposition: eventDisposition('disposition').notNull().default('applied'),
     /** Why the rules chose this disposition (see decideStatusChange in @jt/shared). */
     reason: text('reason'),
-    /** For automatic sources: how sure the signal was ('high' | 'low'). Null for user actions. */
+    /** DEPRECATED (no longer written): old high/low label. Superseded by confidence_score. */
     confidence: text('confidence').$type<SignalConfidence>(),
+    /** For automatic sources: how sure the signal was, 0–1. Null for user actions (manual, import...). */
+    confidenceScore: doublePrecision('confidence_score'),
     /** When it happened in the real world (e.g. email date); recorded_at is when we learned it. */
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),

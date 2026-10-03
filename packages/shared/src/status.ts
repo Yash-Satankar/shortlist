@@ -107,3 +107,17 @@ export const FOLLOW_UP_REASON_LABELS: Record<FollowUpReason, string> = {
   no_response: 'No response yet',
   post_interview: 'Post-interview check-in',
 };
+
+/**
+ * Numeric signal confidence (0–1) is what gets stored; the rules above still reason in
+ * high/low, derived with a threshold (CONFIDENCE_HIGH_THRESHOLD on the server, default 0.8).
+ */
+export const DEFAULT_CONFIDENCE_HIGH_THRESHOLD = 0.8;
+/** Score assumed for an automatic signal that didn't say how sure it was (the old "low"). */
+export const UNSPECIFIED_CONFIDENCE_SCORE = 0.5;
+/** Legacy high/low values as scores (used by the migration and for clients that still send words). */
+export const LEGACY_CONFIDENCE_SCORE: Record<SignalConfidence, number> = { high: 0.9, low: 0.5 };
+
+export function confidenceLevel(score: number, threshold = DEFAULT_CONFIDENCE_HIGH_THRESHOLD): SignalConfidence {
+  return score >= threshold ? 'high' : 'low';
+}

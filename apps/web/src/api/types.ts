@@ -54,7 +54,10 @@ export interface TimelineEvent {
   source: EventSource;
   disposition: EventDisposition;
   reason: string | null;
+  /** Label the UI renders (derived server-side from confidenceScore and the threshold). */
   confidence: SignalConfidence | null;
+  /** Raw 0–1 score; null for manual/import events. */
+  confidenceScore: number | null;
   occurredAt: string;
   recordedAt: string;
   note: string | null;

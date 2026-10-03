@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   canonicalJobUrl,
+  confidenceLevel,
   COMPANY_MATCH_THRESHOLD,
   findDuplicates,
   isAutomaticSource,
@@ -11,6 +12,7 @@ import {
 } from '@jt/shared';
 import { and, asc, desc, eq, exists, gte, ilike, inArray, isNotNull, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
 import { escapeLike, findOrCreateCompany } from '../companies/service';
+import { env } from '../config/env';
 import { isUniqueViolation, type Db, type DbOrTx } from '../db/client';
 import {
   applicationAnswers,
@@ -268,9 +270,17 @@ export function serializeApplication(app: typeof applications.$inferSelect) {
   };
 }
 
+/**
+ * `confidence` stays the high/low label the UI renders, now derived from the stored score
+ * with the configured threshold; `confidenceScore` is the raw 0–1 value.
+ */
 export function serializeEvent(e: typeof statusEvents.$inferSelect) {
-  const { userId: _userId, ...rest } = e;
-  return rest;
+  const { userId: _userId, confidence: _legacyLabel, confidenceScore, ...rest } = e;
+  return {
+    ...rest,
+    confidence: confidenceScore === null ? null : confidenceLevel(confidenceScore, env().CONFIDENCE_HIGH_THRESHOLD),
+    confidenceScore,
+  };
 }
 
 export function serializeContact(c: typeof contacts.$inferSelect) {

@@ -30,6 +30,7 @@ import {
   getJobDescription,
   listApplications,
   replaceAnswers,
+  serializeEvent,
   updateApplication,
   updateContact,
 } from './service';
@@ -163,7 +164,7 @@ export function trackerRouter(db: Db): Router {
   });
   router.get('/reviews', requireAuth, async (req, res) => {
     const rows = await listPendingReviews(db, req.auth!.userId);
-    res.json({ items: rows.map(({ event: { userId: _u, ...event }, ...rest }) => ({ event, ...rest })) });
+    res.json({ items: rows.map(({ event, ...rest }) => ({ event: serializeEvent(event), ...rest })) });
   });
   router.get('/companies', requireAuth, async (req, res) => {
     const q = parse(z.string().max(200).default(''), req.query.q);
