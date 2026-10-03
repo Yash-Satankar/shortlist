@@ -160,3 +160,20 @@ describe('nextFollowUp (for "Next one: …" in the empty inbox)', () => {
     expect((await getStats(db, userId, NOW)).nextFollowUp).toBeNull();
   });
 });
+
+describe('needsYou (nav badge and sidebar counts)', () => {
+  it('matches the inbox lists: pending reviews + follow-ups + visible ghost suggestions', async () => {
+    const rev = await make('rejected');
+    await proposeStatus(db, { userId, applicationId: rev, status: 'interview', source: 'portal', confidence: 0.9 }); // locked → review
+
+    const quiet = await make('applied', '2026-09-01', 'Quiet Co'); // no response + ghost
+    await db.update(applications).set({ lastActivityAt: new Date('2026-09-01T06:00:00Z') }).where(eq(applications.id, quiet));
+
+    const s = await getStats(db, userId, NOW);
+    expect(s.needsYou).toEqual({ reviews: 1, followUps: 1, ghosts: 1, total: 3 });
+
+    // Dismissing the ghost suggestion ("Not yet") drops it from the count on every device.
+    await db.update(applications).set({ ghostDismissedAt: NOW }).where(eq(applications.id, quiet));
+    expect((await getStats(db, userId, NOW)).needsYou).toEqual({ reviews: 1, followUps: 1, ghosts: 0, total: 2 });
+  });
+});

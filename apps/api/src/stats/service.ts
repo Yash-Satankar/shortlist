@@ -2,7 +2,7 @@ import type { ApplicationStatus } from '@jt/shared';
 import { and, count, countDistinct, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
 import { applications, statusEvents } from '../db/schema';
-import { getNextFollowUp } from '../applications/follow-ups';
+import { getFollowUps, getNextFollowUp } from '../applications/follow-ups';
 import { todayIn } from '../lib/dates';
 import { getUserSettings } from '../users/service';
 
@@ -29,7 +29,7 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
   const week = await weekStart(db, timezone, now);
   const mine = and(eq(applications.userId, userId), isNull(applications.archivedAt));
 
-  const [[applied], [active], [interviews], [replies], nextFollowUp] = await Promise.all([
+  const [[applied], [active], [interviews], [replies], nextFollowUp, followUps, [reviews]] = await Promise.all([
     db
       .select({ n: count() })
       .from(applications)
@@ -53,6 +53,11 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
         ),
       ),
     getNextFollowUp(db, userId, now),
+    getFollowUps(db, userId, now),
+    db
+      .select({ n: count() })
+      .from(statusEvents)
+      .where(and(eq(statusEvents.userId, userId), eq(statusEvents.disposition, 'pending_review'))),
   ]);
 
   return {
@@ -63,5 +68,12 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
     repliesThisWeek: replies!.n,
     /** The next follow-up not due yet (explicit date or automatic rule), for "Next one: …". */
     nextFollowUp,
+    /** What needs the user now: the nav badge and sidebar counts (same sets as the inbox lists). */
+    needsYou: {
+      reviews: reviews!.n,
+      followUps: followUps.followUps.length,
+      ghosts: followUps.ghostSuggestions.length,
+      total: reviews!.n + followUps.followUps.length + followUps.ghostSuggestions.length,
+    },
   };
 }

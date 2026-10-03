@@ -1,7 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router';
-import { useFollowUps, useReviews } from '../api/hooks';
-import { useVisibleGhosts } from '../lib/ghost';
+import { useStats } from '../api/hooks';
 import { AppMark, Icon, type IconName } from './Icon';
 import { StatusGlyph } from './ui';
 
@@ -13,14 +12,10 @@ const NAV: Array<{ to: string; label: string; icon: IconName; attention?: boolea
   { to: '/settings', label: 'Settings', icon: 'gear' },
 ];
 
-/** Everything the Follow-ups inbox will show: reviews + follow-ups + ghost suggestions. */
+/** Everything the Follow-ups inbox will show (reviews + follow-ups + ghost suggestions), counted by the server. */
 export function useAttention() {
-  const followUps = useFollowUps();
-  const reviews = useReviews();
-  const ghosts = useVisibleGhosts(followUps.data?.ghostSuggestions);
-  const reviewCount = reviews.data?.length ?? 0;
-  const followCount = followUps.data?.followUps.length ?? 0;
-  return { total: reviewCount + followCount + ghosts.length, reviews: reviewCount, followUps: followCount };
+  const needsYou = useStats().data?.needsYou;
+  return { total: needsYou?.total ?? 0, reviews: needsYou?.reviews ?? 0, followUps: needsYou?.followUps ?? 0 };
 }
 
 const isTyping = (el: EventTarget | null) =>

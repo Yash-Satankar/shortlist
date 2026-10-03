@@ -163,6 +163,8 @@ export interface Stats {
   repliesThisWeek: number;
   /** Next follow-up not due yet (explicit date or automatic rule). */
   nextFollowUp: NextFollowUp | null;
+  /** Nav badge and sidebar counts (same sets as the inbox lists). */
+  needsYou: { reviews: number; followUps: number; ghosts: number; total: number };
 }
 
 export interface NextFollowUp {
