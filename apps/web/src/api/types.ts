@@ -153,3 +153,12 @@ export interface Profile {
   resumeText: string | null;
   resumeUpdatedAt: string | null;
 }
+
+export interface Stats {
+  week: { start: string; startDate: string; timezone: string };
+  appliedThisWeek: number;
+  active: number;
+  interviews: number;
+  /** Returned for later use; not displayed. */
+  repliesThisWeek: number;
+}

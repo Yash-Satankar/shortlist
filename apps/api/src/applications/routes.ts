@@ -5,6 +5,7 @@ import { resolveSource, USER_ONLY, USER_OR_AUTO } from '../auth/intent';
 import { requireAuth } from '../auth/middleware';
 import type { Db } from '../db/client';
 import { parse } from '../lib/http';
+import { getStats } from '../stats/service';
 import { getFollowUps } from './follow-ups';
 import {
   answersReplaceSchema,
@@ -169,6 +170,9 @@ export function trackerRouter(db: Db): Router {
   const router = Router();
   router.get('/follow-ups', requireAuth, async (req, res) => {
     res.json(await getFollowUps(db, req.auth!.userId));
+  });
+  router.get('/stats', requireAuth, async (req, res) => {
+    res.json(await getStats(db, req.auth!.userId));
   });
   router.get('/reviews', requireAuth, async (req, res) => {
     const rows = await listPendingReviews(db, req.auth!.userId);

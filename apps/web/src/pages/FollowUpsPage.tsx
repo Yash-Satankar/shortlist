@@ -1,12 +1,12 @@
 import type { FollowUpReason } from '@jt/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useApplications, useFollowUps, useQuickUpdate, useReviewAny, useReviews } from '../api/hooks';
+import { useApplications, useFollowUps, useQuickUpdate, useReviewAny, useReviews, useStats } from '../api/hooks';
 import type { FollowUpItem, FollowUps } from '../api/types';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
 import { Button, Confidence, ErrorNote, EventSourceBadge, SectionLabel, Sheet, SkeletonRows, StatusPill, useToast } from '../components/ui';
-import { daysAgo, formatDate, formatDay, formatEventTime, isoDateFromToday, REASON_LABELS, shortAge } from '../lib/format';
+import { formatDate, formatDay, formatEventTime, isoDateFromToday, REASON_LABELS, shortAge } from '../lib/format';
 import { dismissGhost, useVisibleGhosts } from '../lib/ghost';
 import { ACTIVE_STATUSES } from '../lib/status';
 
@@ -244,9 +244,10 @@ export function FollowUpsPage() {
   );
 }
 
-/** Empty inbox. Stats come from the (already cached) applications list. */
+/** Empty inbox. The three numbers come from GET /api/stats (week = Monday 00:00, user timezone). */
 function AllClear({ settings }: { settings: FollowUps['settings'] }) {
   const { data } = useApplications(LIST_PARAMS);
+  const { data: counts } = useStats();
   const stats = useMemo(() => {
     const items = data?.items ?? [];
     const next = items
@@ -254,11 +255,11 @@ function AllClear({ settings }: { settings: FollowUps['settings'] }) {
       .sort((a, b) => a.followUpOn!.localeCompare(b.followUpOn!))[0];
     return {
       next,
-      appliedWeek: items.filter((i) => i.appliedOn && daysAgo(i.appliedOn) < 7).length,
-      active: items.filter((i) => ACTIVE_STATUSES.includes(i.status) && i.status !== 'saved').length,
-      interviews: items.filter((i) => i.status === 'interview').length,
+      appliedWeek: counts?.appliedThisWeek ?? 0,
+      active: counts?.active ?? 0,
+      interviews: counts?.interviews ?? 0,
     };
-  }, [data, settings.today]);
+  }, [data, counts, settings.today]);
 
   return (
     <div className="flex flex-col items-center px-8 pt-16 pb-10 text-center">
@@ -275,7 +276,7 @@ function AllClear({ settings }: { settings: FollowUps['settings'] }) {
           </>
         )}
       </p>
-      {data && (
+      {counts && (
         <dl className="mt-7 grid w-full max-w-sm grid-cols-3 pt-4 shadow-[inset_0_1px_0_var(--line)]">
           {(
             [

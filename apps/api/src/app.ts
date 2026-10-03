@@ -78,7 +78,7 @@ export function createApp({ db }: { db: Db }) {
   api.use('/answer-library', requireAuth, requireUserIntent, answerLibraryRouter(db));
   api.use('/import', requireAuth, importRouter(db));
   api.use('/profile', requireAuth, requireUserIntent, profileRouter(db));
-  api.use(trackerRouter(db)); // /follow-ups, /reviews, /companies (each requires auth)
+  api.use(trackerRouter(db)); // /follow-ups, /stats, /reviews, /companies (each requires auth)
 
   api.use((_req, _res, next) => next(notFound('Unknown API route')));
   app.use('/api', api);

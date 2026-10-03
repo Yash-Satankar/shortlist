@@ -10,6 +10,7 @@ import type {
   LibraryItem,
   Profile,
   ReviewItem,
+  Stats,
 } from './types';
 
 export const keys = {
@@ -19,6 +20,7 @@ export const keys = {
   reviews: ['reviews'] as const,
   library: ['answer-library'] as const,
   profile: ['profile'] as const,
+  stats: ['stats'] as const,
 };
 
 /** After any write that can change status/dates, list-style views are stale. */
@@ -26,6 +28,7 @@ function invalidateLists(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: ['applications'] });
   void qc.invalidateQueries({ queryKey: keys.followUps });
   void qc.invalidateQueries({ queryKey: keys.reviews });
+  void qc.invalidateQueries({ queryKey: keys.stats });
 }
 
 /** Most writes return the fresh application detail: put it straight in the cache. */
@@ -57,6 +60,9 @@ export function useApplication(id: string) {
     queryFn: async () => (await api<{ application: ApplicationDetail }>(`/applications/${id}`)).application,
   });
 }
+
+/** Inbox numbers computed on the server (week = Monday 00:00 in the user's timezone). */
+export const useStats = () => useQuery({ queryKey: keys.stats, queryFn: () => api<Stats>('/stats') });
 
 export const useFollowUps = () => useQuery({ queryKey: keys.followUps, queryFn: () => api<FollowUps>('/follow-ups') });
 
