@@ -33,6 +33,7 @@ pnpm db:seed                  # runs migrations, creates your account
 pnpm db:seed -- --demo        # optional: 5 fictional demo applications (tagged is_demo)
 pnpm db:seed -- --remove-demo # delete only the demo rows
 pnpm dev                      # API :3000 + web :5173 → open http://localhost:5173
+pnpm import:xlsx -- --file ../../Job_Applications_Tracker.xlsx   # dry run; add --commit
 ```
 
 `pnpm dev` binds Vite to your LAN too, so you can open `http://<your-pc-ip>:5173` on your phone.
@@ -124,7 +125,8 @@ Create your account once with `pnpm user:create` from a Railway shell.
 - [x] 1.2: applications API (CRUD, status events + undo + review, Q&A, answer library, duplicate check, search, follow-ups)
 - [x] 1.3: .xlsx importer (dry-run preview, idempotent via import_key; "My Standard Answers" → answer library,
   CTC → encrypted profile)
-- [ ] 1.4: web UI: list/kanban, detail + timeline, follow-ups, PWA + Web Share Target quick-add
-  (share target must be `method: GET` with title/text/url params: a POST share would arrive
-  without the SameSite=Lax session cookie and be blocked by the cross-origin write guard)
+- [x] 1.4: mobile-first web UI: list, follow-ups inbox (reviews, follow-ups, ghost suggestions), detail
+  (timeline with undo/review, JD, Q&A, details), quick-add, installable PWA with a GET Web Share Target
+  (`/share?title&text&url`), resume upload (PDF/DOCX → editable text), settings, kanban (drag = manual
+  status change, undoable)
 - [ ] Phase 2: Chrome extension · Phase 3: email intake · Phase 4: AI prep packs, follow-ups, chat

@@ -3,6 +3,7 @@ import { useCurrentUser } from './auth/useAuth';
 import { Layout } from './components/Layout';
 import { Spinner } from './components/ui';
 import { AddPage } from './pages/AddPage';
+import { BoardPage } from './pages/BoardPage';
 import { ApplicationPage } from './pages/ApplicationPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
 import { FollowUpsPage } from './pages/FollowUpsPage';
@@ -25,6 +26,7 @@ export function App() {
         <Route path="follow-ups" element={<FollowUpsPage />} />
         <Route path="add" element={<AddPage />} />
         <Route path="share" element={<SharePage />} />
+        <Route path="board" element={<BoardPage />} />
         <Route path="settings" element={<SettingsPage user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

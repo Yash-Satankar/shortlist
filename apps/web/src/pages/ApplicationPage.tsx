@@ -12,10 +12,11 @@ import {
   useUndo,
   useUpdateApplication,
 } from '../api/hooks';
-import type { ApplicationDetail, TimelineEvent } from '../api/types';
+import type { ApplicationDetail } from '../api/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/Layout';
 import { Button, buttonClass, Card, EmptyState, ErrorNote, Field, inputClass, Sheet, Spinner, StatusBadge, useToast } from '../components/ui';
+import { latestEffective } from '../lib/timeline';
 import { EVENT_SOURCE_LABELS, formatDate, formatEventTime, REASON_LABELS, relativeDays } from '../lib/format';
 
 const TABS = [
@@ -161,15 +162,6 @@ function StatusSheet({ app, open, onClose }: { app: ApplicationDetail; open: boo
       </ul>
     </Sheet>
   );
-}
-
-/** The change "Undo" would revert: newest applied, not-yet-reverted event with a previous status. */
-function latestEffective(timeline: TimelineEvent[]): TimelineEvent | undefined {
-  const effective = timeline
-    .filter((e) => e.disposition === 'applied' && !e.revertedAt)
-    .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt) || b.occurredAt.localeCompare(a.occurredAt));
-  const latest = effective[0];
-  return latest?.fromStatus ? latest : undefined;
 }
 
 // ---------------------------------------------------------------- timeline
