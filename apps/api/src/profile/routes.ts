@@ -1,7 +1,9 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { z } from 'zod';
 import type { Db } from '../db/client';
-import { parse } from '../lib/http';
+import { requireSession } from '../auth/middleware';
+import { badRequest, parse } from '../lib/http';
+import { extractResumeText } from './resume';
 import { getProfile, updateProfile } from './service';
 
 const text = (max: number) =>
@@ -36,6 +38,15 @@ export function profileRouter(db: Db): Router {
   router.patch('/', async (req, res) => {
     const patch = parse(profilePatchSchema, req.body);
     res.json({ profile: await updateProfile(db, req.auth!.userId, patch) });
+  });
+
+  // Raw PDF/DOCX body → extracted text saved as the profile's resume (editable afterwards).
+  router.post('/resume', requireSession, express.raw({ type: () => true, limit: '5mb' }), async (req, res) => {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw badRequest('Upload the resume file as the request body');
+    const { kind, text, pages } = await extractResumeText(req.body);
+    if (!text) throw badRequest('No text found in that file (is it a scanned image?)');
+    const profile = await updateProfile(db, req.auth!.userId, { resumeText: text });
+    res.json({ profile, extracted: { kind, pages, characters: text.length } });
   });
 
   return router;

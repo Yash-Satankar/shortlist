@@ -184,3 +184,44 @@ export function useUpdateProfile() {
     },
   });
 }
+
+export function useUploadResume() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      api<{ profile: Profile; extracted: { kind: 'pdf' | 'docx'; pages?: number; characters: number } }>('/profile/resume', {
+        method: 'POST',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      }),
+    onSuccess: ({ profile }) => qc.setQueryData(keys.profile, profile),
+  });
+}
+
+// ---------------------------------------------------------------- answer library
+
+export function useLibraryWrite() {
+  const qc = useQueryClient();
+  const done = () => void qc.invalidateQueries({ queryKey: keys.library });
+  return {
+    create: useMutation({
+      mutationFn: (item: { question: string; answer: string }) => api('/answer-library', { method: 'POST', json: item }),
+      onSuccess: done,
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...patch }: { id: string; question?: string; answer?: string }) =>
+        api(`/answer-library/${id}`, { method: 'PATCH', json: patch }),
+      onSuccess: done,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => api<void>(`/answer-library/${id}`, { method: 'DELETE' }),
+      onSuccess: done,
+    }),
+  };
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (vars: { currentPassword: string; newPassword: string }) => api<void>('/auth/password', { method: 'POST', json: vars }),
+  });
+}
