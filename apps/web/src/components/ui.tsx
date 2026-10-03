@@ -1,85 +1,274 @@
-import { STATUS_LABELS, type ApplicationStatus } from '@jt/shared';
-import { createContext, useCallback, useContext, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { STATUS_STYLES } from '../lib/format';
-import { Icon } from './Icon';
+import type { ApplicationStatus, EventSource, SignalConfidence } from '@jt/shared';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from 'react';
+import { EVENT_SOURCE_BADGE, isAutomaticSource, STATUS_SHORT } from '../lib/status';
+import { Icon, type IconName } from './Icon';
 
-export function StatusBadge({ status, className = '' }: { status: ApplicationStatus; className?: string }) {
+// ---------------------------------------------------------------- status
+
+/** Group glyph: in-progress meter, Offer check, Rejected cross, Ghosted dots, Withdrawn minus. Styles in tokens.css. */
+export function StatusGlyph({ status, className = '' }: { status?: ApplicationStatus; className?: string }) {
+  return <span className={`sg ${status ? `st-${status}` : ''} ${className}`} aria-hidden="true" />;
+}
+
+export function StatusPill({
+  status,
+  size,
+  className = '',
+  children,
+}: {
+  status: ApplicationStatus;
+  size?: 'lg';
+  className?: string;
+  children?: ReactNode;
+}) {
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[status]} ${className}`}>
-      {STATUS_LABELS[status]}
+    <span className={`pill st-${status} ${size === 'lg' ? 'lg' : ''} ${className}`}>
+      <StatusGlyph />
+      {STATUS_SHORT[status]}
+      {children}
     </span>
   );
 }
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+/** Pill-shaped button that opens the status picker. */
+export function StatusButton({ status, onClick, className = '' }: { status: ApplicationStatus; onClick: () => void; className?: string }) {
+  return (
+    <button type="button" onClick={onClick} className={`pill lg btnlike st-${status} ${className}`} aria-label={`Status: ${STATUS_SHORT[status]}. Change status`}>
+      <StatusGlyph />
+      {STATUS_SHORT[status]}
+      <Icon name="chevron" className="chev" />
+    </button>
+  );
+}
+
+export function EventSourceBadge({ source }: { source: EventSource }) {
+  const auto = isAutomaticSource(source);
+  return (
+    <span className={`es ${auto ? 'auto' : ''}`} title={auto ? 'Automatic' : 'You did this'}>
+      {auto && <Icon name="zap" />}
+      {EVENT_SOURCE_BADGE[source]}
+    </span>
+  );
+}
+
+/** The API reports confidence as high/low (no percentage), so the bar is a two-step gauge. */
+export function Confidence({ value }: { value: SignalConfidence }) {
+  return (
+    <span className="conf" title={`${value} confidence`}>
+      <span className="bar">
+        <i style={{ width: value === 'high' ? '100%' : '40%' }} />
+      </span>
+      {value}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------- buttons
+
+type Variant = 'primary' | 'ink' | 'secondary' | 'quiet' | 'danger';
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white',
-  secondary: 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800',
-  ghost: 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
-  danger: 'border border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950',
+  primary: 'btn-primary',
+  ink: 'btn-ink',
+  secondary: 'btn-sec',
+  quiet: 'btn-quiet',
+  danger: 'btn-danger',
 };
 
-/** Button styling, also for links that look like buttons (never nest <button> in <a>). */
-export function buttonClass(variant: Variant = 'secondary', size: 'sm' | 'md' = 'md') {
-  const sizing = size === 'sm' ? 'px-2.5 py-1.5 text-sm' : 'px-4 py-2.5 text-sm';
-  return `inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 ${sizing} ${VARIANTS[variant]}`;
+/**
+ * Button styling, also for links that look like buttons (never nest <button> in <a>).
+ * md = 44px touch target; sm = 32px, for pointer layouts only; block = full-width 52px.
+ */
+export function buttonClass(variant: Variant = 'secondary', size: 'sm' | 'md' | 'block' = 'md') {
+  return `btn ${VARIANTS[variant]} ${size === 'sm' ? 'btn-sm' : size === 'block' ? 'btn-block' : ''}`;
 }
 
 export function Button({
   variant = 'secondary',
   size = 'md',
   className = '',
+  busy = false,
+  children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: 'sm' | 'md' }) {
-  return <button type="button" {...props} className={`${buttonClass(variant, size)} ${className}`} />;
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: 'sm' | 'md' | 'block'; busy?: boolean }) {
+  return (
+    <button type="button" aria-busy={busy || undefined} {...props} className={`${buttonClass(variant, size)} ${className}`}>
+      {busy && <span className="spin" aria-hidden="true" />}
+      {children}
+    </button>
+  );
 }
 
-export const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-slate-800';
-
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
+export function IconButton({
+  icon,
+  label,
+  className = '',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string }) {
   return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+    <button type="button" aria-label={label} {...props} className={`iconbtn ${className}`}>
+      <Icon name={icon} />
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------- fields
+
+export const inputClass = 'inp';
+
+export function Field({
+  label,
+  children,
+  hint,
+  error,
+  optional,
+  className = '',
+}: {
+  label: string;
+  children: ReactNode;
+  hint?: ReactNode;
+  error?: ReactNode;
+  optional?: boolean;
+  className?: string;
+}) {
+  return (
+    <label className={`field ${className}`}>
+      <span className="lbl">
+        {label}
+        {optional && <span className="opt">optional</span>}
+      </span>
       {children}
-      {hint && <span className="block text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
+      {error ? <span className="hint err">{error}</span> : hint ? <span className="hint">{hint}</span> : null}
     </label>
   );
 }
 
+/** Segmented control (radio group). */
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+  className = '',
+}: {
+  value: T;
+  options: Array<{ value: T; label: ReactNode }>;
+  onChange: (v: T) => void;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <div className={`seg ${className}`} role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return <button type="button" role="switch" aria-checked={checked} aria-label={label} className={`sw ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)} />;
+}
+
+// ---------------------------------------------------------------- layout bits
+
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 ${className}`}>{children}</div>;
+  return <div className={`card ${className}`}>{children}</div>;
+}
+
+/** Notebook-style index label: mono, uppercase, with an optional count and right-side action. */
+export function SectionLabel({ children, count, action, className = '' }: { children: ReactNode; count?: number; action?: ReactNode; className?: string }) {
+  return (
+    <h2 className={`sect m-0 ${className}`}>
+      {children}
+      {count !== undefined && <span className="n">· {count}</span>}
+      {action && <span className="act">{action}</span>}
+    </h2>
+  );
 }
 
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 p-8 text-sm text-slate-500" role="status">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+    <div className="flex items-center justify-center gap-2 p-8 text-sm text-ink-3" role="status">
+      <span className="spin" aria-hidden="true" />
       {label}
     </div>
   );
 }
 
-export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
+/** Placeholder rows while the list loads. */
+export function SkeletonRows({ count = 4 }: { count?: number }) {
+  const widths: Array<[number, number]> = [[110, 220], [90, 180], [130, 240], [100, 200]];
   return (
-    <div className="px-6 py-12 text-center">
-      <p className="font-medium text-slate-700 dark:text-slate-300">{title}</p>
-      {children && <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{children}</div>}
+    <div className="list" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="row">
+          <span />
+          <span className="rb gap-2 pt-1">
+            <span className="flex justify-between">
+              <span className="sk" style={{ width: widths[i % 4]![0], height: 14 }} />
+              <span className="sk" style={{ width: 64, height: 18, borderRadius: 6 }} />
+            </span>
+            <span className="sk" style={{ width: widths[i % 4]![1] }} />
+            <span className="sk" style={{ width: 140, height: 10 }} />
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
 
-export function ErrorNote({ error }: { error: unknown }) {
-  if (!error) return null;
+export function EmptyState({ icon, title, children, action }: { icon?: IconName; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-      {error instanceof Error ? error.message : 'Something went wrong'}
-    </p>
+    <div className="flex flex-col items-center px-6 py-12 text-center">
+      {icon && <Icon name={icon} size="lg" className="text-ink-3" />}
+      <p className="mt-3 text-base font-semibold">{title}</p>
+      {children && <div className="mt-1 text-[13px] leading-5 text-ink-3">{children}</div>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
   );
 }
 
-/** Bottom sheet on phones, centered dialog on wider screens. */
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  if (!error) return null;
+  return (
+    <div role="alert" className="banner err">
+      <Icon name="alert" />
+      <div className="min-w-0 flex-1">{error instanceof Error ? error.message : 'Something went wrong'}</div>
+      {onRetry && (
+        <Button size="sm" className="self-center" onClick={onRetry}>
+          Retry
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Bottom sheet on phones, centred dialog from sm up. */
+export function Sheet({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  headerAction,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  headerAction?: ReactNode;
+}) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -94,16 +283,16 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
-      <button type="button" aria-label="Close" className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl sm:max-w-md sm:rounded-2xl dark:bg-slate-900">
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close">
-            <Icon name="x" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+      <button type="button" aria-label="Close" className="scrim cursor-default" onClick={onClose} />
+      <div className="sheet relative max-h-[88dvh] w-full sm:max-w-md sm:rounded-sheet">
+        <div className="grab sm:hidden" />
+        <div className="sheet-h">
+          <h2>{title}</h2>
+          {headerAction ?? <IconButton icon="x" label="Close" onClick={onClose} />}
         </div>
-        <div className="p-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        {footer && <div className="pb-safe px-4 pt-3 shadow-[0_-1px_0_var(--line)]">{footer}</div>}
       </div>
     </div>
   );
@@ -113,7 +302,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 
 interface Toast {
   id: number;
-  message: string;
+  message: ReactNode;
   tone: 'info' | 'error';
   action?: { label: string; run: () => void };
 }
@@ -132,24 +321,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 px-4 md:bottom-6" aria-live="polite">
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(80px+env(safe-area-inset-bottom))] z-[60] flex flex-col items-center gap-2 px-3 md:bottom-6"
+        aria-live="polite"
+      >
         {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-lg px-4 py-2.5 text-sm shadow-lg ${
-              t.tone === 'error' ? 'bg-rose-700 text-white' : 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-            }`}
-          >
-            <span>{t.message}</span>
+          <div key={t.id} role={t.tone === 'error' ? 'alert' : 'status'} className="toast pointer-events-auto w-full max-w-[400px]">
+            {t.tone === 'error' && <Icon name="alert" size="sm" className="text-[var(--toast-action)]" />}
+            <span className="msg">{t.message}</span>
             {t.action && (
               <button
                 type="button"
-                className="font-semibold underline"
+                className="act"
                 onClick={() => {
                   t.action!.run();
                   setToasts((all) => all.filter((x) => x.id !== t.id));
                 }}
               >
+                {t.action.label === 'Undo' && <Icon name="undo" />}
                 {t.action.label}
               </button>
             )}

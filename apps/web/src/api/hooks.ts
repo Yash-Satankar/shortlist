@@ -248,3 +248,24 @@ export function useRevokeSession() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['sessions'] }),
   });
 }
+
+// ---------------------------------------------------------------- recruiter contact
+
+export interface ContactInput {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  linkedinUrl: string | null;
+}
+
+/** Creates the application's recruiter contact, or updates it when one exists. */
+export function useSaveRecruiter(applicationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: ContactInput & { id?: string }) =>
+      id
+        ? api(`/contacts/${id}`, { method: 'PATCH', json: input })
+        : api(`/applications/${applicationId}/contacts`, { method: 'POST', json: { ...input, role: 'recruiter' } }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.application(applicationId) }),
+  });
+}

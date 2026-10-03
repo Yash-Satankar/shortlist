@@ -15,3 +15,6 @@ Thumbs.db
 !**/test/fixtures/*.xlsx
 uploads/
 .railway-token
+
+# Local editor/agent config
+.claude/

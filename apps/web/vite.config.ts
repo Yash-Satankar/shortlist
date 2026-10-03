@@ -19,8 +19,8 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#0f172a',
-        theme_color: '#0f172a',
+        background_color: '#F5F5F1',
+        theme_color: '#F5F5F1',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -39,7 +39,7 @@ export default defineConfig({
         // Cache the app shell only. API responses (personal data) are never cached.
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'], // includes theme-init.js
         runtimeCaching: [],
       },
       devOptions: { enabled: false },

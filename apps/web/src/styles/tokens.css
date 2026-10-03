@@ -1,0 +1,188 @@
+/* ==========================================================================
+   Job Tracker design tokens (source: the "Job Tracker Redesign" canvas).
+   Light lives on :root. Dark applies via [data-theme="dark"] on <html>, which
+   public/theme-init.js sets from the saved preference (System follows the OS).
+   ========================================================================== */
+
+/* ---------- Theme-independent tokens ---------- */
+:root {
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+
+  --text-2xs: 11px;  --lh-2xs: 14px;   /* index labels, badges (mono) */
+  --text-xs: 12px;   --lh-xs: 16px;    /* pills, timestamps */
+  --text-sm: 13px;   --lh-sm: 18px;    /* meta line, labels */
+  --text-base: 15px; --lh-base: 22px;  /* body, inputs */
+  --text-md: 16px;   --lh-md: 22px;    /* company name in rows */
+  --text-lg: 18px;   --lh-lg: 24px;
+  --text-xl: 22px;   --lh-xl: 28px;    /* detail title */
+  --text-2xl: 24px;  --lh-2xl: 30px;   /* screen title */
+  --text-read: 16px; --lh-read: 26px;  /* JD reading text */
+
+  --sp-0: 2px; --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  --r-xs: 5px;   /* badges, kbd */
+  --r-sm: 6px;   /* status pills, reason chips */
+  --r-md: 10px;  /* inputs, cards in columns */
+  --r-lg: 12px;  /* buttons, search, banners */
+  --r-xl: 14px;  /* cards, kanban columns */
+  --r-2xl: 20px; /* sheets */
+  --r-full: 999px;
+
+  --tap: 44px;          /* minimum touch target */
+  --nav-h: 64px;        /* bottom nav, excl. safe-area-inset-bottom */
+  --sidebar-w: 232px;
+  --list-w: 400px;      /* desktop list column */
+  --read-w: 62ch;       /* JD measure */
+
+  --dur-fast: 120ms; --dur: 180ms; --dur-slow: 260ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-out: cubic-bezier(0, 0, .2, 1);
+}
+
+/* ---------- Light ---------- */
+:root {
+  color-scheme: light;
+
+  --bg: #F5F5F1;               /* app background, warm paper */
+  --surface: #FFFFFF;          /* rows, cards, inputs */
+  --surface-2: #EFEFEA;        /* chips, insets, kanban column */
+  --surface-3: #E5E5DF;        /* pressed, active nav, skeleton */
+  --line: #E3E2DB;             /* hairlines */
+  --line-strong: #CBCAC1;      /* input + button borders */
+
+  --ink: #171716;              /* primary text */
+  --ink-2: #4A4A45;            /* secondary text */
+  --ink-3: #686862;            /* meta text (AA on bg, surface, surface-2) */
+  --ink-4: #8F8F88;            /* placeholders' icons, disabled — never essential text */
+
+  --accent: #C8380E;           /* vermilion: the ONE action/attention colour */
+  --accent-hover: #AD2F0A;
+  --accent-ink: #FFFFFF;       /* text on accent */
+  --accent-text: #B5330C;      /* accent used as text on bg/surface */
+  --accent-soft: #FBEAE3;
+  --accent-soft-ink: #9A2B09;
+  --accent-line: #EFC1AF;
+
+  --focus: #B5330C;
+  --focus-soft: rgba(200, 56, 14, .20);
+
+  --danger: #B42318;  --danger-soft: #FCEBEA; --danger-line: #F0C2BD;
+  --warn: #8A5300;    --warn-soft: #FFF3D6;   --warn-line: #EACD88;
+  --ok: #147A3B;      --ok-soft: #E4F3E9;
+
+  --toast-bg: #171716; --toast-ink: #F5F5F1; --toast-action: #FF9A75;
+  --overlay: rgba(23, 23, 22, .38);
+  --shadow-1: 0 1px 2px rgba(23, 23, 22, .06);
+  --shadow-2: 0 8px 28px rgba(23, 23, 22, .10), 0 1px 3px rgba(23, 23, 22, .08);
+  --shadow-3: 0 18px 44px rgba(23, 23, 22, .22), 0 2px 6px rgba(23, 23, 22, .10);
+
+  /* Status palette: fg (text/glyph), bg (pill fill), line (pill edge), solid (bars, dots, charts) */
+  --st-saved-fg: #525A66;       --st-saved-bg: #ECEDEF;       --st-saved-line: #D3D6DB;       --st-saved-solid: #8A919C;
+  --st-applied-fg: #1D5DB8;     --st-applied-bg: #E6EEFB;     --st-applied-line: #BCD0F2;     --st-applied-solid: #2F6FD0;
+  --st-viewed-fg: #0A6E80;      --st-viewed-bg: #DFF2F5;      --st-viewed-line: #AEDCE4;      --st-viewed-solid: #1590A6;
+  --st-assessment-fg: #4A42C0;  --st-assessment-bg: #EBEAFB;  --st-assessment-line: #CCC8F4;  --st-assessment-solid: #5B53D6;
+  --st-shortlisted-fg: #7637BE; --st-shortlisted-bg: #F2E9FC; --st-shortlisted-line: #DCC6F4; --st-shortlisted-solid: #8C4BD6;
+  --st-interview-fg: #A0217C;   --st-interview-bg: #FBE6F3;   --st-interview-line: #EFC0DF;   --st-interview-solid: #BE2C94;
+  --st-offer-fg: #FFFFFF;       --st-offer-bg: #147A3B;       --st-offer-line: #147A3B;       --st-offer-solid: #147A3B;
+  --st-rejected-fg: #B0233A;    --st-rejected-bg: transparent; --st-rejected-line: #E9BCC3;   --st-rejected-solid: #C2334A;
+  --st-ghosted-fg: #5F6672;     --st-ghosted-bg: transparent; --st-ghosted-line: #BFC4CC;     --st-ghosted-solid: #8A919C;
+  --st-withdrawn-fg: #7A5A3A;   --st-withdrawn-bg: transparent; --st-withdrawn-line: #D6C6B2; --st-withdrawn-solid: #9A7754;
+}
+
+/* ---------- Dark ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #121211;
+  --surface: #1A1A18;
+  --surface-2: #222220;
+  --surface-3: #2C2C29;
+  --line: #2C2C29;
+  --line-strong: #41413C;
+
+  --ink: #ECECE6;
+  --ink-2: #BEBEB6;
+  --ink-3: #94948C;
+  --ink-4: #6A6A63;
+
+  --accent: #FF7A4D;
+  --accent-hover: #FF936D;
+  --accent-ink: #1F0A02;
+  --accent-text: #FF8F68;
+  --accent-soft: #361A10;
+  --accent-soft-ink: #FFAB8C;
+  --accent-line: #6B2F1B;
+
+  --focus: #FF8F68;
+  --focus-soft: rgba(255, 122, 77, .24);
+
+  --danger: #FF8A80;  --danger-soft: #3A1716; --danger-line: #6A2724;
+  --warn: #F3C062;    --warn-soft: #30250F;   --warn-line: #5E4718;
+  --ok: #5CD08A;      --ok-soft: #11291A;
+
+  --toast-bg: #ECECE6; --toast-ink: #121211; --toast-action: #B5330C;
+  --overlay: rgba(0, 0, 0, .62);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 8px 28px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .03);
+  --shadow-3: 0 18px 44px rgba(0, 0, 0, .65), 0 0 0 1px rgba(255, 255, 255, .05);
+
+  --st-saved-fg: #B7BDC7;       --st-saved-bg: #23252A;       --st-saved-line: #3A3E45;       --st-saved-solid: #7D8591;
+  --st-applied-fg: #8FB7FF;     --st-applied-bg: #15223A;     --st-applied-line: #284170;     --st-applied-solid: #5C8FEA;
+  --st-viewed-fg: #6CD2E2;      --st-viewed-bg: #0F282D;      --st-viewed-line: #1C4C55;      --st-viewed-solid: #2BA9BE;
+  --st-assessment-fg: #AEA8FF;  --st-assessment-bg: #1E1C3C;  --st-assessment-line: #383370;  --st-assessment-solid: #7C74F0;
+  --st-shortlisted-fg: #CFA5FF; --st-shortlisted-bg: #291B3D; --st-shortlisted-line: #4B3170; --st-shortlisted-solid: #A374EC;
+  --st-interview-fg: #FF92D4;   --st-interview-bg: #3A162F;   --st-interview-line: #6A2A53;   --st-interview-solid: #E254B1;
+  --st-offer-fg: #04210E;       --st-offer-bg: #47C97A;       --st-offer-line: #47C97A;       --st-offer-solid: #47C97A;
+  --st-rejected-fg: #FF8B9B;    --st-rejected-bg: transparent; --st-rejected-line: #5E2A33;   --st-rejected-solid: #E35A6E;
+  --st-ghosted-fg: #A1A6AF;     --st-ghosted-bg: transparent; --st-ghosted-line: #4A4E56;     --st-ghosted-solid: #6E747E;
+  --st-withdrawn-fg: #D6B690;   --st-withdrawn-bg: transparent; --st-withdrawn-line: #5A4A3A; --st-withdrawn-solid: #A88660;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur: 0ms; --dur-slow: 0ms; }
+  .sk { animation: none !important; }
+}
+
+/* ==========================================================================
+   Status classes: set on any element, children read the vars.
+   --lv = stage level for the in-progress meter (0..5).
+   ========================================================================== */
+.st-saved       { --fg: var(--st-saved-fg);       --sbg: var(--st-saved-bg);       --sline: var(--st-saved-line);       --solid: var(--st-saved-solid);       --lv: 0; }
+.st-applied     { --fg: var(--st-applied-fg);     --sbg: var(--st-applied-bg);     --sline: var(--st-applied-line);     --solid: var(--st-applied-solid);     --lv: 1; }
+.st-viewed      { --fg: var(--st-viewed-fg);      --sbg: var(--st-viewed-bg);      --sline: var(--st-viewed-line);      --solid: var(--st-viewed-solid);      --lv: 2; }
+.st-assessment  { --fg: var(--st-assessment-fg);  --sbg: var(--st-assessment-bg);  --sline: var(--st-assessment-line);  --solid: var(--st-assessment-solid);  --lv: 3; }
+.st-shortlisted { --fg: var(--st-shortlisted-fg); --sbg: var(--st-shortlisted-bg); --sline: var(--st-shortlisted-line); --solid: var(--st-shortlisted-solid); --lv: 4; }
+.st-interview   { --fg: var(--st-interview-fg);   --sbg: var(--st-interview-bg);   --sline: var(--st-interview-line);   --solid: var(--st-interview-solid);   --lv: 5; }
+.st-offer       { --fg: var(--st-offer-fg);       --sbg: var(--st-offer-bg);       --sline: var(--st-offer-line);       --solid: var(--st-offer-solid); }
+.st-rejected    { --fg: var(--st-rejected-fg);    --sbg: var(--st-rejected-bg);    --sline: var(--st-rejected-line);    --solid: var(--st-rejected-solid); }
+.st-ghosted     { --fg: var(--st-ghosted-fg);     --sbg: var(--st-ghosted-bg);     --sline: var(--st-ghosted-line);     --solid: var(--st-ghosted-solid); }
+.st-withdrawn   { --fg: var(--st-withdrawn-fg);   --sbg: var(--st-withdrawn-bg);   --sline: var(--st-withdrawn-line);   --solid: var(--st-withdrawn-solid); }
+
+/* Status glyph: in-progress = 5-step meter filled to --lv; Offer = check; Rejected = cross;
+   Ghosted = three dots (silence); Withdrawn = minus in ring. Never colour alone. */
+.sg {
+  display: inline-block; flex: none; width: 22px; height: 10px; border-radius: 1px;
+  background:
+    repeating-linear-gradient(90deg, var(--fg) 0 3px, transparent 3px 4.75px) 0 0 / calc(var(--lv, 0) * 4.75px) 100% no-repeat,
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--fg) 26%, transparent) 0 3px, transparent 3px 4.75px) 0 0 / 100% 100% no-repeat;
+}
+.st-offer .sg, .st-offer.sg {
+  width: 11px; height: 11px; background: var(--fg); border-radius: 0;
+  clip-path: polygon(0 55%, 16% 40%, 38% 61%, 84% 10%, 100% 25%, 38% 91%);
+}
+.st-rejected .sg, .st-rejected.sg {
+  width: 10px; height: 10px; background: var(--fg); border-radius: 0;
+  clip-path: polygon(18% 0, 50% 32%, 82% 0, 100% 18%, 68% 50%, 100% 82%, 82% 100%, 50% 68%, 18% 100%, 0 82%, 32% 50%, 0 18%);
+}
+.st-ghosted .sg, .st-ghosted.sg {
+  width: 13px; height: 4px; border-radius: 0;
+  background: radial-gradient(circle, var(--fg) 1.5px, transparent 1.8px) 0 50% / 4.5px 4px repeat-x;
+}
+.st-withdrawn .sg, .st-withdrawn.sg {
+  width: 11px; height: 11px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--fg);
+  background: linear-gradient(var(--fg), var(--fg)) center / 5px 1.5px no-repeat;
+}
+

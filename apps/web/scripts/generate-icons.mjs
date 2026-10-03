@@ -4,21 +4,24 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
-const BG = [15, 23, 42]; // slate-900
-const FG = [248, 250, 252]; // slate-50
-const ACCENT = [56, 189, 248]; // sky-400
+const BG = [23, 23, 22]; // --ink
+const FG = [245, 245, 241]; // --bg (paper)
+const ACCENT = [255, 122, 77]; // dark-theme --accent
+const FAINT = [87, 87, 84]; // paper at 30% over ink
 
-/** Shapes in a 0..1 unit square (inside the safe area handled by `inset`). */
+/**
+ * The mark on a 64-unit grid (same as AppMark in src/components/Icon.tsx): an outlined
+ * briefcase carrying the five-step status meter, three steps lit.
+ */
 function shapeAt(x, y) {
-  // Briefcase body
-  const body = roundRect(x, y, 0.16, 0.34, 0.84, 0.8, 0.07);
-  // Handle (outline)
-  const handleOuter = roundRect(x, y, 0.36, 0.2, 0.64, 0.4, 0.06);
-  const handleInner = roundRect(x, y, 0.42, 0.26, 0.58, 0.4, 0.03);
-  // Check mark across the body (the "tracked" part)
-  const check = segment(x, y, 0.33, 0.57, 0.46, 0.69, 0.045) || segment(x, y, 0.46, 0.69, 0.68, 0.46, 0.045);
-  if (check && body) return ACCENT;
-  if (body || (handleOuter && !handleInner)) return FG;
+  const X = x * 64, Y = y * 64, W = 1.75; // half stroke width
+  const bodyOuter = roundRect(X, Y, 13 - W, 20 - W, 51 + W, 49 + W, 5 + W);
+  const bodyInner = roundRect(X, Y, 13 + W, 20 + W, 51 - W, 49 - W, 5 - W);
+  const handle = Y <= 20 && roundRect(X, Y, 25 - W, 13.5 - W, 39 + W, 26, 3 + W) && !roundRect(X, Y, 25 + W, 13.5 + W, 39 - W, 26, 3 - W);
+  for (const [i, bx] of [19.75, 25, 30.25, 35.5, 40.75].entries()) {
+    if (X >= bx && X <= bx + 3.5 && Y >= 30 && Y <= 40) return i < 3 ? ACCENT : FAINT;
+  }
+  if ((bodyOuter && !bodyInner) || handle) return FG;
   return null;
 }
 
@@ -36,7 +39,7 @@ function segment(x, y, ax, ay, bx, by, w) {
 }
 
 /** size px; `inset` shrinks the glyph (maskable icons need a ~20% safe zone); `rounded` clips corners. */
-function render(size, { inset = 0.1, rounded = true } = {}) {
+function render(size, { inset = 0, rounded = true } = {}) {
   const px = Buffer.alloc(size * size * 4);
   const S = 4;
   for (let j = 0; j < size; j++) {
@@ -107,17 +110,15 @@ mkdirSync(out, { recursive: true });
 writeFileSync(new URL('icon-192.png', out), render(192));
 writeFileSync(new URL('icon-512.png', out), render(512));
 // Maskable: full-bleed background, glyph inside the 80% safe zone.
-writeFileSync(new URL('icon-maskable-512.png', out), render(512, { inset: 0.22, rounded: false }));
+writeFileSync(new URL('icon-maskable-512.png', out), render(512, { inset: 0.08, rounded: false }));
 writeFileSync(new URL('apple-touch-icon.png', out), render(180, { rounded: false }));
 writeFileSync(
   new URL('favicon.svg', out),
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="22" fill="rgb(${BG})"/>
-  <g transform="translate(10 10) scale(0.8)">
-    <path d="M36 40V26a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v14h-6V26H42v14z" fill="rgb(${FG})"/>
-    <rect x="16" y="34" width="68" height="46" rx="7" fill="rgb(${FG})"/>
-    <path d="M33 57l13 12 22-23" fill="none" stroke="rgb(${ACCENT})" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="15" fill="rgb(${BG})"/>
+  <path d="M25 20v-3.5a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3V20" fill="none" stroke="rgb(${FG})" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="13" y="20" width="38" height="29" rx="5" fill="none" stroke="rgb(${FG})" stroke-width="3.5"/>
+  ${[19.75, 25, 30.25, 35.5, 40.75].map((x, i) => `<rect x="${x}" y="30" width="3.5" height="10" rx=".8" fill="rgb(${i < 3 ? ACCENT : FAINT})"/>`).join('\n  ')}
 </svg>
 `,
 );

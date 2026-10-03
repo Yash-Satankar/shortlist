@@ -1,13 +1,71 @@
 @import 'tailwindcss';
+@import './styles/tokens.css';
+@import './styles/components.css';
 
-@theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Expose the tokens as Tailwind utilities: bg-surface, text-ink-3, border-line, rounded-card… */
+@theme inline {
+  /* --font-sans / --font-mono come straight from tokens.css (unlayered, so they win). */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-ink: var(--accent-soft-ink);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+
+  --radius-pill: var(--r-sm);
+  --radius-card: var(--r-xl);
+  --radius-sheet: var(--r-2xl);
 }
 
 html {
-  color-scheme: light dark;
+  background: var(--bg);
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  button, input, textarea, select { font-family: inherit; }
+}
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.inp:focus-visible, .ig input:focus-visible, .search input:focus-visible { outline: none; }
+.ig:focus-within, .search:focus-within { box-shadow: inset 0 0 0 1.5px var(--focus), 0 0 0 3px var(--focus-soft); }
+
+@keyframes jt-shimmer { 50% { opacity: .55; } }
+.sk { animation: jt-shimmer 1.4s ease-in-out infinite; }
+@keyframes jt-spin { to { transform: rotate(360deg); } }
+.spin { animation: jt-spin .8s linear infinite; }
+@keyframes jt-sheet-in { from { transform: translateY(24px); opacity: 0; } }
+.sheet { animation: jt-sheet-in var(--dur-slow) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation-duration: 2.4s; }
+  .sheet { animation: none; }
+}
+
+/* Sticky elements sit below the Android/iOS status bar when the app draws under it. */
+.top-safe { top: env(safe-area-inset-top); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

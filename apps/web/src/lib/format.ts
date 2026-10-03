@@ -1,4 +1,4 @@
-import type { ApplicationStatus, EventSource } from '@jt/shared';
+import type { EventSource } from '@jt/shared';
 
 const TZ = 'Asia/Kolkata';
 
@@ -41,6 +41,23 @@ export function relativeDays(value: string | null | undefined, now = new Date())
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+/** Compact age for dense rows: "today", "3d", "2w", "4mo" (calendar days in IST). */
+export function shortAge(value: string | null | undefined, now = new Date()): string {
+  if (!value) return '';
+  const days = daysAgo(value, now);
+  if (days <= 0) return 'today';
+  if (days < 14) return `${days}d`;
+  if (days < 60) return `${Math.floor(days / 7)}w`;
+  return `${Math.floor(days / 30)}mo`;
+}
+
+/** "Sat 3 Oct" for follow-up dates. */
+export function formatDay(value: string | null | undefined): string {
+  if (!value) return '—';
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00Z`) : new Date(value);
+  return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ }).replace(',', '');
+}
+
 /** YYYY-MM-DD for today + n days in IST (for follow-up snoozes). */
 export function isoDateFromToday(days: number): string {
   const d = new Date(Date.now() + days * 86_400_000);
@@ -70,25 +87,3 @@ export const REASON_LABELS: Record<string, string> = {
   revived: 'Reopened after going quiet',
 };
 
-export const STATUS_STYLES: Record<ApplicationStatus, string> = {
-  saved: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  applied: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
-  viewed: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300',
-  assessment: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
-  shortlisted: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
-  interview: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-  offer: 'bg-green-600 text-white dark:bg-green-500 dark:text-green-950',
-  rejected: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
-  ghosted: 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
-  withdrawn: 'bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-400',
-};
-
-/** Status filter groups for the list view. */
-export const STATUS_GROUPS: Array<{ id: string; label: string; statuses: ApplicationStatus[] | null }> = [
-  { id: 'active', label: 'Active', statuses: ['saved', 'applied', 'viewed', 'assessment', 'shortlisted', 'interview', 'offer'] },
-  { id: 'applied', label: 'Waiting', statuses: ['applied', 'viewed'] },
-  { id: 'progress', label: 'In progress', statuses: ['assessment', 'shortlisted', 'interview'] },
-  { id: 'offer', label: 'Offers', statuses: ['offer'] },
-  { id: 'closed', label: 'Closed', statuses: ['rejected', 'ghosted', 'withdrawn'] },
-  { id: 'all', label: 'All', statuses: null },
-];

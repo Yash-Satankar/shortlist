@@ -1,11 +1,22 @@
-import { FOLLOW_UP_REASON_LABELS, STATUS_LABELS } from '@jt/shared';
-import type { ReactNode } from 'react';
+import type { FollowUpReason } from '@jt/shared';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useFollowUps, useQuickUpdate, useReviewAny, useReviews } from '../api/hooks';
-import type { FollowUpItem } from '../api/types';
-import { PageHeader } from '../components/Layout';
-import { Button, buttonClass, Card, EmptyState, ErrorNote, Spinner, StatusBadge, useToast } from '../components/ui';
-import { EVENT_SOURCE_LABELS, formatDate, isoDateFromToday, REASON_LABELS } from '../lib/format';
+import { useApplications, useFollowUps, useQuickUpdate, useReviewAny, useReviews } from '../api/hooks';
+import type { FollowUpItem, FollowUps } from '../api/types';
+import { Icon, type IconName } from '../components/Icon';
+import { ScreenHeader } from '../components/Layout';
+import { Button, Confidence, ErrorNote, EventSourceBadge, SectionLabel, Sheet, SkeletonRows, StatusPill, useToast } from '../components/ui';
+import { daysAgo, formatDate, formatDay, formatEventTime, isoDateFromToday, REASON_LABELS, shortAge } from '../lib/format';
+import { dismissGhost, useVisibleGhosts } from '../lib/ghost';
+import { ACTIVE_STATUSES } from '../lib/status';
+
+const REASON: Record<FollowUpReason, { icon: IconName; label: (s: FollowUps['settings']) => string }> = {
+  due: { icon: 'calendar', label: () => 'Follow-up date due' },
+  no_response: { icon: 'clock', label: (s) => `No response in ${s.followUpAfterDays} days` },
+  post_interview: { icon: 'chat', label: () => 'Post-interview check-in' },
+};
+
+const LIST_PARAMS = new URLSearchParams({ limit: '500', sort: 'updated_desc' });
 
 /** Everything that needs me: flagged automatic changes, follow-ups, and possible ghosting. */
 export function FollowUpsPage() {
@@ -14,150 +25,273 @@ export function FollowUpsPage() {
   const review = useReviewAny();
   const quick = useQuickUpdate();
   const toast = useToast();
+  const [menuFor, setMenuFor] = useState<FollowUpItem | null>(null);
+  const data = followUps.data;
+  const ghosts = useVisibleGhosts(data?.ghostSuggestions);
 
   const onError = (err: unknown) => toast({ message: err instanceof Error ? err.message : 'Failed', tone: 'error' });
-
-  if (followUps.isPending || reviews.isPending) {
-    return (
-      <>
-        <PageHeader title="Follow-ups" />
-        <Spinner />
-      </>
+  const snooze = (item: FollowUpItem, days: number) =>
+    quick.mutate(
+      { id: item.id, patch: { followUpOn: isoDateFromToday(days) } },
+      { onSuccess: () => toast({ message: `${item.companyName}: next follow-up ${formatDay(isoDateFromToday(days))}`, tone: 'info' }), onError },
     );
-  }
 
-  const data = followUps.data;
-  const empty = !reviews.data?.length && !data?.followUps.length && !data?.ghostSuggestions.length;
+  const total = (reviews.data?.length ?? 0) + (data?.followUps.length ?? 0) + ghosts.length;
+  const today = data ? formatDay(data.settings.today) : '';
 
   return (
-    <>
-      <PageHeader title="Follow-ups" />
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-4">
-        <ErrorNote error={followUps.error ?? reviews.error} />
-        {empty && <EmptyState title="All caught up">Nothing needs a follow-up right now.</EmptyState>}
+    <div className="mx-auto max-w-[720px]">
+      <ScreenHeader
+        title="Follow-ups"
+        sub={
+          data &&
+          (total ? (
+            <>
+              <b className="font-semibold text-accent-text">{total} need you</b> · {today}
+            </>
+          ) : (
+            `All clear · ${today}`
+          ))
+        }
+      />
 
-        {!!reviews.data?.length && (
-          <Section title="Needs review" hint="Automatic updates that weren't applied on their own">
-            {reviews.data.map(({ event, application, company }) => (
-              <Card key={event.id} className="border-amber-300 p-4 dark:border-amber-800">
-                <ItemHeader id={application.id} company={company.name} role={application.roleTitle} />
-                <p className="mt-2 text-sm">
-                  {EVENT_SOURCE_LABELS[event.source]} says <strong>{STATUS_LABELS[event.toStatus]}</strong>
-                  {' · '}currently <strong>{STATUS_LABELS[application.status]}</strong>
-                </p>
-                {event.reason && <p className="text-xs text-amber-700 dark:text-amber-400">{REASON_LABELS[event.reason] ?? event.reason}</p>}
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={review.isPending}
-                    onClick={() => review.mutate({ applicationId: application.id, eventId: event.id, decision: 'accept' }, { onError })}
-                  >
-                    Accept
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={review.isPending}
-                    onClick={() => review.mutate({ applicationId: application.id, eventId: event.id, decision: 'dismiss' }, { onError })}
-                  >
-                    Dismiss
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </Section>
+      <main className="pb-6">
+        {(followUps.error || reviews.error) && (
+          <div className="px-4 pt-3">
+            <ErrorNote error={followUps.error ?? reviews.error} onRetry={() => (void followUps.refetch(), void reviews.refetch())} />
+          </div>
         )}
 
-        {!!data?.followUps.length && (
-          <Section title="Follow up" hint={`No reply after ${data.settings.followUpAfterDays} days, ${data.settings.postInterviewFollowUpDays} days after an interview, or your follow-up date`}>
-            {data.followUps.map((item) => (
-              <Card key={item.id} className="p-4">
-                <ItemHeader id={item.id} company={item.companyName} role={item.roleTitle} status={item.status} />
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                  <span className="font-medium text-slate-900 dark:text-slate-100">{FOLLOW_UP_REASON_LABELS[item.reason]}</span>
-                  {' · '}
-                  {item.reason === 'due' ? `due ${formatDate(item.followUpOn)}` : `${item.daysSinceActivity} days without an update`}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {item.jobUrl && (
-                    <a href={item.jobUrl} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'sm')}>
-                      Open posting
-                    </a>
-                  )}
-                  <SnoozeButton item={item} days={7} onError={onError} />
+        {followUps.isPending || reviews.isPending ? (
+          <div className="pt-4">
+            <SkeletonRows count={4} />
+          </div>
+        ) : total === 0 && data ? (
+          <AllClear settings={data.settings} />
+        ) : (
+          <>
+            {!!reviews.data?.length && (
+              <section>
+                <SectionLabel count={reviews.data.length} action="Automatic changes">
+                  Pending reviews
+                </SectionLabel>
+                <div className="flex flex-col gap-2.5 px-4">
+                  {reviews.data.map(({ event, application, company }) => (
+                    <article key={event.id} className="card pt-3.5 pb-3">
+                      <Link to={`/applications/${application.id}`} className="flex items-baseline gap-2">
+                        <span className="co flex-none">{company.name}</span>
+                        <span className="role m-0 text-[13px]">{application.roleTitle}</span>
+                      </Link>
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <StatusPill status={application.status} />
+                        <Icon name="arrowRight" size="sm" className="text-ink-3" />
+                        <StatusPill status={event.toStatus} />
+                      </div>
+                      <div className="ev-m mt-2">
+                        <EventSourceBadge source={event.source} />
+                        {event.confidence && <Confidence value={event.confidence} />}
+                        <span className="ev-time">{formatEventTime(event.occurredAt)}</span>
+                      </div>
+                      {(event.note || (event.reason && REASON_LABELS[event.reason])) && (
+                        <p className="mt-2 text-[13px] leading-[19px] text-ink-2 italic">{event.note || REASON_LABELS[event.reason!]}</p>
+                      )}
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          variant="ink"
+                          className="flex-1"
+                          disabled={review.isPending}
+                          onClick={() => review.mutate({ applicationId: application.id, eventId: event.id, decision: 'accept' }, { onError })}
+                        >
+                          <Icon name="check" />
+                          Accept
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          disabled={review.isPending}
+                          onClick={() => review.mutate({ applicationId: application.id, eventId: event.id, decision: 'dismiss' }, { onError })}
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-              </Card>
-            ))}
-          </Section>
-        )}
+              </section>
+            )}
 
-        {!!data?.ghostSuggestions.length && (
-          <Section title="Might be ghosted" hint={`No activity for ${data.settings.ghostAfterDays}+ days. You decide.`}>
-            {data.ghostSuggestions.map((item) => (
-              <Card key={item.id} className="p-4">
-                <ItemHeader id={item.id} company={item.companyName} role={item.roleTitle} status={item.status} />
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{item.daysSinceActivity} days without activity</p>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    disabled={quick.isPending}
-                    onClick={() =>
-                      quick.mutate(
-                        { id: item.id, status: 'ghosted' },
-                        { onSuccess: () => toast({ message: `${item.companyName} marked Ghosted`, tone: 'info' }), onError },
-                      )
-                    }
-                  >
-                    Mark ghosted
-                  </Button>
+            {!!data?.followUps.length && (
+              <section className="pt-1">
+                <SectionLabel count={data.followUps.length} className="pt-5">
+                  Follow-ups
+                </SectionLabel>
+                <div className="px-4">
+                  <div className="group">
+                    {data.followUps.map((item) => (
+                      <div key={item.id} className="px-3.5 py-3 shadow-[inset_0_-1px_0_var(--line)] last:shadow-none">
+                        <div className="flex items-center gap-2">
+                          <span className="rc">
+                            <Icon name={REASON[item.reason].icon} />
+                            {REASON[item.reason].label(data.settings)}
+                          </span>
+                          <span className="sp" />
+                          <span className="age">{item.reason === 'due' && item.followUpOn ? shortAge(item.followUpOn) : `${item.daysSinceActivity}d`}</span>
+                        </div>
+                        <Link to={`/applications/${item.id}`} className="r1 mt-2">
+                          <span className="co">{item.companyName}</span>
+                          <StatusPill status={item.status} />
+                        </Link>
+                        <div className="meta mt-0.5">
+                          <span className="truncate">
+                            {item.roleTitle} ·{' '}
+                            {item.reason === 'due' ? `you set ${formatDay(item.followUpOn)}` : `no update since ${formatDate(item.lastActivityAt)}`}
+                          </span>
+                        </div>
+                        <div className="mt-2.5 flex items-center gap-1">
+                          <Button variant="ink" className="flex-1 text-sm" disabled={quick.isPending} onClick={() => snooze(item, 7)}>
+                            <Icon name="check" />
+                            Followed up · snooze 7d
+                          </Button>
+                          <button type="button" className="iconbtn" aria-label={`More options for ${item.companyName}`} onClick={() => setMenuFor(item)}>
+                            <Icon name="more" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </Card>
-            ))}
-          </Section>
+              </section>
+            )}
+
+            {ghosts.length > 0 && data && (
+              <section className="pt-1">
+                <SectionLabel count={ghosts.length} className="pt-5">
+                  Might be ghosted
+                </SectionLabel>
+                <div className="flex flex-col gap-2.5 px-4">
+                  {ghosts.map((item) => (
+                    <article key={item.id} className="card bg-transparent shadow-[inset_0_0_0_1px_var(--line-strong)]">
+                      <Link to={`/applications/${item.id}`} className="r1">
+                        <span className="co">{item.companyName}</span>
+                        <StatusPill status={item.status} />
+                      </Link>
+                      <div className="meta mt-0.5">
+                        <span className="truncate">
+                          {item.roleTitle}
+                          {item.appliedOn && ` · applied ${formatDate(item.appliedOn)}`}
+                        </span>
+                      </div>
+                      <p className="mt-2.5 text-[15px] leading-[21px] font-medium">
+                        No update in {item.daysSinceActivity} days. Mark as <StatusPill status="ghosted" className="align-[1px]" />?
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          className="flex-1"
+                          disabled={quick.isPending}
+                          onClick={() =>
+                            quick.mutate(
+                              { id: item.id, status: 'ghosted' },
+                              { onSuccess: () => toast({ message: `${item.companyName} marked Ghosted`, tone: 'info' }), onError },
+                            )
+                          }
+                        >
+                          Mark ghosted
+                        </Button>
+                        <Button variant="quiet" className="flex-1" onClick={() => dismissGhost(item)}>
+                          Not yet
+                        </Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
-    </>
+
+      <Sheet open={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor?.companyName ?? ''}>
+        {menuFor && (
+          <div className="pb-2">
+            {[3, 14].map((d) => (
+              <button
+                key={d}
+                type="button"
+                className="opt-row w-full text-left"
+                onClick={() => {
+                  snooze(menuFor, d);
+                  setMenuFor(null);
+                }}
+              >
+                <Icon name="clock" className="text-ink-3" />
+                Followed up · snooze {d} days
+                <span className="hint ml-auto">{formatDay(isoDateFromToday(d))}</span>
+              </button>
+            ))}
+            {menuFor.jobUrl && (
+              <a href={menuFor.jobUrl} target="_blank" rel="noreferrer" className="opt-row" onClick={() => setMenuFor(null)}>
+                <Icon name="external" className="text-ink-3" />
+                Open job posting
+              </a>
+            )}
+            <Link to={`/applications/${menuFor.id}`} className="opt-row" onClick={() => setMenuFor(null)}>
+              <Icon name="chevronRight" className="text-ink-3" />
+              Open application
+            </Link>
+          </div>
+        )}
+      </Sheet>
+    </div>
   );
 }
 
-function SnoozeButton({ item, days, onError }: { item: FollowUpItem; days: number; onError: (e: unknown) => void }) {
-  const quick = useQuickUpdate();
-  const toast = useToast();
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      disabled={quick.isPending}
-      onClick={() =>
-        quick.mutate(
-          { id: item.id, patch: { followUpOn: isoDateFromToday(days) } },
-          { onSuccess: () => toast({ message: `Snoozed until ${formatDate(isoDateFromToday(days))}`, tone: 'info' }), onError },
-        )
-      }
-    >
-      Followed up · snooze {days}d
-    </Button>
-  );
-}
+/** Empty inbox. Stats come from the (already cached) applications list. */
+function AllClear({ settings }: { settings: FollowUps['settings'] }) {
+  const { data } = useApplications(LIST_PARAMS);
+  const stats = useMemo(() => {
+    const items = data?.items ?? [];
+    const next = items
+      .filter((i) => i.followUpOn && i.followUpOn > settings.today && ACTIVE_STATUSES.includes(i.status))
+      .sort((a, b) => a.followUpOn!.localeCompare(b.followUpOn!))[0];
+    return {
+      next,
+      appliedWeek: items.filter((i) => i.appliedOn && daysAgo(i.appliedOn) < 7).length,
+      active: items.filter((i) => ACTIVE_STATUSES.includes(i.status) && i.status !== 'saved').length,
+      interviews: items.filter((i) => i.status === 'interview').length,
+    };
+  }, [data, settings.today]);
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <section>
-      <h2 className="font-semibold">{title}</h2>
-      {hint && <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
-
-function ItemHeader({ id, company, role, status }: { id: string; company: string; role: string; status?: Parameters<typeof StatusBadge>[0]['status'] }) {
-  return (
-    <Link to={`/applications/${id}`} className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="truncate font-semibold">{company}</p>
-        <p className="truncate text-sm text-slate-700 dark:text-slate-300">{role}</p>
+    <div className="flex flex-col items-center px-8 pt-16 pb-10 text-center">
+      <div className="grid h-16 w-16 place-items-center rounded-full text-ok shadow-[inset_0_0_0_1.5px_var(--line-strong)]">
+        <Icon name="check" size="lg" />
       </div>
-      {status && <StatusBadge status={status} />}
-    </Link>
+      <h2 className="h2 mt-5">Nothing needs you today</h2>
+      <p className="mt-2 text-[15px] leading-[22px] text-ink-2">
+        No reviews, follow-ups or ghost checks.
+        {stats.next && (
+          <>
+            {' '}
+            Next one: <b className="font-semibold text-ink">{stats.next.companyName}</b>, {formatDay(stats.next.followUpOn)}.
+          </>
+        )}
+      </p>
+      {data && (
+        <dl className="mt-7 grid w-full max-w-sm grid-cols-3 pt-4 shadow-[inset_0_1px_0_var(--line)]">
+          {(
+            [
+              ['This week', stats.appliedWeek, 'applied'],
+              ['In play', stats.active, 'active'],
+              ['Interviews', stats.interviews, 'now'],
+            ] as const
+          ).map(([k, v, unit]) => (
+            <div key={k}>
+              <dt className="hint">{k}</dt>
+              <dd className="num m-0 mt-0.5 text-[22px] leading-7 font-semibold">{v}</dd>
+              <div className="hint">{unit}</div>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }

@@ -1,28 +1,37 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { useCurrentUser } from './auth/useAuth';
 import { Layout } from './components/Layout';
-import { Spinner } from './components/ui';
+import { ErrorNote, Spinner } from './components/ui';
+import { useThemeSync } from './lib/theme';
 import { AddPage } from './pages/AddPage';
-import { BoardPage } from './pages/BoardPage';
 import { ApplicationPage } from './pages/ApplicationPage';
-import { ApplicationsPage } from './pages/ApplicationsPage';
+import { ApplicationsSplit, NoSelection } from './pages/ApplicationsPage';
+import { BoardPage } from './pages/BoardPage';
 import { FollowUpsPage } from './pages/FollowUpsPage';
 import { LoginPage } from './pages/LoginPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SharePage } from './pages/SharePage';
 
 export function App() {
-  const { data: user, isPending, error } = useCurrentUser();
+  useThemeSync();
+  const { data: user, isPending, error, refetch } = useCurrentUser();
 
   if (isPending) return <Spinner />;
-  if (error) return <div className="p-6 text-rose-600">Could not reach the server: {error.message}</div>;
+  if (error)
+    return (
+      <div className="pt-safe mx-auto max-w-md p-6">
+        <ErrorNote error={new Error(`Couldn’t reach the server: ${error.message}`)} onRetry={() => void refetch()} />
+      </div>
+    );
   if (!user) return <LoginPage />;
 
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<ApplicationsPage />} />
-        <Route path="applications/:id" element={<ApplicationPage />} />
+        <Route element={<ApplicationsSplit />}>
+          <Route index element={<NoSelection />} />
+          <Route path="applications/:id" element={<ApplicationPage />} />
+        </Route>
         <Route path="follow-ups" element={<FollowUpsPage />} />
         <Route path="add" element={<AddPage />} />
         <Route path="share" element={<SharePage />} />
