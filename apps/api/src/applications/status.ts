@@ -1,4 +1,11 @@
-import { decideStatusChange, type ApplicationStatus, type EventSource, type StatusDecision } from '@jt/shared';
+import {
+  decideStatusChange,
+  isAutomaticSource,
+  type ApplicationStatus,
+  type EventSource,
+  type SignalConfidence,
+  type StatusDecision,
+} from '@jt/shared';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { Db, Tx } from '../db/client';
 import { applications, companies, statusEvents } from '../db/schema';
@@ -11,6 +18,8 @@ export interface ProposeStatusInput {
   applicationId: string;
   status: ApplicationStatus;
   source: EventSource;
+  /** Automatic sources only; unspecified = low. */
+  confidence?: SignalConfidence;
   note?: string | null;
   occurredAt?: Date;
   evidence?: { type: string; id: string };
@@ -50,7 +59,13 @@ async function applyStatus(tx: Tx, app: typeof applications.$inferSelect, to: Ap
 export async function proposeStatus(db: Db, input: ProposeStatusInput) {
   return db.transaction(async (tx) => {
     const app = await lockApplication(tx, input.userId, input.applicationId);
-    const decision: StatusDecision = decideStatusChange({ current: app.status, proposed: input.status, source: input.source });
+    const decision: StatusDecision = decideStatusChange({
+      current: app.status,
+      proposed: input.status,
+      source: input.source,
+      confidence: input.confidence,
+    });
+    const confidence = isAutomaticSource(input.source) ? (input.confidence ?? 'low') : null;
 
     // A manual "change" to the current status is just a no-op, not worth a timeline entry.
     if (decision.reason === 'no_change' && !input.evidence) return { decision, event: null };
@@ -66,6 +81,7 @@ export async function proposeStatus(db: Db, input: ProposeStatusInput) {
         source: input.source,
         disposition: decision.disposition,
         reason: decision.reason,
+        confidence,
         occurredAt,
         note: input.note ?? null,
         evidenceType: input.evidence?.type ?? null,

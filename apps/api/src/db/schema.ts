@@ -5,6 +5,7 @@ import {
   EVENT_DISPOSITIONS,
   EVENT_SOURCES,
   WORK_MODES,
+  type SignalConfidence,
   type UserSettings,
 } from '@jt/shared';
 import { sql } from 'drizzle-orm';
@@ -240,6 +241,8 @@ export const statusEvents = pgTable(
     disposition: eventDisposition('disposition').notNull().default('applied'),
     /** Why the rules chose this disposition (see decideStatusChange in @jt/shared). */
     reason: text('reason'),
+    /** For automatic sources: how sure the signal was ('high' | 'low'). Null for user actions. */
+    confidence: text('confidence').$type<SignalConfidence>(),
     /** When it happened in the real world (e.g. email date); recorded_at is when we learned it. */
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ApplicationStatus, EventSource } from '../src/enums';
-import { decideStatusChange } from '../src/status';
+import { decideStatusChange, type SignalConfidence } from '../src/status';
 
-const decide = (current: ApplicationStatus, proposed: ApplicationStatus, source: EventSource) =>
-  decideStatusChange({ current, proposed, source });
+const AUTOMATIC = ['extension_auto', 'portal', 'email', 'system'] as const;
+
+const decide = (current: ApplicationStatus, proposed: ApplicationStatus, source: EventSource, confidence?: SignalConfidence) =>
+  decideStatusChange({ current, proposed, source, confidence });
 
 describe('manual changes', () => {
   it('always apply, in any direction', () => {
@@ -13,9 +15,11 @@ describe('manual changes', () => {
     expect(decide('applied', 'ghosted', 'manual').disposition).toBe('applied');
   });
 
-  it('treat import and share-sheet capture as user actions', () => {
+  it('treat import, share-sheet capture and explicit extension clicks as user actions', () => {
     expect(decide('interview', 'applied', 'import').disposition).toBe('applied');
     expect(decide('saved', 'applied', 'share').disposition).toBe('applied');
+    expect(decide('rejected', 'interview', 'extension')).toEqual({ disposition: 'applied', reason: 'user_action' });
+    expect(decide('applied', 'offer', 'extension').disposition).toBe('applied');
   });
 
   it('ignore a change to the same status', () => {
@@ -34,33 +38,62 @@ describe('automatic sources never move a status backwards', () => {
     ['applied', 'saved'],
     ['interview', 'assessment'],
   ])('%s ← %s is ignored', (current, proposed) => {
-    for (const source of ['email', 'portal', 'extension', 'system'] as const) {
+    for (const source of AUTOMATIC) {
       expect(decide(current, proposed, source).disposition).toBe('ignored');
     }
   });
 
   it('applies forward moves', () => {
     expect(decide('applied', 'assessment', 'email')).toEqual({ disposition: 'applied', reason: 'forward' });
-    expect(decide('saved', 'applied', 'extension').disposition).toBe('applied');
+    expect(decide('saved', 'applied', 'extension_auto').disposition).toBe('applied');
     expect(decide('applied', 'shortlisted', 'portal').disposition).toBe('applied');
   });
 
-  it('applies rejection and offer from any open stage', () => {
-    expect(decide('interview', 'rejected', 'email')).toEqual({ disposition: 'applied', reason: 'outcome' });
-    expect(decide('applied', 'offer', 'email').disposition).toBe('applied');
-  });
 });
 
-describe('Offer, Rejected and Withdrawn are never changed automatically', () => {
-  const locked: ApplicationStatus[] = ['offer', 'rejected', 'withdrawn'];
-  const proposals: ApplicationStatus[] = ['applied', 'viewed', 'assessment', 'shortlisted', 'interview', 'offer', 'rejected', 'ghosted'];
+describe('final states', () => {
+  const OPEN: ApplicationStatus[] = ['saved', 'applied', 'viewed', 'assessment', 'shortlisted', 'interview', 'ghosted'];
 
-  it.each(locked)('%s: every automatic proposal is flagged for review, never applied', (current) => {
-    for (const proposed of proposals.filter((p) => p !== current)) {
-      for (const source of ['email', 'portal', 'extension', 'system'] as const) {
-        expect(decide(current, proposed, source)).toEqual({ disposition: 'pending_review', reason: 'locked' });
+  describe('LEAVING Offer / Rejected / Withdrawn automatically → always pending_review', () => {
+    const proposals: ApplicationStatus[] = ['applied', 'viewed', 'assessment', 'shortlisted', 'interview', 'offer', 'rejected', 'ghosted', 'withdrawn'];
+
+    it.each(['offer', 'rejected', 'withdrawn'] as const)('from %s, at any confidence', (current) => {
+      for (const proposed of proposals.filter((p) => p !== current)) {
+        for (const source of AUTOMATIC) {
+          for (const confidence of ['high', 'low'] as const) {
+            expect(decide(current, proposed, source, confidence)).toEqual({ disposition: 'pending_review', reason: 'locked' });
+          }
+        }
       }
-    }
+    });
+  });
+
+  describe('INTO Rejected automatically', () => {
+    it.each(OPEN)('from %s with a high-confidence signal → applied', (current) => {
+      for (const source of AUTOMATIC) {
+        expect(decide(current, 'rejected', source, 'high')).toEqual({ disposition: 'applied', reason: 'rejection' });
+      }
+    });
+
+    it.each(OPEN)('from %s with a low-confidence signal → pending_review', (current) => {
+      for (const source of AUTOMATIC) {
+        expect(decide(current, 'rejected', source, 'low')).toEqual({ disposition: 'pending_review', reason: 'low_confidence' });
+      }
+    });
+
+    it('treats an unspecified confidence as low', () => {
+      expect(decide('interview', 'rejected', 'email').reason).toBe('low_confidence');
+    });
+  });
+
+  describe('INTO Offer automatically → always pending_review (scam risk)', () => {
+    it.each(OPEN)('from %s, even at high confidence', (current) => {
+      for (const source of AUTOMATIC) {
+        for (const confidence of ['high', 'low'] as const) {
+          expect(decide(current, 'offer', source, confidence)).toEqual({ disposition: 'pending_review', reason: 'offer_needs_review' });
+        }
+      }
+    });
   });
 });
 
@@ -75,7 +108,7 @@ describe('ghosted applications', () => {
   it('are revived by a real signal', () => {
     expect(decide('ghosted', 'interview', 'email')).toEqual({ disposition: 'applied', reason: 'revived' });
     expect(decide('ghosted', 'viewed', 'portal').disposition).toBe('applied');
-    expect(decide('ghosted', 'rejected', 'email').disposition).toBe('applied');
+    expect(decide('ghosted', 'rejected', 'email', 'high').disposition).toBe('applied');
   });
 
   it('ignore a late confirmation', () => {

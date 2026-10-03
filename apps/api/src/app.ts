@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import { answerLibraryRouter } from './answers/routes';
 import { applicationsRouter, contactsRouter, trackerRouter } from './applications/routes';
+import { requireUserIntent } from './auth/intent';
 import { authenticate, requireAuth, sameOriginGuard } from './auth/middleware';
 import { authRouter } from './auth/routes';
 import { env } from './config/env';
@@ -47,8 +48,8 @@ export function createApp({ db }: { db: Db }) {
   api.use(authenticate(db));
   api.use('/auth', authRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));
-  api.use('/contacts', requireAuth, contactsRouter(db));
-  api.use('/answer-library', requireAuth, answerLibraryRouter(db));
+  api.use('/contacts', requireAuth, requireUserIntent, contactsRouter(db));
+  api.use('/answer-library', requireAuth, requireUserIntent, answerLibraryRouter(db));
   api.use(trackerRouter(db)); // /follow-ups, /reviews, /companies (each requires auth)
 
   api.use((_req, _res, next) => next(notFound('Unknown API route')));

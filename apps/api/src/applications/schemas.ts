@@ -1,4 +1,4 @@
-import { APPLICATION_SOURCES, APPLICATION_STATUSES, CONTACT_ROLES, WORK_MODES } from '@jt/shared';
+import { APPLICATION_SOURCES, APPLICATION_STATUSES, CONTACT_ROLES, SIGNAL_CONFIDENCES, WORK_MODES } from '@jt/shared';
 import { z } from 'zod';
 
 /** Optional text: trimmed, empty string becomes null. */
@@ -93,6 +93,8 @@ export const statusChangeSchema = z.object({
   status: z.enum(APPLICATION_STATUSES),
   note: text(2000),
   occurredAt: z.iso.datetime({ offset: true }).optional(),
+  /** Only meaningful for automatic intent; ignored for user actions. */
+  confidence: z.enum(SIGNAL_CONFIDENCES).optional(),
 });
 
 export const eventEditSchema = z

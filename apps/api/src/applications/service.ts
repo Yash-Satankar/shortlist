@@ -3,6 +3,7 @@ import {
   canonicalJobUrl,
   COMPANY_MATCH_THRESHOLD,
   findDuplicates,
+  isAutomaticSource,
   normalizeCompanyName,
   normalizeRoleTitle,
   type DuplicateLevel,
@@ -156,7 +157,7 @@ export async function createApplication(db: Db, userId: string, input: CreateApp
         toStatus: input.status,
         source,
         disposition: 'applied',
-        reason: 'user_action',
+        reason: isAutomaticSource(source) ? 'forward' : 'user_action',
         occurredAt: lastActivityAt,
       });
 

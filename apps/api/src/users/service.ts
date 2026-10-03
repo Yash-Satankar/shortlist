@@ -59,6 +59,7 @@ export function resolveSettings(settings: UserSettings | null | undefined): Reso
   return {
     ghostAfterDays: settings?.ghostAfterDays ?? e.GHOST_AFTER_DAYS,
     followUpAfterDays: settings?.followUpAfterDays ?? e.FOLLOW_UP_AFTER_DAYS,
+    postInterviewFollowUpDays: settings?.postInterviewFollowUpDays ?? e.POST_INTERVIEW_FOLLOW_UP_DAYS,
     timezone: settings?.timezone ?? e.DEFAULT_TIMEZONE,
   };
 }

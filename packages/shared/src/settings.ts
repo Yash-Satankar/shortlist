@@ -9,6 +9,7 @@ export const userSettingsSchema = z
   .object({
     ghostAfterDays: z.number().int().min(1).max(365),
     followUpAfterDays: z.number().int().min(1).max(365),
+    postInterviewFollowUpDays: z.number().int().min(1).max(365),
     timezone: z.string().min(1),
   })
   .partial();

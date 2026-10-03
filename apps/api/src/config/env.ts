@@ -54,6 +54,7 @@ const envSchema = z
     /** Defaults for per-user settings (users can override in the app). */
     GHOST_AFTER_DAYS: z.coerce.number().int().positive().default(21),
     FOLLOW_UP_AFTER_DAYS: z.coerce.number().int().positive().default(10),
+    POST_INTERVIEW_FOLLOW_UP_DAYS: z.coerce.number().int().positive().default(5),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
   })
   .refine((e) => e.ENCRYPTION_KEYS.has(e.ENCRYPTION_ACTIVE_KEY_ID), {

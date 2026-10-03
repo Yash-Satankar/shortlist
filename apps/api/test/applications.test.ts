@@ -31,8 +31,12 @@ async function create(body: Record<string, unknown>) {
 }
 
 /** Simulates an automatic source (email/portal) via the same service the importers will use. */
-const automatic = (applicationId: string, status: Parameters<typeof proposeStatus>[1]['status'], source: 'email' | 'portal' = 'email') =>
-  proposeStatus(db, { userId, applicationId, status, source });
+const automatic = (
+  applicationId: string,
+  status: Parameters<typeof proposeStatus>[1]['status'],
+  source: 'email' | 'portal' | 'extension_auto' = 'email',
+  confidence?: 'high' | 'low',
+) => proposeStatus(db, { userId, applicationId, status, source, confidence });
 
 const detail = async (id: string) => (await agent.get(`/api/applications/${id}`).expect(200)).body.application;
 
@@ -187,20 +191,122 @@ describe('status rules (end to end)', () => {
     expect((await agent.get('/api/reviews')).body.items).toHaveLength(0);
   });
 
-  it('applies forward automatic changes and rejections', async () => {
+  it('applies forward automatic changes', async () => {
     const { id } = await create({ status: 'applied' });
     await automatic(id, 'assessment');
     expect((await detail(id)).status).toBe('assessment');
-    await automatic(id, 'rejected');
-    expect((await detail(id)).status).toBe('rejected');
+  });
+});
+
+describe('final-state rules (end to end)', () => {
+  it('INTO Rejected from a high-confidence automatic signal applies, is on the timeline, and is undoable', async () => {
+    const { id } = await create({ status: 'interview' });
+    const { decision, event } = await automatic(id, 'rejected', 'portal', 'high');
+    expect(decision).toEqual({ disposition: 'applied', reason: 'rejection' });
+
+    let app = await detail(id);
+    expect(app.status).toBe('rejected');
+    expect(app.timeline.at(-1)).toMatchObject({ source: 'portal', disposition: 'applied', reason: 'rejection', confidence: 'high' });
+
+    app = (await post(`/api/applications/${id}/events/${event!.id}/undo`, {}).expect(200)).body.application;
+    expect(app.status).toBe('interview');
   });
 
-  it('API-token (extension) changes are recorded with source "extension" and follow the automatic rules', async () => {
+  it('INTO Rejected from a low-confidence (or unspecified) signal waits for review', async () => {
     const { id } = await create({ status: 'interview' });
-    const { token } = (await post('/api/auth/tokens', { name: 'chrome' })).body.token;
-    const res = await request(app).post(`/api/applications/${id}/status`).set('Authorization', `Bearer ${token}`).send({ status: 'applied' });
-    expect(res.body.decision.disposition).toBe('ignored');
-    expect(res.body.application.timeline.at(-1)).toMatchObject({ source: 'extension', disposition: 'ignored' });
+    expect((await automatic(id, 'rejected', 'email', 'low')).decision.reason).toBe('low_confidence');
+    expect((await automatic(id, 'rejected', 'email')).decision.reason).toBe('low_confidence');
+    const app = await detail(id);
+    expect(app.status).toBe('interview');
+    expect(app.timeline.at(-1)).toMatchObject({ disposition: 'pending_review', confidence: 'low' });
+  });
+
+  it('INTO Offer from any automatic source always waits for review, even at high confidence', async () => {
+    const { id } = await create({ status: 'interview' });
+    for (const source of ['email', 'portal', 'extension_auto'] as const) {
+      const { decision } = await automatic(id, 'offer', source, 'high');
+      expect(decision).toEqual({ disposition: 'pending_review', reason: 'offer_needs_review' });
+    }
+    expect((await detail(id)).status).toBe('interview');
+    expect((await agent.get('/api/reviews')).body.items).toHaveLength(3);
+  });
+
+  it('LEAVING Offer / Rejected / Withdrawn automatically always waits for review', async () => {
+    for (const locked of ['offer', 'rejected', 'withdrawn'] as const) {
+      const { id } = await create({ companyName: `Co ${locked}`, status: locked });
+      const { decision } = await automatic(id, 'interview', 'portal', 'high');
+      expect(decision).toEqual({ disposition: 'pending_review', reason: 'locked' });
+      expect((await detail(id)).status).toBe(locked);
+    }
+  });
+});
+
+describe('extension intent', () => {
+  let token: string;
+  beforeEach(async () => {
+    token = (await post('/api/auth/tokens', { name: 'chrome' })).body.token.token;
+  });
+  const ext = (method: 'post' | 'patch' | 'put', path: string, intent?: string) => {
+    const r = request(app)[method](path).set('Authorization', `Bearer ${token}`);
+    return intent ? r.set('X-JT-Intent', intent) : r;
+  };
+
+  it('requires the extension to declare intent', async () => {
+    const { id } = await create({ status: 'applied' });
+    const res = await ext('post', `/api/applications/${id}/status`).send({ status: 'interview' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/X-JT-Intent/i);
+    expect((await ext('post', `/api/applications/${id}/status`, 'maybe').send({ status: 'interview' })).status).toBe(400);
+  });
+
+  it('user intent (popup click) → source "extension", manual rules', async () => {
+    const { id } = await create({ status: 'rejected' });
+    const res = await ext('post', `/api/applications/${id}/status`, 'user').send({ status: 'interview' });
+    expect(res.body.decision).toEqual({ disposition: 'applied', reason: 'user_action' });
+    expect(res.body.application.timeline.at(-1)).toMatchObject({ source: 'extension', confidence: null });
+  });
+
+  it('auto intent (page detection) → source "extension_auto", automatic rules incl. confidence', async () => {
+    const { id } = await create({ status: 'interview' });
+    const back = await ext('post', `/api/applications/${id}/status`, 'auto').send({ status: 'applied' });
+    expect(back.body.decision.disposition).toBe('ignored');
+    expect(back.body.application.timeline.at(-1)).toMatchObject({ source: 'extension_auto', disposition: 'ignored' });
+
+    const rejected = await ext('post', `/api/applications/${id}/status`, 'auto').send({ status: 'rejected', confidence: 'high' });
+    expect(rejected.body.decision.reason).toBe('rejection');
+  });
+
+  it('one-click save is a user action; auto-capture of a submitted page is automatic', async () => {
+    const saved = await ext('post', '/api/applications', 'user').send({ companyName: 'Clicked', roleTitle: 'Dev' });
+    expect(saved.body.application.timeline[0]).toMatchObject({ source: 'extension', reason: 'user_action' });
+    const detected = await ext('post', '/api/applications', 'auto').send({ companyName: 'Detected', roleTitle: 'Dev', status: 'applied' });
+    expect(detected.body.application.timeline[0]).toMatchObject({ source: 'extension_auto', reason: 'forward' });
+  });
+
+  it('pure edit endpoints refuse automatic intent', async () => {
+    const { id, timeline } = await create({ status: 'applied' });
+    expect((await ext('patch', `/api/applications/${id}`, 'auto').send({ notes: 'x' })).status).toBe(403);
+    expect((await ext('put', `/api/applications/${id}/answers`, 'auto').send({ answers: [] })).status).toBe(403);
+    expect((await ext('post', `/api/applications/${id}/events/${timeline[0]!.id}/undo`, 'auto')).status).toBe(403);
+    expect((await ext('post', '/api/answer-library', 'auto').send({ question: 'q', answer: 'a' })).status).toBe(403);
+    expect((await ext('patch', `/api/applications/${id}`, 'user').send({ notes: 'x' })).status).toBe(200);
+  });
+
+  it('the web app cannot send automatic signals', async () => {
+    const { id } = await create({ status: 'applied' });
+    const res = await agent
+      .post(`/api/applications/${id}/status`)
+      .set('Origin', ORIGIN)
+      .set('X-JT-Intent', 'auto')
+      .send({ status: 'interview' });
+    expect(res.status).toBe(400);
+  });
+
+  it('confidence is ignored for user actions', async () => {
+    const { id } = await create({ status: 'applied' });
+    const res = await post(`/api/applications/${id}/status`, { status: 'rejected', confidence: 'low' });
+    expect(res.body.decision.reason).toBe('user_action');
+    expect(res.body.application.status).toBe('rejected');
   });
 });
 
@@ -377,20 +483,37 @@ describe('follow-ups and ghost suggestions', () => {
     const body = (await agent.get('/api/follow-ups').expect(200)).body;
     const names = (rows: Array<{ companyName: string }>) => rows.map((r) => r.companyName).sort();
 
-    expect(names(body.followUps)).toEqual(['Due', 'Quiet']); // interview-stage silence isn't "no response" follow-up
-    expect(body.followUps.find((f: { companyName: string }) => f.companyName === 'Due').reason).toBe('due');
+    const reasonOf = (name: string) => body.followUps.find((f: { companyName: string }) => f.companyName === name)?.reason;
+
+    expect(names(body.followUps)).toEqual(['Due', 'Ghosty', 'Quiet']);
+    expect(reasonOf('Due')).toBe('due');
     expect(body.followUps.find((f: { companyName: string }) => f.companyName === 'Quiet')).toMatchObject({ reason: 'no_response', daysSinceActivity: 12 });
+    expect(reasonOf('Ghosty')).toBe('post_interview'); // and it still counts toward ghosting:
     expect(names(body.ghostSuggestions)).toEqual(['Ghosty']);
-    expect(body.settings).toMatchObject({ followUpAfterDays: 10, ghostAfterDays: 21 });
+    expect(body.settings).toMatchObject({ followUpAfterDays: 10, postInterviewFollowUpDays: 5, ghostAfterDays: 21 });
 
     expect((await detail(ghosty.id)).status).toBe('interview'); // suggestion only
     expect(fresh.id).toBeTruthy();
   });
 
+  it('post-interview check-in: Interview with no update for 5 days (default), not before', async () => {
+    const recent = await create({ companyName: 'Recent', status: 'interview' });
+    const stale = await create({ companyName: 'Stale', status: 'interview' });
+    const dated = await create({ companyName: 'Dated', status: 'interview', followUpOn: '2099-01-01' });
+    await db.update(applications).set({ lastActivityAt: daysAgo(4) }).where(eq(applications.id, recent.id));
+    await db.update(applications).set({ lastActivityAt: daysAgo(6) }).where(eq(applications.id, stale.id));
+    await db.update(applications).set({ lastActivityAt: daysAgo(6) }).where(eq(applications.id, dated.id));
+
+    const body = (await agent.get('/api/follow-ups')).body;
+    // An explicit future follow-up date wins over the automatic rule.
+    expect(body.followUps).toEqual([expect.objectContaining({ companyName: 'Stale', reason: 'post_interview', daysSinceActivity: 6 })]);
+    expect(body.ghostSuggestions).toHaveLength(0);
+  });
+
   it('respects per-user overrides of the thresholds', async () => {
     const { id } = await create({ companyName: 'Quiet', status: 'applied' });
     await db.update(applications).set({ lastActivityAt: daysAgo(6) }).where(eq(applications.id, id));
-    await db.execute(sql`update users set settings = '{"followUpAfterDays": 5, "ghostAfterDays": 6}'::jsonb`);
+    await db.execute(sql`update users set settings = '{"followUpAfterDays": 5, "ghostAfterDays": 6, "postInterviewFollowUpDays": 2}'::jsonb`);
     const body = (await agent.get('/api/follow-ups')).body;
     expect(body.followUps).toHaveLength(1);
     expect(body.ghostSuggestions).toHaveLength(1);

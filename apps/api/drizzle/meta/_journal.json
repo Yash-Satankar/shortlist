@@ -29,6 +29,13 @@
       "when": 1791001608432,
       "tag": "0003_event_disposition",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791002389519,
+      "tag": "0004_extension_auto_confidence",
+      "breakpoints": true
     }
   ]
 }

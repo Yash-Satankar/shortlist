@@ -30,8 +30,12 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   withdrawn: 'Withdrawn',
 };
 
-/** Where a status change (or a record) came from. Shown on every timeline entry. */
-export const EVENT_SOURCES = ['manual', 'import', 'share', 'extension', 'portal', 'email', 'system'] as const;
+/**
+ * Where a status change (or a record) came from. Shown on every timeline entry.
+ * - manual / import / share / extension: the user did it (manual rules)
+ * - extension_auto / portal / email / system: inferred by software (automatic rules)
+ */
+export const EVENT_SOURCES = ['manual', 'import', 'share', 'extension', 'extension_auto', 'portal', 'email', 'system'] as const;
 export type EventSource = (typeof EVENT_SOURCES)[number];
 
 export const WORK_MODES = ['onsite', 'hybrid', 'remote', 'unknown'] as const;
