@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/server.ts', 'src/db/migrate.ts', 'src/db/seed.ts', 'src/scripts/create-user.ts', 'src/scripts/set-password.ts'],
+  entry: ['src/server.ts', 'src/db/migrate.ts', 'src/db/seed.ts', 'src/scripts/create-user.ts', 'src/scripts/set-password.ts', 'src/scripts/import-xlsx.ts'],
   format: 'esm',
   platform: 'node',
   target: 'node22',

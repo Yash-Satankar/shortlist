@@ -36,6 +36,13 @@
       "when": 1791002389519,
       "tag": "0004_extension_auto_confidence",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791002658190,
+      "tag": "0005_import_key",
+      "breakpoints": true
     }
   ]
 }

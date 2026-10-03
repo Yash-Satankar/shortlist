@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
+import { cliArgs } from '../lib/cli';
 import { closeDb, getDb } from '../db/client';
 import { runMigrations } from '../db/migrate';
 import { createUser } from '../users/service';
@@ -10,6 +11,7 @@ import { createUser } from '../users/service';
  */
 async function main() {
   const { values } = parseArgs({
+    args: cliArgs(),
     options: { email: { type: 'string' }, name: { type: 'string' } },
   });
   if (!values.email) throw new Error('Usage: pnpm user:create --email you@example.com [--name "Your Name"]');

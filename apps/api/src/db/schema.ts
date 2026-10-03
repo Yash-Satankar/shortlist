@@ -160,6 +160,8 @@ export const applications = pgTable(
     /** Stable form of job_url (tracking params dropped, LinkedIn job id extracted...). */
     jobUrlCanonical: text('job_url_canonical'),
     externalJobId: text('external_job_id'),
+    /** Stable identity of the spreadsheet row this came from; makes re-imports idempotent. */
+    importKey: text('import_key'),
     salaryListed: text('salary_listed'), // as shown on the posting (public info, not encrypted)
     salaryMinLpa: numeric('salary_min_lpa', { precision: 6, scale: 2 }),
     salaryMaxLpa: numeric('salary_max_lpa', { precision: 6, scale: 2 }),
@@ -191,6 +193,9 @@ export const applications = pgTable(
     uniqueIndex('applications_user_job_url_uq')
       .on(t.userId, t.jobUrlCanonical)
       .where(sql`${t.jobUrlCanonical} is not null`),
+    uniqueIndex('applications_user_import_key_uq')
+      .on(t.userId, t.importKey)
+      .where(sql`${t.importKey} is not null`),
     index('applications_role_trgm_idx').using('gin', t.roleNormalized.op('gin_trgm_ops')),
     index('applications_search_idx').using('gin', t.search),
   ],

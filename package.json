@@ -20,7 +20,8 @@
     "db:seed": "pnpm --filter @jt/api db:seed",
     "user:create": "pnpm --filter @jt/api user:create",
     "user:password": "pnpm --filter @jt/api user:password",
-    "keygen": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+    "keygen": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
+    "import:xlsx": "pnpm --filter @jt/api import:xlsx"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

@@ -47,6 +47,7 @@ pnpm dev                      # API :3000 + web :5173 → open http://localhost:
 | `pnpm db:generate` | Generate a SQL migration after editing `apps/api/src/db/schema.ts` |
 | `pnpm db:migrate` | Apply migrations (also runs automatically on server start) |
 | `pnpm user:create -- --email a@b.com` | Create a user (prompts for password). Use this in production; `db:seed` is dev-only and refuses `NODE_ENV=production` |
+| `pnpm import:xlsx -- --file <path.xlsx> [--commit]` | Import the tracker spreadsheet. Dry run by default (counts + problem rows); `--commit` writes. Safe to re-run |
 | `pnpm user:password -- --email a@b.com` | Set a new password and sign out all sessions (in the app: `POST /api/auth/password`) |
 | `pnpm build && pnpm start` | Production build; Express serves the web app (`SERVE_WEB=true`) |
 
@@ -92,14 +93,17 @@ All under `/api`, JSON, authenticated by session cookie (web) or `Authorization:
 | `GET /follow-ups` | Due follow-ups, no-response items, ghost suggestions (never auto-applied) |
 | `GET /reviews` | Automatic changes waiting for review |
 | `GET /companies?q=` | Company autocomplete |
+| `POST /import/tracker-xlsx[?commit=true]` | Spreadsheet import (raw .xlsx body, session only). Dry run unless `commit=true` |
 
 ### Status rules (`packages/shared/src/status.ts`)
 
-- Manual, import and share-sheet changes always apply.
+- Manual, import, share-sheet and explicit extension clicks (`X-JT-Intent: user`) always apply.
+  Extension auto-detection must send `X-JT-Intent: auto` and gets the automatic rules.
 - Automatic sources (extension, portal sync, email, system) only move **forward** in
   Saved → Applied → Viewed → Assessment → Shortlisted → Interview. Backward signals are recorded
-  as `ignored` (e.g. a late "Applied" email after Interview). Offer and Rejected apply from any
-  open stage.
+  as `ignored` (e.g. a late "Applied" email after Interview).
+- Into **Rejected**: applied only for a high-confidence signal (still undoable); low → review.
+- Into **Offer**: always reviewed (scam risk).
 - **Offer, Rejected and Withdrawn are locked**: automatic signals are only flagged
   (`pending_review`). Ghosted and Withdrawn are never set automatically.
 - A real signal (Viewed or later) reopens a Ghosted application.
@@ -117,7 +121,8 @@ Create your account once with `pnpm user:create` from a Railway shell.
 
 - [x] **Phase 1.1**: scaffold, schema + migrations, auth, seed, tests
 - [x] 1.2: applications API (CRUD, status events + undo + review, Q&A, answer library, duplicate check, search, follow-ups)
-- [ ] 1.3: .xlsx importer (preview, idempotent; "My Standard Answers" → answer library)
+- [x] 1.3: .xlsx importer (dry-run preview, idempotent via import_key; "My Standard Answers" → answer library,
+  CTC → encrypted profile)
 - [ ] 1.4: web UI: list/kanban, detail + timeline, follow-ups, PWA + Web Share Target quick-add
   (share target must be `method: GET` with title/text/url params: a POST share would arrive
   without the SameSite=Lax session cookie and be blocked by the cross-origin write guard)

@@ -1,0 +1,2 @@
+ALTER TABLE "applications" ADD COLUMN "import_key" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "applications_user_import_key_uq" ON "applications" USING btree ("user_id","import_key") WHERE "applications"."import_key" is not null;

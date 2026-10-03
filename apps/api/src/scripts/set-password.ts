@@ -1,6 +1,7 @@
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { eq } from 'drizzle-orm';
+import { cliArgs } from '../lib/cli';
 import { closeDb, getDb } from '../db/client';
 import { users } from '../db/schema';
 import { changePassword, normalizeEmail } from '../users/service';
@@ -11,7 +12,7 @@ import { changePassword, normalizeEmail } from '../users/service';
  * For lock-outs and replacing the seed password; in the app use POST /api/auth/password.
  */
 async function main() {
-  const { values } = parseArgs({ options: { email: { type: 'string' } } });
+  const { values } = parseArgs({ args: cliArgs(), options: { email: { type: 'string' } } });
   if (!values.email) throw new Error('Usage: pnpm user:password --email you@example.com');
 
   const db = getDb();

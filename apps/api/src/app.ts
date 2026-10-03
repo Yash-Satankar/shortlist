@@ -10,6 +10,7 @@ import { answerLibraryRouter } from './answers/routes';
 import { applicationsRouter, contactsRouter, trackerRouter } from './applications/routes';
 import { requireUserIntent } from './auth/intent';
 import { authenticate, requireAuth, sameOriginGuard } from './auth/middleware';
+import { importRouter } from './import/routes';
 import { authRouter } from './auth/routes';
 import { env } from './config/env';
 import type { Db } from './db/client';
@@ -50,6 +51,7 @@ export function createApp({ db }: { db: Db }) {
   api.use('/applications', requireAuth, applicationsRouter(db));
   api.use('/contacts', requireAuth, requireUserIntent, contactsRouter(db));
   api.use('/answer-library', requireAuth, requireUserIntent, answerLibraryRouter(db));
+  api.use('/import', requireAuth, importRouter(db));
   api.use(trackerRouter(db)); // /follow-ups, /reviews, /companies (each requires auth)
 
   api.use((_req, _res, next) => next(notFound('Unknown API route')));
