@@ -144,14 +144,8 @@ against a scratch database.
 
 ### Backups
 
-Prefer Railway's own Postgres backups (service → Backups) if your plan includes them. Otherwise
-`.github/workflows/backup.yml` runs a nightly encrypted `pg_dump` to a private workflow artifact
-once the repo secrets `PROD_DATABASE_URL` and `BACKUP_PASSPHRASE` are set. Restore:
-
-```bash
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in jobtracker-<stamp>.pgc.enc -out dump.pgc
-pg_restore --clean --if-exists --no-owner -d "$TARGET_DATABASE_URL" dump.pgc
-```
+Daily backups are Railway's own Postgres backups (Postgres service → Backups tab). Postgres has
+no public endpoint; only the app reaches it over Railway's private network.
 
 ## Roadmap
 
