@@ -114,7 +114,9 @@ All under `/api`, JSON, authenticated by session cookie (web) or `Authorization:
 ## Deployment (Railway)
 
 One service runs everything (API + web app; background jobs will run in-process when the first one
-lands). Configured by `railway.json` + `Dockerfile`:
+lands). The build is the `Dockerfile` (auto-detected). Deploy settings are **service settings in the
+Railway dashboard** (job-tracker → Settings → Deploy). Railway ignores `railway.json` deploy keys for
+services created after its Config-as-Code deprecation, so they are not kept in the repo:
 
 | Stage | What runs | On failure |
 | --- | --- | --- |
@@ -123,7 +125,12 @@ lands). Configured by `railway.json` + `Dockerfile`:
 | Start | `node apps/api/dist/server.js` (does not migrate) | restarted (5 retries) |
 | Health | `GET /api/health` (queries the DB) | deploy not promoted |
 
-Service variables: `NODE_ENV=production`, `TRUST_PROXY=1`, `SERVE_WEB=true`,
+Dashboard deploy settings: **Pre-deploy command** `node apps/api/dist/scripts/migrate.js`,
+**Healthcheck path** `/api/health` (timeout 60 s), restart policy *On failure*. The start command is
+the Dockerfile's `CMD`.
+
+Service variables: `NODE_ENV=production`, `TRUST_PROXY=2` (Railway's edge adds a hop; verify with
+`GET /api/health/request`), `SERVE_WEB=true`,
 `APP_ORIGIN=https://<domain>`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`, a **production-only**
 `ENCRYPTION_KEYS` / `ENCRYPTION_ACTIVE_KEY_ID`, plus any tunables from `.env.example`.
 Postgres: Railway's standard image works (only `pg_trgm` is needed; pgvector is not used yet).

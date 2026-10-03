@@ -44,3 +44,14 @@ describe('behind a reverse proxy (TRUST_PROXY=1)', () => {
     expect(res.body.protocol).toBe('http');
   });
 });
+
+/** Railway as measured in production: X-Forwarded-For is always "client, edge" and the edge strips forged values. */
+describe('Railway edge + internal proxy (TRUST_PROXY=2)', () => {
+  const app = createApp({ db: getDb() });
+  app.set('trust proxy', 2);
+
+  it('resolves the client, not the edge server', async () => {
+    const res = await request(app).get('/api/health/request').set('X-Forwarded-For', '49.36.43.25, 152.233.68.105').set('X-Forwarded-Proto', 'https');
+    expect(res.body).toMatchObject({ ip: '49.36.43.25', protocol: 'https', secure: true });
+  });
+});
