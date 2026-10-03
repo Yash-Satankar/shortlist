@@ -51,7 +51,15 @@ export function createApp({ db }: { db: Db }) {
   // Railway (TRUST_PROXY=1) ip must be your public IP and protocol "https".
   api.get('/health/request', (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ ip: req.ip, protocol: req.protocol, secure: req.secure, trustProxy: app.get('trust proxy') });
+    // The caller's own forwarding headers, so the proxy hop count can be verified in production.
+    res.json({
+      ip: req.ip,
+      protocol: req.protocol,
+      secure: req.secure,
+      trustProxy: app.get('trust proxy'),
+      forwardedFor: req.get('x-forwarded-for') ?? null,
+      realIp: req.get('x-real-ip') ?? null,
+    });
   });
 
   let loggedFirstRequest = false;

@@ -19,7 +19,7 @@ describe('behind a reverse proxy (TRUST_PROXY=1)', () => {
 
   it('resolves the client IP and https from the proxy headers', async () => {
     const res = await request(app).get('/api/health/request').set('X-Forwarded-For', '203.0.113.7').set('X-Forwarded-Proto', 'https');
-    expect(res.body).toEqual({ ip: '203.0.113.7', protocol: 'https', secure: true, trustProxy: 1 });
+    expect(res.body).toMatchObject({ ip: '203.0.113.7', protocol: 'https', secure: true, trustProxy: 1, forwardedFor: '203.0.113.7' });
   });
 
   it('ignores client-forged X-Forwarded-For entries before the proxy hop', async () => {
