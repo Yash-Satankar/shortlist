@@ -1,4 +1,4 @@
-import { parseRelocation, type ApplicationStatus } from '@jt/shared';
+import { parseLpa, parseRelocation, type ApplicationStatus } from '@jt/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
@@ -94,7 +94,18 @@ export function useReview(id: string) {
 }
 
 export function useUpdateApplication(id: string) {
-  return useApplicationWrite(id, (patch: Record<string, unknown>) => api(`/applications/${id}`, { method: 'PATCH', json: patch }));
+  return useApplicationWrite(id, async (patch: Record<string, unknown>) => {
+    // "Expected CTC I gave" is typed as text next to an "LPA" suffix; it's stored as a number.
+    const { expectedCtc, ...rest } = patch;
+    const body: Record<string, unknown> = rest;
+    if (expectedCtc !== undefined) {
+      const text = typeof expectedCtc === 'string' ? expectedCtc.trim() : '';
+      const lpa = text ? parseLpa(text) : null;
+      if (text && lpa === null) throw new Error('Expected CTC must be a number of lakhs, e.g. 12 or 12.5');
+      body.expectedCtcLpa = lpa;
+    }
+    return api(`/applications/${id}`, { method: 'PATCH', json: body });
+  });
 }
 
 export function useAddJd(id: string) {

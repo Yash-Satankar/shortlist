@@ -1,7 +1,7 @@
-import { parseRelocation } from '@jt/shared';
+import { formatLpa, parseLpa, parseRelocation } from '@jt/shared';
 import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { Db, Tx } from './client';
-import { dataMigrations, profiles } from './schema';
+import { applications, dataMigrations, profiles } from './schema';
 
 /**
  * Data migrations: steps that need application code (shared parsers, the encryption key)
@@ -38,7 +38,41 @@ const relocationSplit: DataMigration = {
   },
 };
 
-export const DATA_MIGRATIONS: DataMigration[] = [relocationSplit];
+/**
+ * 0011: per-application "Expected CTC I gave" → canonical number of lakhs ("12 LPA" → "12").
+ * Values are decrypted/re-encrypted by the column type. Unparseable values are left untouched
+ * and listed by application id (never by value) for fixing by hand.
+ */
+const expectedCtcToLpa: DataMigration = {
+  id: '0011-expected-ctc-lpa',
+  async run(tx, log) {
+    const rows = await tx
+      .select({ id: applications.id, value: applications.expectedCtcEnc })
+      .from(applications)
+      .where(isNotNull(applications.expectedCtcEnc));
+    let converted = 0;
+    let unchanged = 0;
+    const unparseable: string[] = [];
+    for (const row of rows) {
+      const n = parseLpa(row.value);
+      if (n === null) {
+        unparseable.push(row.id);
+        continue;
+      }
+      const canonical = formatLpa(n);
+      if (canonical === row.value) {
+        unchanged++;
+        continue;
+      }
+      await tx.update(applications).set({ expectedCtcEnc: canonical }).where(eq(applications.id, row.id));
+      converted++;
+    }
+    for (const id of unparseable) log(`  application ${id}: expected CTC isn't a clear number of lakhs; left untouched, fix it by hand`);
+    return `${rows.length} value(s): ${converted} converted, ${unchanged} already numeric, ${unparseable.length} left for manual fix`;
+  },
+};
+
+export const DATA_MIGRATIONS: DataMigration[] = [relocationSplit, expectedCtcToLpa];
 
 export async function runDataMigrations(db: Db, log: (line: string) => void, migrations = DATA_MIGRATIONS): Promise<number> {
   let applied = 0;

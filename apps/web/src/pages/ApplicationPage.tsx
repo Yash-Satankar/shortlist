@@ -714,7 +714,7 @@ function DetailsTab({ app }: { app: ApplicationDetail }) {
     appliedOn: app.appliedOn ?? '',
     followUpOn: app.followUpOn ?? '',
     salaryListed: app.salaryListed ?? '',
-    expectedCtc: app.expectedCtc ?? '',
+    expectedCtc: app.expectedCtcLpa !== null ? String(app.expectedCtcLpa) : (app.expectedCtcRaw ?? ''),
     notes: app.notes ?? '',
   };
   const initialRecruiter = {

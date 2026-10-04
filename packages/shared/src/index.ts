@@ -1,5 +1,6 @@
 export * from './duplicates';
 export * from './enums';
+export * from './lpa';
 export * from './normalize';
 export * from './profile';
 export * from './relocation';

@@ -4,6 +4,8 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { closeDb, getDb } from '../src/db/client';
 import { DATA_MIGRATIONS, runDataMigrations } from '../src/db/data-migrations';
+
+const RELOCATION = DATA_MIGRATIONS.filter((m) => m.id === '0009-relocation-split');
 import { dataMigrations, profiles } from '../src/db/schema';
 import { createUser } from '../src/users/service';
 import { ORIGIN, resetDb } from './helpers';
@@ -29,7 +31,7 @@ describe('data migration 0009: relocation text → willing + preference', () => 
   it('splits the existing value, e.g. "Yes (Hyderabad preferred)" → true + "Hyderabad preferred"', async () => {
     await db.update(profiles).set({ relocation: 'Yes (Hyderabad preferred)' }).where(eq(profiles.userId, userId));
     const log: string[] = [];
-    expect(await runDataMigrations(db, (l) => log.push(l))).toBe(1);
+    expect(await runDataMigrations(db, (l) => log.push(l), RELOCATION)).toBe(1);
 
     const [p] = await db.select().from(profiles).where(eq(profiles.userId, userId));
     expect(p).toMatchObject({ relocationWilling: true, relocationPreference: 'Hyderabad preferred', relocation: 'Yes (Hyderabad preferred)' }); // old column untouched
@@ -39,7 +41,7 @@ describe('data migration 0009: relocation text → willing + preference', () => 
   it('keeps ambiguous text verbatim as the preference and leaves willing unknown (logs no values)', async () => {
     await db.update(profiles).set({ relocation: 'Open to Pune' }).where(eq(profiles.userId, userId));
     const log: string[] = [];
-    await runDataMigrations(db, (l) => log.push(l));
+    await runDataMigrations(db, (l) => log.push(l), RELOCATION);
     const [p] = await db.select().from(profiles).where(eq(profiles.userId, userId));
     expect(p).toMatchObject({ relocationWilling: null, relocationPreference: 'Open to Pune' });
     expect(log.join('\n')).not.toContain('Pune');
@@ -47,13 +49,13 @@ describe('data migration 0009: relocation text → willing + preference', () => 
 
   it('runs once: recorded in data_migrations, a second run is a no-op', async () => {
     await db.update(profiles).set({ relocation: 'No' }).where(eq(profiles.userId, userId));
-    expect(await runDataMigrations(db, () => {})).toBe(1);
+    expect(await runDataMigrations(db, () => {}, RELOCATION)).toBe(1);
     // Someone edits the profile afterwards; a re-run must not clobber it.
     await db.update(profiles).set({ relocationWilling: true, relocationPreference: 'Pune' }).where(eq(profiles.userId, userId));
-    expect(await runDataMigrations(db, () => {})).toBe(0);
+    expect(await runDataMigrations(db, () => {}, RELOCATION)).toBe(0);
     const [p] = await db.select().from(profiles).where(eq(profiles.userId, userId));
     expect(p).toMatchObject({ relocationWilling: true, relocationPreference: 'Pune' });
-    expect((await db.select().from(dataMigrations)).map((r) => r.id)).toEqual(DATA_MIGRATIONS.map((m) => m.id));
+    expect((await db.select().from(dataMigrations)).map((r) => r.id)).toEqual(['0009-relocation-split']);
   });
 
   it('a failing step rolls back and is not recorded', async () => {

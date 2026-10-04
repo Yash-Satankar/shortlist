@@ -30,7 +30,10 @@ export interface ApplicationSummary {
   lastActivityAt: string;
   notes: string | null;
   archivedAt: string | null;
-  expectedCtc: string | null;
+  /** Expected CTC I gave, in lakhs (stored encrypted). */
+  expectedCtcLpa: number | null;
+  /** Only for a legacy value that isn't a clear number; shown as-is so it can be fixed. */
+  expectedCtcRaw: string | null;
   salaryListed: string | null;
   salaryMinLpa: number | null;
   salaryMaxLpa: number | null;

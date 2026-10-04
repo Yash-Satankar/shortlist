@@ -4,9 +4,11 @@ import {
   confidenceLevel,
   COMPANY_MATCH_THRESHOLD,
   findDuplicates,
+  formatLpa,
   isAutomaticSource,
   normalizeCompanyName,
   normalizeRoleTitle,
+  parseLpa,
   type DuplicateLevel,
   type EventSource,
 } from '@jt/shared';
@@ -24,7 +26,7 @@ import {
   statusEvents,
 } from '../db/schema';
 import { dateIn } from '../lib/dates';
-import { conflict, HttpError, notFound } from '../lib/http';
+import { badRequest, conflict, HttpError, notFound } from '../lib/http';
 import { getUserSettings } from '../users/service';
 import type { CreateApplicationInput, ListQuery, UpdateApplicationInput } from './schemas';
 
@@ -140,7 +142,7 @@ export async function createApplication(db: Db, userId: string, input: CreateApp
           salaryListed: input.salaryListed ?? null,
           salaryMinLpa: input.salaryMinLpa?.toString() ?? null,
           salaryMaxLpa: input.salaryMaxLpa?.toString() ?? null,
-          expectedCtcEnc: input.expectedCtc ?? null,
+          expectedCtcEnc: expectedCtcColumn(input) ?? null,
           noticePeriodDays: input.noticePeriodDays ?? null,
           willingToRelocate: input.willingToRelocate ?? null,
           status: input.status,
@@ -261,10 +263,13 @@ export async function getApplication(db: DbOrTx, userId: string, id: string) {
 }
 
 export function serializeApplication(app: typeof applications.$inferSelect) {
-  const { search: _search, userId: _userId, expectedCtcEnc, salaryMinLpa, salaryMaxLpa, ...rest } = app;
+  const { search: _search, userId: _userId, expectedCtcEnc, importKey: _importKey, ghostDismissedAt: _g, salaryMinLpa, salaryMaxLpa, ...rest } = app;
+  const lpa = parseLpa(expectedCtcEnc);
   return {
     ...rest,
-    expectedCtc: expectedCtcEnc,
+    expectedCtcLpa: lpa,
+    /** Only for legacy values that aren't a clear number of lakhs (left as-is for manual fixing). */
+    expectedCtcRaw: lpa === null ? expectedCtcEnc : null,
     salaryMinLpa: salaryMinLpa === null ? null : Number(salaryMinLpa),
     salaryMaxLpa: salaryMaxLpa === null ? null : Number(salaryMaxLpa),
   };
@@ -395,7 +400,8 @@ export async function updateApplication(db: Db, userId: string, id: string, inpu
       set.externalJobId = canonical?.externalId ?? null;
     }
     if (input.archived !== undefined) set.archivedAt = input.archived ? (app.archivedAt ?? new Date()) : null;
-    if (input.expectedCtc !== undefined) set.expectedCtcEnc = input.expectedCtc;
+    const ctc = expectedCtcColumn(input);
+    if (ctc !== undefined) set.expectedCtcEnc = ctc;
     if (input.salaryMinLpa !== undefined) set.salaryMinLpa = input.salaryMinLpa?.toString() ?? null;
     if (input.salaryMaxLpa !== undefined) set.salaryMaxLpa = input.salaryMaxLpa?.toString() ?? null;
 
@@ -557,4 +563,17 @@ export async function dismissGhostSuggestion(db: Db, userId: string, application
     .returning({ dismissedAt: applications.ghostDismissedAt });
   if (!row) throw notFound('Application not found');
   return row.dismissedAt!;
+}
+
+/**
+ * Value for the encrypted expected-CTC column: canonical lakhs ("12.5"), null to clear,
+ * undefined when the input doesn't touch it.
+ */
+function expectedCtcColumn(input: { expectedCtcLpa?: number | null; expectedCtc?: string | null }): string | null | undefined {
+  if (input.expectedCtcLpa !== undefined) return input.expectedCtcLpa === null ? null : formatLpa(input.expectedCtcLpa);
+  if (input.expectedCtc === undefined) return undefined;
+  if (input.expectedCtc === null) return null;
+  const n = parseLpa(input.expectedCtc);
+  if (n === null) throw badRequest('Expected CTC must be a number of lakhs, e.g. 12 or 12.5');
+  return formatLpa(n);
 }

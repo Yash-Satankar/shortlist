@@ -69,7 +69,8 @@ describe('create', () => {
     expect(app.externalJobId).toBe('4100000101');
     expect(app.jobUrlCanonical).toBe('https://www.linkedin.com/jobs/view/4100000101/');
     expect(app.appliedOn).toBe('2026-09-29');
-    expect(app.expectedCtc).toBe('12 LPA');
+    expect(app.expectedCtcLpa).toBe(12); // "12 LPA" is stored as a number of lakhs
+    expect(app.expectedCtcRaw).toBeNull();
     expect(app.jd.content).toContain('AWS required');
     expect(app.answers).toEqual([expect.objectContaining({ question: 'Years of AWS', answer: '0' })]);
     expect(app.timeline).toEqual([expect.objectContaining({ fromStatus: null, toStatus: 'applied', source: 'manual', disposition: 'applied' })]);

@@ -32,6 +32,9 @@ const applicationFields = {
   salaryListed: text(200),
   salaryMinLpa: lpa,
   salaryMaxLpa: lpa,
+  /** Expected CTC I gave this company, in lakhs per annum (stored encrypted). */
+  expectedCtcLpa: z.number().min(0).max(1000).nullish(),
+  /** Legacy text form ("12 LPA"); parsed strictly, rejected if it isn't a clear number of lakhs. */
   expectedCtc: text(50),
   noticePeriodDays: z.number().int().min(0).max(365).nullish(),
   willingToRelocate: z.boolean().nullish(),
