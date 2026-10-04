@@ -146,6 +146,9 @@ function ApplicationsList({ selectedId }: { selectedId?: string }) {
   }, []);
 
   const apiParams = useMemo(() => {
+    // TODO(scale): the list loads up to 500 rows and filters/counts facets on the client.
+    // Fine for one person's search; past 500 rows anything older is silently cut. Move the
+    // filters + facet counts to the API (it already filters) and page the list. See README roadmap.
     const p = new URLSearchParams({ limit: '500', sort: SORT_PARAM[filters.sort] });
     if (query) p.set('q', query);
     return p;

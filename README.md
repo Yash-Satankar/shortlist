@@ -93,6 +93,9 @@ All under `/api`, JSON, authenticated by session cookie (web) or `Authorization:
 | `GET/POST /answer-library` · `PATCH/DELETE /answer-library/:id` | Standard answers. GET merges read-only entries generated from the profile (`origin: "profile"`); questions owned by the profile return 409 `profile_field` |
 | `GET/PATCH /profile` | Profile: the single source of truth for experience, notice period, relocation, location, CTC (encrypted) and resume text |
 | `GET /follow-ups` | Due follow-ups, no-response items, ghost suggestions (never auto-applied) |
+| `GET /stats` | Inbox numbers (week = Monday 00:00, user timezone), replies this week, next follow-up, badge counts |
+| `POST /applications/:id/ghost/dismiss` | "Not yet" on a ghost suggestion (until new activity or `GHOST_SUGGEST_DAYS`) |
+| `GET /config` | Public: `sessionTtlDays` for the login screen |
 | `GET /reviews` | Automatic changes waiting for review |
 | `GET /companies?q=` | Company autocomplete |
 | `POST /import/tracker-xlsx[?commit=true]` | Spreadsheet import (raw .xlsx body, session only). Dry run unless `commit=true` |
@@ -157,4 +160,9 @@ no public endpoint; only the app reaches it over Railway's private network.
   (timeline with undo/review, JD, Q&A, details), quick-add, installable PWA with a GET Web Share Target
   (`/share?title&text&url`), resume upload (PDF/DOCX → editable text), settings, kanban (drag = manual
   status change, undoable)
+- [x] UI data audit: confidence scores, server-side ghost "Not yet", inbox stats / next follow-up /
+  badge counts from `/api/stats`, resume file metadata, relocation + expected CTC as structured fields
+- [ ] Scale: the Applications list loads ≤ 500 rows and filters + counts facets on the client
+  (`TODO(scale)` in `ApplicationsPage.tsx`). Move filters/facets server-side and page the list
+  before anyone tracks more than ~500 applications.
 - [ ] Phase 2: Chrome extension · Phase 3: email intake · Phase 4: AI prep packs, follow-ups, chat
