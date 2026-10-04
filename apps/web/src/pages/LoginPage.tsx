@@ -46,7 +46,7 @@ export function LoginPage() {
           </Button>
         </form>
       </div>
-      <p className="hint mt-auto pt-8 pb-6 text-center md:mt-0">Stays signed in on this device for {sessionTtlDays} days unless unused.</p>
+      <p className="hint mt-auto pt-8 pb-6 text-center md:mt-0">{`Stays signed in on this device for ${sessionTtlDays} days unless unused.`}</p>
     </main>
   );
 }
