@@ -281,8 +281,9 @@ export function useRevokeSession() {
 export interface ContactInput {
   name: string | null;
   email: string | null;
-  phone: string | null;
-  linkedinUrl: string | null;
+  /** Omitted = unchanged on the server. */
+  phone?: string | null;
+  linkedinUrl?: string | null;
 }
 
 /** Creates the application's recruiter contact, or updates it when one exists. */

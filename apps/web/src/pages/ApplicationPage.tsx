@@ -33,6 +33,7 @@ import {
 } from '../components/ui';
 import { EVENT_SOURCE_LABELS, formatDate, formatDateTime, formatEventTime, REASON_LABELS } from '../lib/format';
 import { STATUS_GROUPS, STATUS_HINT, STATUS_SHORT } from '../lib/status';
+import { reachPatch, reachShown } from '../lib/recruiter';
 import { latestEffective } from '../lib/timeline';
 
 const TABS = [
@@ -720,7 +721,7 @@ function DetailsTab({ app }: { app: ApplicationDetail }) {
   const initialRecruiter = {
     name: recruiter?.name ?? '',
     email: recruiter?.email ?? '',
-    reach: recruiter?.linkedinUrl ?? recruiter?.phone ?? '',
+    reach: reachShown(recruiter),
   };
   const [form, setForm] = useState(initial);
   const [rec, setRec] = useState(initialRecruiter);
@@ -744,14 +745,12 @@ function DetailsTab({ app }: { app: ApplicationDetail }) {
       // and nothing invents a placeholder name.
       const anyRecruiterField = rec.name.trim() || rec.email.trim() || rec.reach.trim();
       if (recruiterChanged && (anyRecruiterField || recruiter)) {
-        const reach = rec.reach.trim();
-        const isUrl = /linkedin\.com|^https?:/i.test(reach);
         await saveRecruiter.mutateAsync({
           id: recruiter?.id,
           name: rec.name.trim() || null,
           email: rec.email.trim() || null,
-          phone: reach && !isUrl ? reach : null,
-          linkedinUrl: reach && isUrl ? reach : null,
+          // Only the edited kind changes; a phone isn't lost when the LinkedIn URL is edited (and vice versa).
+          ...(rec.reach !== initialRecruiter.reach ? reachPatch(rec.reach, recruiter) : {}),
         });
       }
       toast({ message: 'Saved', tone: 'info' });
