@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guessFromJd, parseShare } from '../src/lib/share';
+import { guessFromJd, parseShare, sharedFrom } from '../src/lib/share';
 
 describe('parseShare (Android share sheet → quick-add)', () => {
   it('LinkedIn app: link inside text', () => {
@@ -62,5 +62,20 @@ describe('guessFromJd', () => {
 
   it('returns blanks when there are no labels', () => {
     expect(guessFromJd('We are a fast-growing startup…')).toEqual({ companyName: '', roleTitle: '', location: '' });
+  });
+});
+
+describe('sharedFrom (the "shared · LinkedIn" label)', () => {
+  it.each([
+    ['https://www.linkedin.com/jobs/view/4100000101', 'LinkedIn'],
+    ['https://in.linkedin.com/jobs/view/1', 'LinkedIn'],
+    ['https://www.naukri.com/job-listings-x-011025500123', 'Naukri'],
+    ['https://job-boards.greenhouse.io/tessera/jobs/1', 'Greenhouse'],
+    ['https://jobs.lever.co/acme/abc', 'Lever'],
+    ['https://acme.wd5.myworkdayjobs.com/x', 'Workday'],
+    ['https://www.careers.acme.com/jobs/1', 'careers.acme.com'],
+    ['not a url', null],
+  ])('%s → %s (same strings as before)', (url, label) => {
+    expect(sharedFrom(url)).toBe(label);
   });
 });

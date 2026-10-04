@@ -7,23 +7,11 @@ import type { DuplicateMatch } from '../api/types';
 import { Icon } from '../components/Icon';
 import { Button, ErrorNote, Field, IconButton, Segmented, StatusGlyph, StatusPill, useToast } from '../components/ui';
 import { formatDate } from '../lib/format';
-import { guessFromJd, type SharePrefill } from '../lib/share';
+import { guessFromJd, sharedFrom, type SharePrefill } from '../lib/share';
 
 export interface AddPageState {
   prefill?: Partial<SharePrefill>;
   via?: 'share';
-}
-
-/** "linkedin.com/jobs/view/…" → "LinkedIn": shown as "shared · LinkedIn". */
-function sharedFrom(url: string): string | null {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, '');
-    const known: Record<string, string> = { 'linkedin.com': 'LinkedIn', 'naukri.com': 'Naukri', 'greenhouse.io': 'Greenhouse', 'lever.co': 'Lever', 'myworkdayjobs.com': 'Workday' };
-    const hit = Object.keys(known).find((k) => host === k || host.endsWith(`.${k}`));
-    return hit ? (known[hit] ?? host) : host;
-  } catch {
-    return null;
-  }
 }
 
 /** Keyed by navigation so a second share while the form is open starts fresh. */

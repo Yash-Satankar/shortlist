@@ -1,3 +1,5 @@
+import { APPLICATION_SOURCE_LABELS, sourceFromHost } from '@jt/shared';
+
 /**
  * Turns what Android's share sheet hands the PWA (title / text / url, via the GET
  * share target) into a quick-add prefill. Apps are inconsistent: LinkedIn often
@@ -83,4 +85,15 @@ export function guessFromJd(jd: string): { companyName: string; roleTitle: strin
     roleTitle: line(/^\s*(?:job title|role|position|designation|title)\s*[:\-–]\s*(.+)$/im),
     location: line(/^\s*(?:location|job location|city)\s*[:\-–]\s*(.+)$/im),
   };
+}
+
+/** "linkedin.com/jobs/view/…" → "LinkedIn" (shown as "shared · LinkedIn"); unknown sites → their host. */
+export function sharedFrom(url: string): string | null {
+  const source = sourceFromHost(url);
+  if (source) return APPLICATION_SOURCE_LABELS[source];
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalJobUrl } from '../src/url';
+import { canonicalJobUrl, sourceFromHost } from '../src/url';
 
 describe('canonicalJobUrl', () => {
   it.each([
@@ -62,5 +62,20 @@ describe('canonicalJobUrl', () => {
     expect(canonicalJobUrl('Open ↗')).toBeNull();
     expect(canonicalJobUrl('')).toBeNull();
     expect(canonicalJobUrl('javascript:alert(1)')).toBeNull();
+  });
+});
+
+describe('sourceFromHost', () => {
+  it.each([
+    ['https://www.linkedin.com/company/acme', 'linkedin'],
+    ['https://in.linkedin.com/jobs/view/1', 'linkedin'],
+    ['https://www.naukri.com/anything', 'naukri'],
+    ['https://job-boards.greenhouse.io/x', 'greenhouse'],
+    ['https://jobs.lever.co/x', 'lever'],
+    ['https://acme.wd5.myworkdayjobs.com/x', 'workday'],
+    ['https://careers.acme.com/jobs/1', null],
+    ['not a url', null],
+  ])('%s → %s', (url, source) => {
+    expect(sourceFromHost(url)).toBe(source);
   });
 });

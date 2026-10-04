@@ -111,3 +111,26 @@ export function canonicalJobUrl(input: string | null | undefined): CanonicalJobU
     source: ghJid ? 'greenhouse' : null,
   };
 }
+
+const HOST_SOURCES: Array<[string, ApplicationSource]> = [
+  ['linkedin.com', 'linkedin'],
+  ['naukri.com', 'naukri'],
+  ['greenhouse.io', 'greenhouse'],
+  ['lever.co', 'lever'],
+  ['myworkdayjobs.com', 'workday'],
+  ['myworkdaysite.com', 'workday'],
+];
+
+/**
+ * Platform from the host alone (any page on it), e.g. for "shared · LinkedIn". Unlike
+ * canonicalJobUrl this doesn't require a job-posting path.
+ */
+export function sourceFromHost(input: string | null | undefined): ApplicationSource | null {
+  if (!input) return null;
+  try {
+    const host = new URL(input).hostname.toLowerCase().replace(/^www\./, '');
+    return HOST_SOURCES.find(([h]) => host === h || host.endsWith(`.${h}`))?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
