@@ -47,3 +47,17 @@ describe('display timezone follows the user setting', () => {
     setDisplayTimezone('Asia/Kolkata');
   });
 });
+
+describe('week boundary for list grouping (Monday 00:00, display timezone)', () => {
+  it('matches the server: Monday 00:30 IST is a new week; Sunday is the previous one', async () => {
+    const { weekStart, isThisWeek } = await import('../src/lib/format');
+    const monday0030Ist = new Date('2026-10-04T19:00:00Z');
+    expect(weekStart(monday0030Ist)).toBe('2026-10-05');
+    expect(isThisWeek('2026-10-04', monday0030Ist)).toBe(false); // Sunday
+    expect(isThisWeek('2026-10-05', monday0030Ist)).toBe(true);
+    // Wednesday: the week still starts on that Monday, not 7 days back.
+    const wed = new Date('2026-10-07T06:00:00Z');
+    expect(weekStart(wed)).toBe('2026-10-05');
+    expect(isThisWeek('2026-10-02', wed)).toBe(false); // 5 days ago but last week
+  });
+});

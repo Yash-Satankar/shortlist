@@ -5,7 +5,7 @@ import { useApplications, useFollowUps } from '../api/hooks';
 import type { ApplicationListItem } from '../api/types';
 import { Icon } from '../components/Icon';
 import { Button, EmptyState, ErrorNote, Segmented, Sheet, SkeletonRows, StatusGlyph, StatusPill } from '../components/ui';
-import { daysAgo, formatDate, shortAge } from '../lib/format';
+import { daysAgo, formatDate, isThisWeek, shortAge } from '../lib/format';
 import { useVisibleGhosts } from '../lib/ghost';
 import { ACTIVE_STATUSES, CLOSED_STATUSES, sourceShort, STATUS_GROUPS, STATUS_SHORT } from '../lib/status';
 
@@ -265,9 +265,10 @@ function groupRows(rows: ApplicationListItem[], sort: SortId): Array<{ title: st
     { title: 'This week', rows: [] as ApplicationListItem[] },
     { title: 'Earlier', rows: [] as ApplicationListItem[] },
   ];
+  // "This week" = since Monday 00:00 in the user's timezone, the same week as the inbox stats.
   for (const r of rows) {
     const d = daysAgo(when(r));
-    buckets[d <= 0 ? 0 : d < 7 ? 1 : 2]!.rows.push(r);
+    buckets[d <= 0 ? 0 : isThisWeek(when(r)) ? 1 : 2]!.rows.push(r);
   }
   return buckets.filter((b) => b.rows.length);
 }

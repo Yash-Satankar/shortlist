@@ -40,10 +40,23 @@ export function formatDateTime(value: string): string {
 
 const zonedDate = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 
-/** Calendar days between a date/instant and today, both in IST (not rolling 24h windows). */
+/** Calendar days between a date/instant and today, both in the display timezone (not rolling 24h windows). */
 export function daysAgo(value: string, now = new Date()): number {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : zonedDate(new Date(value));
   return Math.round((Date.parse(zonedDate(now)) - Date.parse(day)) / 86_400_000);
+}
+
+/** Monday of the current week (YYYY-MM-DD) in the display timezone; same boundary as /api/stats. */
+export function weekStart(now = new Date()): string {
+  const today = zonedDate(now);
+  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 = Sunday
+  return new Date(Date.parse(`${today}T12:00:00Z`) - ((weekday + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** True when a date/instant falls on or after this week's Monday (display timezone). */
+export function isThisWeek(value: string, now = new Date()): boolean {
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : zonedDate(new Date(value));
+  return day >= weekStart(now);
 }
 
 /** "today", "yesterday", "5d ago", "3w ago" (calendar days in IST) */
