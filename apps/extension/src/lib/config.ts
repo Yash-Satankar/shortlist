@@ -3,17 +3,31 @@ export const DEFAULT_API_ORIGIN: string = import.meta.env.VITE_API_ORIGIN ?? 'ht
 export const EXTENSION_VERSION: string = import.meta.env.VITE_EXTENSION_VERSION ?? '0.0.0';
 
 /** True only inside a real extension page (the popup can also be previewed as a plain page). */
-export const hasChrome = typeof chrome !== 'undefined' && !!chrome.storage?.local;
+export const hasChrome = () => typeof chrome !== 'undefined' && !!chrome.storage?.local;
+
+export interface Account {
+  email: string;
+  name: string | null;
+}
 
 export interface StoredState {
   apiOrigin?: string;
+  /** API token from pairing. Lives only in chrome.storage.local (this browser profile). */
   token?: string;
-  account?: { email: string; name: string | null };
+  account?: Account;
 }
 
 export async function readState(): Promise<StoredState> {
-  if (!hasChrome) return {};
+  if (!hasChrome()) return {};
   return (await chrome.storage.local.get(['apiOrigin', 'token', 'account'])) as StoredState;
+}
+
+export async function writeState(patch: Partial<StoredState>): Promise<void> {
+  if (hasChrome()) await chrome.storage.local.set(patch);
+}
+
+export async function clearConnection(): Promise<void> {
+  if (hasChrome()) await chrome.storage.local.remove(['token', 'account']);
 }
 
 export async function apiOrigin(): Promise<string> {

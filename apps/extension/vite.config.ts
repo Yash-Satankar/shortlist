@@ -3,7 +3,7 @@ import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
-import { buildManifest } from './src/manifest';
+import { buildManifest } from './src/manifest.ts';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
@@ -29,8 +29,8 @@ export default defineConfig(({ mode }) => {
   };
 
   return {
-    root: path.resolve(__dirname, 'src'),
-    publicDir: path.resolve(__dirname, 'public'),
+    root: path.resolve(import.meta.dirname, 'src'),
+    publicDir: path.resolve(import.meta.dirname, 'public'),
     plugins: [react(), tailwindcss(), manifest],
     define: {
       'import.meta.env.VITE_API_ORIGIN': JSON.stringify(apiOrigin),
@@ -38,13 +38,13 @@ export default defineConfig(({ mode }) => {
       __JST_DEV__: JSON.stringify(dev),
     },
     build: {
-      outDir: path.resolve(__dirname, 'dist'),
+      outDir: path.resolve(import.meta.dirname, 'dist'),
       emptyOutDir: true,
       sourcemap: dev,
       rollupOptions: {
         input: {
-          popup: path.resolve(__dirname, 'src/popup/index.html'),
-          background: path.resolve(__dirname, 'src/background.ts'),
+          popup: path.resolve(import.meta.dirname, 'src/popup/index.html'),
+          background: path.resolve(import.meta.dirname, 'src/background.ts'),
         },
         output: {
           entryFileNames: (chunk) => (chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js'),

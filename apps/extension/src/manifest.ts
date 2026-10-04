@@ -1,5 +1,5 @@
 // Relative import (not @jt/shared): this file is also loaded by vite.config.ts under plain Node.
-import { PRODUCT_DESCRIPTION, PRODUCT_NAME } from '../../../packages/shared/src/brand';
+import { PRODUCT_DESCRIPTION, PRODUCT_NAME } from '../../../packages/shared/src/brand.ts';
 
 /**
  * MV3 manifest, generated at build time so the name/version come from one place.
@@ -22,7 +22,7 @@ export function buildManifest(opts: { version: string; apiOrigin: string; dev: b
     },
     background: { service_worker: 'background.js', type: 'module' },
     permissions: ['storage', 'activeTab', 'scripting'],
-    host_permissions: [`${opts.apiOrigin}/*`, ...(opts.dev ? ['http://localhost:5173/*', 'http://localhost:3000/*'] : [])],
+    host_permissions: [...new Set([`${opts.apiOrigin}/*`, ...(opts.dev ? ['http://localhost:5173/*', 'http://localhost:3000/*'] : [])])],
     optional_host_permissions: [
       'https://*.linkedin.com/*',
       'https://*.naukri.com/*',
