@@ -47,6 +47,11 @@ export function createApp({ db }: { db: Db }) {
     res.json({ ok: true });
   });
 
+  // Public, non-sensitive settings the signed-out screens need (e.g. the login hint).
+  api.get('/config', (_req, res) => {
+    res.json({ sessionTtlDays: e.SESSION_TTL_DAYS });
+  });
+
   // Proxy diagnostics: how this server resolves the caller's own request. Behind
   // Railway (TRUST_PROXY=1) ip must be your public IP and protocol "https".
   api.get('/health/request', (req, res) => {

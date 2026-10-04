@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useLogin } from '../auth/useAuth';
+import { useLogin, usePublicConfig } from '../auth/useAuth';
 import { AppMark } from '../components/Icon';
 import { Button, Field, IconButton } from '../components/ui';
 import { useThemeSync } from '../lib/theme';
@@ -7,6 +7,7 @@ import { useThemeSync } from '../lib/theme';
 export function LoginPage() {
   useThemeSync();
   const login = useLogin();
+  const { sessionTtlDays } = usePublicConfig();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
@@ -45,7 +46,7 @@ export function LoginPage() {
           </Button>
         </form>
       </div>
-      <p className="hint mt-auto pt-8 pb-6 text-center md:mt-0">Stays signed in on this device for 30 days unless unused.</p>
+      <p className="hint mt-auto pt-8 pb-6 text-center md:mt-0">Stays signed in on this device for {sessionTtlDays} days unless unused.</p>
     </main>
   );
 }

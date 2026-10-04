@@ -12,6 +12,16 @@ export interface CurrentUser {
 
 const ME_KEY = ['auth', 'me'] as const;
 
+/** Public server settings for signed-out screens; falls back to the defaults until loaded. */
+export function usePublicConfig() {
+  const { data } = useQuery({
+    queryKey: ['config'],
+    queryFn: () => api<{ sessionTtlDays: number }>('/config'),
+    staleTime: Infinity,
+  });
+  return { sessionTtlDays: data?.sessionTtlDays ?? 30 };
+}
+
 export function useCurrentUser() {
   return useQuery({
     queryKey: ME_KEY,

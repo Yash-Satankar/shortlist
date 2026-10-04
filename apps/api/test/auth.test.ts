@@ -268,3 +268,11 @@ describe('health', () => {
     expect(res.body.error.code).toBe('not_found');
   });
 });
+
+describe('public config', () => {
+  it('exposes only the session length, without signing in', async () => {
+    const res = await request(app).get('/api/config');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ sessionTtlDays: 30 });
+  });
+});
