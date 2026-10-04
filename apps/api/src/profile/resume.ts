@@ -9,6 +9,25 @@ import { badRequest } from '../lib/http';
 
 export type ResumeKind = 'pdf' | 'docx';
 
+/** Canonical MIME for the sniffed type (the browser's claim isn't trusted). */
+export const RESUME_MIME: Record<ResumeKind, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+
+/** Original file name from the X-File-Name header: URL-decoded, path stripped, length-capped. */
+export function cleanFileName(header: string | undefined): string | null {
+  if (!header) return null;
+  let name = header;
+  try {
+    name = decodeURIComponent(header);
+  } catch {
+    // keep the raw header
+  }
+  name = name.split(/[\\/]/).pop()!.replace(/[\u0000-\u001f]/g, '').trim();
+  return name ? name.slice(0, 255) : null;
+}
+
 /** Sniffs the real type from magic bytes rather than trusting the file name/content-type. */
 export function detectResumeKind(buf: Buffer): ResumeKind | null {
   if (buf.subarray(0, 5).toString('latin1') === '%PDF-') return 'pdf';

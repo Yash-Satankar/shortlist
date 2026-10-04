@@ -3,14 +3,23 @@ import { eq } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
 import { profiles } from '../db/schema';
 
+export interface ResumeFile {
+  name: string | null;
+  size: number | null;
+  mimeType: string | null;
+  uploadedAt: Date | null;
+}
+
 export interface Profile extends ProfileAnswerValues {
   fullName: string | null;
   headline: string | null;
   resumeText: string | null;
   resumeUpdatedAt: Date | null;
+  /** Last uploaded file's metadata (null if the text was only ever typed/pasted). */
+  resumeFile: ResumeFile | null;
 }
 
-export type ProfilePatch = Partial<Omit<Profile, 'resumeUpdatedAt'>>;
+export type ProfilePatch = Partial<Omit<Profile, 'resumeUpdatedAt' | 'resumeFile'>>;
 
 const EMPTY: Profile = {
   fullName: null,
@@ -23,6 +32,7 @@ const EMPTY: Profile = {
   expectedCtc: null,
   resumeText: null,
   resumeUpdatedAt: null,
+  resumeFile: null,
 };
 
 export async function getProfile(db: DbOrTx, userId: string): Promise<Profile> {
@@ -39,6 +49,9 @@ export async function getProfile(db: DbOrTx, userId: string): Promise<Profile> {
     expectedCtc: row.expectedCtcEnc,
     resumeText: row.resumeText,
     resumeUpdatedAt: row.resumeUpdatedAt,
+    resumeFile: row.resumeUploadedAt
+      ? { name: row.resumeFileName, size: row.resumeFileSize, mimeType: row.resumeMimeType, uploadedAt: row.resumeUploadedAt }
+      : null,
   };
 }
 
@@ -87,4 +100,23 @@ export function profileAnswerItems(profile: Profile): ProfileAnswerItem[] {
       ? []
       : [{ id: `profile:${f.key}` as const, origin: 'profile' as const, profileField: f.key, question: f.question, answer, sensitive: f.sensitive }];
   });
+}
+
+/** Saves extracted resume text plus the uploaded file's metadata (never the file). */
+export async function saveUploadedResume(
+  db: DbOrTx,
+  userId: string,
+  input: { text: string; fileName: string | null; size: number; mimeType: string },
+): Promise<Profile> {
+  const now = new Date();
+  const set = {
+    resumeText: input.text,
+    resumeUpdatedAt: now,
+    resumeFileName: input.fileName,
+    resumeFileSize: input.size,
+    resumeMimeType: input.mimeType,
+    resumeUploadedAt: now,
+  };
+  await db.insert(profiles).values({ userId, ...set }).onConflictDoUpdate({ target: profiles.userId, set });
+  return getProfile(db, userId);
 }

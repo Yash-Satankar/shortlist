@@ -3,8 +3,8 @@ import { z } from 'zod';
 import type { Db } from '../db/client';
 import { requireSession } from '../auth/middleware';
 import { badRequest, parse } from '../lib/http';
-import { extractResumeText } from './resume';
-import { getProfile, updateProfile } from './service';
+import { cleanFileName, extractResumeText, RESUME_MIME } from './resume';
+import { getProfile, saveUploadedResume, updateProfile } from './service';
 
 const text = (max: number) =>
   z
@@ -45,7 +45,12 @@ export function profileRouter(db: Db): Router {
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw badRequest('Upload the resume file as the request body');
     const { kind, text, pages } = await extractResumeText(req.body);
     if (!text) throw badRequest('No text found in that file (is it a scanned image?)');
-    const profile = await updateProfile(db, req.auth!.userId, { resumeText: text });
+    const profile = await saveUploadedResume(db, req.auth!.userId, {
+      text,
+      fileName: cleanFileName(req.get('x-file-name')),
+      size: req.body.length,
+      mimeType: RESUME_MIME[kind],
+    });
     res.json({ profile, extracted: { kind, pages, characters: text.length } });
   });
 

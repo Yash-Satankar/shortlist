@@ -83,6 +83,11 @@ export const profiles = pgTable('profiles', {
   expectedCtcEnc: encryptedText('expected_ctc_enc'),
   resumeText: text('resume_text'),
   resumeUpdatedAt: timestamp('resume_updated_at', { withTimezone: true }),
+  /** Metadata of the last uploaded resume file. The file itself is never stored. */
+  resumeFileName: text('resume_file_name'),
+  resumeFileSize: integer('resume_file_size'),
+  resumeMimeType: text('resume_mime_type'),
+  resumeUploadedAt: timestamp('resume_uploaded_at', { withTimezone: true }),
   updatedAt: updatedAt(),
 });
 

@@ -152,6 +152,8 @@ export interface Profile {
   expectedCtc: string | null;
   resumeText: string | null;
   resumeUpdatedAt: string | null;
+  /** Metadata of the last uploaded file (stored, not displayed). */
+  resumeFile: { name: string | null; size: number | null; mimeType: string | null; uploadedAt: string } | null;
 }
 
 export interface Stats {

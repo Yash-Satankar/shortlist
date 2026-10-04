@@ -57,6 +57,13 @@
       "when": 1791051791218,
       "tag": "0007_ghost_dismissed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791052358779,
+      "tag": "0008_resume_metadata",
+      "breakpoints": true
     }
   ]
 }

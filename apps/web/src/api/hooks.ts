@@ -198,7 +198,8 @@ export function useUploadResume() {
       api<{ profile: Profile; extracted: { kind: 'pdf' | 'docx'; pages?: number; characters: number } }>('/profile/resume', {
         method: 'POST',
         body: file,
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        // The server stores the name/size/type as metadata (never the file itself).
+        headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
       }),
     onSuccess: ({ profile }) => qc.setQueryData(keys.profile, profile),
   });
