@@ -115,7 +115,7 @@ export const jdSchema = z.object({
 export const answersReplaceSchema = z.object({ answers: z.array(answerInput).max(100) });
 
 export const contactSchema = z.object({
-  name: z.string().trim().min(1).max(200),
+  name: text(200),
   role: z.enum(CONTACT_ROLES).default('recruiter'),
   email: text(254),
   phone: text(50),

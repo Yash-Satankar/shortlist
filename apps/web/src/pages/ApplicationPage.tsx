@@ -740,12 +740,15 @@ function DetailsTab({ app }: { app: ApplicationDetail }) {
     e.preventDefault();
     try {
       if (Object.keys(changed).length) await update.mutateAsync(changed);
-      if (recruiterChanged && (rec.name.trim() || recruiter)) {
+      // Name is optional server-side: a recruiter known only by email/phone is still saved,
+      // and nothing invents a placeholder name.
+      const anyRecruiterField = rec.name.trim() || rec.email.trim() || rec.reach.trim();
+      if (recruiterChanged && (anyRecruiterField || recruiter)) {
         const reach = rec.reach.trim();
         const isUrl = /linkedin\.com|^https?:/i.test(reach);
         await saveRecruiter.mutateAsync({
           id: recruiter?.id,
-          name: rec.name.trim() || recruiter?.name || 'Recruiter',
+          name: rec.name.trim() || null,
           email: rec.email.trim() || null,
           phone: reach && !isUrl ? reach : null,
           linkedinUrl: reach && isUrl ? reach : null,

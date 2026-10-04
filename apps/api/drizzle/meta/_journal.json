@@ -71,6 +71,13 @@
       "when": 1791090700190,
       "tag": "0009_relocation_split",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791090922192,
+      "tag": "0010_contact_name_optional",
+      "breakpoints": true
     }
   ]
 }

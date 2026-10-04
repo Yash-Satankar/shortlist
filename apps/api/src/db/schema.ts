@@ -289,7 +289,8 @@ export const contacts = pgTable(
     userId: userId(),
     companyId: uuid('company_id').references(() => companies.id, { onDelete: 'set null' }),
     role: contactRole('role').notNull().default('recruiter'),
-    nameEnc: encryptedText('name_enc').notNull(),
+    /** Optional: a recruiter is often known only by email or LinkedIn at first. */
+    nameEnc: encryptedText('name_enc'),
     emailEnc: encryptedText('email_enc'),
     phoneEnc: encryptedText('phone_enc'),
     linkedinUrlEnc: encryptedText('linkedin_url_enc'),

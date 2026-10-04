@@ -86,7 +86,7 @@ export interface Answer {
 export interface Contact {
   id: string;
   role: ContactRole;
-  name: string;
+  name: string | null;
   email: string | null;
   phone: string | null;
   linkedinUrl: string | null;

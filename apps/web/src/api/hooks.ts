@@ -268,7 +268,7 @@ export function useRevokeSession() {
 // ---------------------------------------------------------------- recruiter contact
 
 export interface ContactInput {
-  name: string;
+  name: string | null;
   email: string | null;
   phone: string | null;
   linkedinUrl: string | null;

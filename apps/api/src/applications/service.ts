@@ -495,7 +495,7 @@ export async function addContact(
   db: Db,
   userId: string,
   applicationId: string,
-  input: { name: string; role: (typeof contacts.$inferInsert)['role']; email?: string | null; phone?: string | null; linkedinUrl?: string | null; notes?: string | null },
+  input: { name?: string | null; role: (typeof contacts.$inferInsert)['role']; email?: string | null; phone?: string | null; linkedinUrl?: string | null; notes?: string | null },
 ) {
   return db.transaction(async (tx) => {
     const app = await loadOwned(tx, userId, applicationId);
@@ -505,7 +505,7 @@ export async function addContact(
         userId,
         companyId: app.companyId,
         role: input.role,
-        nameEnc: input.name,
+        nameEnc: input.name ?? null,
         emailEnc: input.email ?? null,
         phoneEnc: input.phone ?? null,
         linkedinUrlEnc: input.linkedinUrl ?? null,
@@ -521,7 +521,7 @@ export async function updateContact(
   db: Db,
   userId: string,
   contactId: string,
-  input: Partial<{ name: string; role: (typeof contacts.$inferInsert)['role']; email: string | null; phone: string | null; linkedinUrl: string | null; notes: string | null }>,
+  input: Partial<{ name: string | null; role: (typeof contacts.$inferInsert)['role']; email: string | null; phone: string | null; linkedinUrl: string | null; notes: string | null }>,
 ) {
   const set: Partial<typeof contacts.$inferInsert> = {};
   if (input.name !== undefined) set.nameEnc = input.name;

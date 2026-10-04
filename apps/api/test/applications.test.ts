@@ -410,6 +410,26 @@ describe('list, filters and search', () => {
   });
 });
 
+describe('recruiter name is optional', () => {
+  it('saves a recruiter known only by email, with name null (no placeholder)', async () => {
+    const { id } = await create({});
+    const res = await post(`/api/applications/${id}/contacts`, { email: 'hr@acme.com' });
+    expect(res.status).toBe(201);
+    expect(res.body.contact).toMatchObject({ name: null, email: 'hr@acme.com', role: 'recruiter' });
+    const raw = await db.execute<{ name_enc: string | null; email_enc: string }>(sql`select name_enc, email_enc from contacts`);
+    expect(raw.rows[0]).toMatchObject({ name_enc: null });
+    expect(raw.rows[0]!.email_enc).toMatch(/^v1\./);
+  });
+
+  it('a name can be cleared back to null, and a set name stays encrypted', async () => {
+    const { id } = await create({});
+    const { contact } = (await post(`/api/applications/${id}/contacts`, { name: 'Priya R' })).body;
+    expect((await db.execute<{ name_enc: string }>(sql`select name_enc from contacts`)).rows[0]!.name_enc).toMatch(/^v1\./);
+    const cleared = await agent.patch(`/api/contacts/${contact.id}`).set('Origin', ORIGIN).send({ name: '' });
+    expect(cleared.body.contact.name).toBeNull();
+  });
+});
+
 describe('update, JD snapshots, answers, contacts', () => {
   it('updates fields and re-canonicalizes the URL', async () => {
     const { id } = await create({});
