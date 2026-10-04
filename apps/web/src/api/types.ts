@@ -146,7 +146,10 @@ export interface Profile {
   headline: string | null;
   totalExperienceYears: number | null;
   noticePeriodDays: number | null;
+  /** Composed by the server from relocationWilling + relocationPreference, e.g. "Yes (Hyderabad preferred)". */
   relocation: string | null;
+  relocationWilling: boolean | null;
+  relocationPreference: string | null;
   currentLocation: string | null;
   currentCtc: string | null;
   expectedCtc: string | null;

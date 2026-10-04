@@ -1,4 +1,11 @@
-import { formatProfileAnswer, PROFILE_ANSWER_FIELDS, type ProfileAnswerKey, type ProfileAnswerValues } from '@jt/shared';
+import {
+  composeRelocation,
+  formatProfileAnswer,
+  parseRelocation,
+  PROFILE_ANSWER_FIELDS,
+  type ProfileAnswerKey,
+  type ProfileAnswerValues,
+} from '@jt/shared';
 import { eq } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
 import { profiles } from '../db/schema';
@@ -13,6 +20,9 @@ export interface ResumeFile {
 export interface Profile extends ProfileAnswerValues {
   fullName: string | null;
   headline: string | null;
+  /** Stored relocation fields; `relocation` (from ProfileAnswerValues) is these composed as text. */
+  relocationWilling: boolean | null;
+  relocationPreference: string | null;
   resumeText: string | null;
   resumeUpdatedAt: Date | null;
   /** Last uploaded file's metadata (null if the text was only ever typed/pasted). */
@@ -27,6 +37,8 @@ const EMPTY: Profile = {
   totalExperienceYears: null,
   noticePeriodDays: null,
   relocation: null,
+  relocationWilling: null,
+  relocationPreference: null,
   currentLocation: null,
   currentCtc: null,
   expectedCtc: null,
@@ -43,7 +55,9 @@ export async function getProfile(db: DbOrTx, userId: string): Promise<Profile> {
     headline: row.headline,
     totalExperienceYears: row.totalExperienceYears === null ? null : Number(row.totalExperienceYears),
     noticePeriodDays: row.noticePeriodDays,
-    relocation: row.relocation,
+    relocation: composeRelocation({ willing: row.relocationWilling, preference: row.relocationPreference }),
+    relocationWilling: row.relocationWilling,
+    relocationPreference: row.relocationPreference,
     currentLocation: row.currentLocation,
     currentCtc: row.currentCtcEnc,
     expectedCtc: row.expectedCtcEnc,
@@ -64,7 +78,14 @@ function toColumns(patch: ProfilePatch): Partial<typeof profiles.$inferInsert> {
     set.totalExperienceYears = patch.totalExperienceYears === null ? null : String(patch.totalExperienceYears);
   }
   if (patch.noticePeriodDays !== undefined) set.noticePeriodDays = patch.noticePeriodDays;
-  if (patch.relocation !== undefined) set.relocation = patch.relocation;
+  // Relocation: the text form (importer, older clients) is parsed into the two stored fields.
+  if (patch.relocation !== undefined) {
+    const r = parseRelocation(patch.relocation);
+    set.relocationWilling = r.willing;
+    set.relocationPreference = r.preference;
+  }
+  if (patch.relocationWilling !== undefined) set.relocationWilling = patch.relocationWilling;
+  if (patch.relocationPreference !== undefined) set.relocationPreference = patch.relocationPreference;
   if (patch.currentLocation !== undefined) set.currentLocation = patch.currentLocation;
   if (patch.currentCtc !== undefined) set.currentCtcEnc = patch.currentCtc;
   if (patch.expectedCtc !== undefined) set.expectedCtcEnc = patch.expectedCtc;

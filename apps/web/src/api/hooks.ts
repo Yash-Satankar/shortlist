@@ -1,4 +1,4 @@
-import type { ApplicationStatus } from '@jt/shared';
+import { parseRelocation, type ApplicationStatus } from '@jt/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
@@ -183,7 +183,16 @@ export function checkDuplicates(input: { companyName: string; roleTitle: string;
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (patch: Partial<Profile>) => api<{ profile: Profile }>('/profile', { method: 'PATCH', json: patch }),
+    mutationFn: (patch: Partial<Profile>) => {
+      // The relocation row is one line of text ("Yes (Hyderabad preferred)"); the server
+      // stores it as willing + preference.
+      const { relocation, ...rest } = patch;
+      const body = relocation === undefined ? rest : (() => {
+        const r = parseRelocation(relocation);
+        return { ...rest, relocationWilling: r.willing, relocationPreference: r.preference };
+      })();
+      return api<{ profile: Profile }>('/profile', { method: 'PATCH', json: body });
+    },
     onSuccess: ({ profile }) => {
       qc.setQueryData(keys.profile, profile);
       void qc.invalidateQueries({ queryKey: keys.library });

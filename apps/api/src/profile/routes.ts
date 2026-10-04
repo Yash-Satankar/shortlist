@@ -21,6 +21,8 @@ export const profilePatchSchema = z
     totalExperienceYears: z.number().min(0).max(60).nullable(),
     noticePeriodDays: z.number().int().min(0).max(365).nullable(),
     relocation: text(300),
+    relocationWilling: z.boolean().nullable(),
+    relocationPreference: text(300),
     currentLocation: text(300),
     currentCtc: text(100),
     expectedCtc: text(100),

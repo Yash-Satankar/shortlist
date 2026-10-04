@@ -64,6 +64,13 @@
       "when": 1791052358779,
       "tag": "0008_resume_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791090700190,
+      "tag": "0009_relocation_split",
+      "breakpoints": true
     }
   ]
 }

@@ -78,7 +78,12 @@ export const profiles = pgTable('profiles', {
   currentLocation: text('current_location'),
   totalExperienceYears: numeric('total_experience_years', { precision: 4, scale: 1 }),
   noticePeriodDays: integer('notice_period_days'),
-  relocation: text('relocation'), // free text, e.g. "Yes (Hyderabad preferred)"
+  /** DEPRECATED (no longer written): the old free-text value, split into the two fields below. */
+  relocation: text('relocation'),
+  /** Willing to relocate: true / false / unknown (null). */
+  relocationWilling: boolean('relocation_willing'),
+  /** Optional detail, e.g. "Hyderabad preferred"; holds the raw text when it couldn't be parsed. */
+  relocationPreference: text('relocation_preference'),
   currentCtcEnc: encryptedText('current_ctc_enc'), // LPA, as entered
   expectedCtcEnc: encryptedText('expected_ctc_enc'),
   resumeText: text('resume_text'),
@@ -352,3 +357,13 @@ export const applicationAnswers = pgTable(
     index('application_answers_search_idx').using('gin', t.search),
   ],
 );
+
+/**
+ * Data migrations (TypeScript steps that need app code, e.g. the encryption key or shared
+ * parsers) applied by scripts/migrate.ts after the SQL migrations. One row per applied step.
+ */
+export const dataMigrations = pgTable('data_migrations', {
+  id: text('id').primaryKey(),
+  appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow(),
+  summary: text('summary'),
+});

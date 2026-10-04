@@ -306,7 +306,8 @@ describe('import into the database', () => {
       currentCtcEnc: '6 LPA (600000)',
       expectedCtcEnc: '14 LPA (1400000)',
       noticePeriodDays: 0,
-      relocation: 'Yes (Hyderabad preferred)',
+      relocationWilling: true,
+      relocationPreference: 'Hyderabad preferred',
       currentLocation: 'Indore, Madhya Pradesh 452001',
       totalExperienceYears: '3.0',
     });
