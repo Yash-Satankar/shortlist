@@ -1,3 +1,4 @@
+export * from './brand';
 export * from './duplicates';
 export * from './enums';
 export * from './lpa';

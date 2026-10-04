@@ -1,0 +1,12 @@
+/* The popup is built from the web app's design tokens and component styles, unchanged. */
+@import '../../../web/src/index.css';
+
+/* Tailwind scans these for utility classes used by the shared components and the popup. */
+@source '../../../web/src/components';
+@source '../';
+
+html,
+body {
+  width: 360px;
+  min-height: 0;
+}

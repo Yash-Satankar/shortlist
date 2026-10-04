@@ -21,7 +21,9 @@
     "user:create": "pnpm --filter @jt/api user:create",
     "user:password": "pnpm --filter @jt/api user:password",
     "keygen": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
-    "import:xlsx": "pnpm --filter @jt/api import:xlsx"
+    "import:xlsx": "pnpm --filter @jt/api import:xlsx",
+    "build:extension": "pnpm --filter @jt/extension build",
+    "dev:extension": "pnpm --filter @jt/extension dev"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

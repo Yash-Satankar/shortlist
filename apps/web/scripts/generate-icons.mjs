@@ -122,4 +122,8 @@ writeFileSync(
 </svg>
 `,
 );
-console.log('icons written to public/');
+// Browser extension icons (toolbar + extensions page + store), same mark.
+const ext = new URL('../../extension/public/icons/', import.meta.url);
+mkdirSync(ext, { recursive: true });
+for (const size of [16, 32, 48, 128]) writeFileSync(new URL(`icon-${size}.png`, ext), render(size));
+console.log('icons written to public/ and ../extension/public/icons/');
