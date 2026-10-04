@@ -199,6 +199,40 @@ describe('CSRF / same-origin guard', () => {
   });
 });
 
+describe('extension pairing: a token can revoke itself (Disconnect)', () => {
+  it('revokes only the calling token; others keep working', async () => {
+    const agent = await login();
+    const a = (await agent.post('/api/auth/tokens').set('Origin', ORIGIN).send({ name: 'Chrome on Windows' })).body.token;
+    const b = (await agent.post('/api/auth/tokens').set('Origin', ORIGIN).send({ name: 'Edge on Windows' })).body.token;
+
+    expect((await request(app).post('/api/auth/tokens/self/revoke').set('Authorization', `Bearer ${a.token}`)).status).toBe(204);
+    expect((await request(app).get('/api/auth/me').set('Authorization', `Bearer ${a.token}`)).status).toBe(401);
+    expect((await request(app).get('/api/auth/me').set('Authorization', `Bearer ${b.token}`)).status).toBe(200);
+
+    const list = (await agent.get('/api/auth/tokens')).body.tokens;
+    expect(list.find((t: { id: string }) => t.id === a.id).revokedAt).not.toBeNull();
+    expect(list.find((t: { id: string }) => t.id === b.id)).toMatchObject({ name: 'Edge on Windows', revokedAt: null });
+  });
+
+  it('a browser session cannot use it', async () => {
+    const agent = await login();
+    expect((await agent.post('/api/auth/tokens/self/revoke').set('Origin', ORIGIN)).status).toBe(403);
+  });
+
+  it("one user's token never affects another user's tokens", async () => {
+    const agent = await login();
+    const mine = (await agent.post('/api/auth/tokens').set('Origin', ORIGIN).send({ name: 'mine' })).body.token;
+    await createUser(db, { email: 'other@example.com', password: PASSWORD });
+    const other = request.agent(app);
+    await other.post('/api/auth/login').set('Origin', ORIGIN).send({ email: 'other@example.com', password: PASSWORD }).expect(200);
+    const theirs = (await other.post('/api/auth/tokens').set('Origin', ORIGIN).send({ name: 'theirs' })).body.token;
+
+    await request(app).post('/api/auth/tokens/self/revoke').set('Authorization', `Bearer ${theirs.token}`).expect(204);
+    expect((await request(app).get('/api/auth/me').set('Authorization', `Bearer ${mine.token}`)).status).toBe(200);
+    expect((await other.get('/api/auth/tokens')).body.tokens.map((t: { name: string }) => t.name)).toEqual(['theirs']);
+  });
+});
+
 describe('API tokens (extension)', () => {
   it('creates a token once, authenticates with it, and stops working after revoke', async () => {
     const agent = await login();

@@ -120,6 +120,13 @@ export function authRouter(db: Db): Router {
     res.status(204).end();
   });
 
+  // "Disconnect" in the extension: a token may revoke itself (and nothing else).
+  router.post('/tokens/self/revoke', requireAuth, async (req, res) => {
+    if (req.auth!.via !== 'token' || !req.auth!.tokenId) throw forbidden('Only an API token can revoke itself');
+    await revokeApiToken(db, req.auth!.userId, req.auth!.tokenId);
+    res.status(204).end();
+  });
+
   return router;
 }
 
