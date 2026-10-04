@@ -1,6 +1,22 @@
 import type { EventSource } from '@jt/shared';
 
-const TZ = 'Asia/Kolkata';
+/**
+ * Display timezone: the signed-in user's setting (from /auth/me), default Asia/Kolkata.
+ * Module-level so these plain helpers stay hook-free; set once the user is known.
+ */
+let TZ = 'Asia/Kolkata';
+
+export function setDisplayTimezone(timezone: string | null | undefined) {
+  if (!timezone || timezone === TZ) return;
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: timezone }); // throws on an unknown zone
+    TZ = timezone;
+  } catch {
+    // keep the previous zone
+  }
+}
+
+export const displayTimezone = () => TZ;
 
 /** "30 Sep" (or "30 Sep 2025" outside the current year). Date-only strings are never TZ-shifted. */
 export function formatDate(value: string | null | undefined): string {
@@ -22,12 +38,12 @@ export function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: TZ });
 }
 
-const istDate = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+const zonedDate = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 
 /** Calendar days between a date/instant and today, both in IST (not rolling 24h windows). */
 export function daysAgo(value: string, now = new Date()): number {
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : istDate(new Date(value));
-  return Math.round((Date.parse(istDate(now)) - Date.parse(day)) / 86_400_000);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : zonedDate(new Date(value));
+  return Math.round((Date.parse(zonedDate(now)) - Date.parse(day)) / 86_400_000);
 }
 
 /** "today", "yesterday", "5d ago", "3w ago" (calendar days in IST) */

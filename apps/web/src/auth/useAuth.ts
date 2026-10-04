@@ -1,6 +1,7 @@
 import type { ResolvedUserSettings } from '@jt/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../api/client';
+import { setDisplayTimezone } from '../lib/format';
 
 export interface CurrentUser {
   id: string;
@@ -16,7 +17,9 @@ export function useCurrentUser() {
     queryKey: ME_KEY,
     queryFn: async () => {
       try {
-        return (await api<{ user: CurrentUser }>('/auth/me')).user;
+        const { user } = await api<{ user: CurrentUser }>('/auth/me');
+        setDisplayTimezone(user.settings.timezone);
+        return user;
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) return null;
         throw err;
@@ -31,7 +34,10 @@ export function useLogin() {
   return useMutation({
     mutationFn: (input: { email: string; password: string }) =>
       api<{ user: CurrentUser }>('/auth/login', { method: 'POST', json: input }),
-    onSuccess: ({ user }) => qc.setQueryData(ME_KEY, user),
+    onSuccess: ({ user }) => {
+      setDisplayTimezone(user.settings.timezone);
+      qc.setQueryData(ME_KEY, user);
+    },
   });
 }
 

@@ -32,3 +32,18 @@ describe('formatEventTime', () => {
     expect(formatEventTime('2026-10-03T05:04:00.000Z')).toMatch(/10:34\s?am/i);
   });
 });
+
+describe('display timezone follows the user setting', () => {
+  it('defaults to Asia/Kolkata and switches to the user zone; ignores unknown zones', async () => {
+    const { setDisplayTimezone, displayTimezone, relativeDays } = await import('../src/lib/format');
+    expect(displayTimezone()).toBe('Asia/Kolkata');
+    // 4 Oct 19:00 UTC: already Monday 5 Oct in India, still Sunday 4 Oct in London.
+    const now = new Date('2026-10-04T19:00:00Z');
+    expect(relativeDays('2026-10-04', now)).toBe('yesterday');
+    setDisplayTimezone('Europe/London');
+    expect(relativeDays('2026-10-04', now)).toBe('today');
+    setDisplayTimezone('Not/AZone');
+    expect(displayTimezone()).toBe('Europe/London');
+    setDisplayTimezone('Asia/Kolkata');
+  });
+});
