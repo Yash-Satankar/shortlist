@@ -16,8 +16,10 @@ import { useLogout } from '../auth/useAuth';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
 import { Button, ErrorNote, Field, IconButton, SectionLabel, Segmented, Spinner, useToast } from '../components/ui';
+import { describeDevice } from '../lib/device';
 import { formatDate, relativeDays } from '../lib/format';
 import { useThemePref, type ThemePref } from '../lib/theme';
+import { ExtensionSection } from './settings/ExtensionSection';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
   const logout = useLogout();
@@ -35,6 +37,8 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
 
       <SectionLabel className="pt-[22px]">Resume</SectionLabel>
       <div className="px-4">{profile.data && <ResumeEditor profile={profile.data} />}</div>
+
+      <ExtensionSection />
 
       <SectionLabel className="pt-[22px]">Appearance</SectionLabel>
       <div className="px-4">
@@ -404,12 +408,6 @@ function PasswordRow() {
 // ---------------------------------------------------------------- devices
 
 /** "Android · Chrome" from a user-agent string; good enough to recognise your own devices. */
-function describeDevice(ua: string | null): { name: string; mobile: boolean } {
-  if (!ua) return { name: 'Unknown device', mobile: false };
-  const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
-  const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
-  return { name: os ? `${os} · ${browser}` : browser, mobile: /Android|iPhone|iPad|Mobile/.test(ua) };
-}
 
 function Devices() {
   const sessions = useSessions();

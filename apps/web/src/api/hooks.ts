@@ -297,3 +297,33 @@ export function useSaveRecruiter(applicationId: string) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.application(applicationId) }),
   });
 }
+
+// ---------------------------------------------------------------- browser extension pairing
+
+export interface ApiTokenRow {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export const useApiTokens = () =>
+  useQuery({ queryKey: ['api-tokens'], queryFn: async () => (await api<{ tokens: ApiTokenRow[] }>('/auth/tokens')).tokens });
+
+export function useCreateApiToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api<{ token: ApiTokenRow & { token: string } }>('/auth/tokens', { method: 'POST', json: { name } }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['api-tokens'] }),
+  });
+}
+
+export function useRevokeApiToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/auth/tokens/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['api-tokens'] }),
+  });
+}
