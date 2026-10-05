@@ -1,5 +1,5 @@
 import type { ResolvedUserSettings, UserSettings } from '@jt/shared';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { env } from '../config/env';
 import type { Db, DbOrTx } from '../db/client';
 import { profiles, sessions, users } from '../db/schema';
@@ -21,9 +21,11 @@ export async function createUser(
 
   const passwordHash = await hashPassword(input.password);
   return db.transaction(async (tx) => {
+    // The first account on an instance is its admin.
+    const [{ n }] = (await tx.execute(sql`select count(*)::int as n from users`)).rows as [{ n: number }];
     const [user] = await tx
       .insert(users)
-      .values({ email, passwordHash, name: input.name ?? null })
+      .values({ email, passwordHash, name: input.name ?? null, role: n === 0 ? 'admin' : 'user' })
       .returning({ id: users.id, email: users.email });
     await tx.insert(profiles).values({ userId: user!.id, fullName: input.name ?? null });
     return user!;
@@ -62,6 +64,7 @@ export function resolveSettings(settings: UserSettings | null | undefined): Reso
     postInterviewFollowUpDays: settings?.postInterviewFollowUpDays ?? e.POST_INTERVIEW_FOLLOW_UP_DAYS,
     timezone: settings?.timezone ?? e.DEFAULT_TIMEZONE,
     features: settings?.features ?? {},
+    ai: settings?.ai ?? {},
   };
 }
 

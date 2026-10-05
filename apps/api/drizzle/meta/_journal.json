@@ -78,6 +78,13 @@
       "when": 1791090922192,
       "tag": "0010_contact_name_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791172697729,
+      "tag": "0011_llm_byok_and_roles",
+      "breakpoints": true
     }
   ]
 }

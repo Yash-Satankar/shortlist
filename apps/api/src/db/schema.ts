@@ -5,6 +5,8 @@ import {
   EVENT_DISPOSITIONS,
   EVENT_SOURCES,
   WORK_MODES,
+  type LlmProvider,
+  type LlmTask,
   type SignalConfidence,
   type UserSettings,
 } from '@jt/shared';
@@ -63,6 +65,8 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(), // stored lower-cased
   passwordHash: text('password_hash').notNull(),
   name: text('name'),
+  /** 'admin' may use instance-level AI keys and (later) manage the instance. The first user is admin. */
+  role: text('role').$type<'admin' | 'user'>().notNull().default('user'),
   settings: jsonb('settings').$type<UserSettings>().notNull().default({}),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -125,6 +129,65 @@ export const apiTokens = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('api_tokens_user_idx').on(t.userId)],
+);
+
+// ---------------------------------------------------------------- AI (bring your own key)
+
+/** A user's API key for one provider. Encrypted; only the last 4 characters are ever shown. */
+export const llmKeys = pgTable(
+  'llm_keys',
+  {
+    id: id(),
+    userId: userId(),
+    provider: text('provider').$type<LlmProvider>().notNull(),
+    /** openai_compatible only: the API base URL (…/v1). */
+    baseUrl: text('base_url'),
+    keyEnc: encryptedText('key_enc').notNull(),
+    keyLast4: text('key_last4').notNull(),
+    validatedAt: timestamp('validated_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex('llm_keys_user_provider_uq').on(t.userId, t.provider)],
+);
+
+/** One result per (user, content hash): the same input never pays twice. Encrypted at rest. */
+export const llmCache = pgTable(
+  'llm_cache',
+  {
+    id: id(),
+    userId: userId(),
+    task: text('task').$type<LlmTask>().notNull(),
+    contentHash: text('content_hash').notNull(),
+    provider: text('provider').$type<LlmProvider>().notNull(),
+    model: text('model').notNull(),
+    resultEnc: encryptedText('result_enc').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('llm_cache_user_hash_uq').on(t.userId, t.contentHash), index('llm_cache_expires_idx').on(t.expiresAt)],
+);
+
+/** Every call (and cache hit), for the usage view and the monthly cap. Never stores prompts or keys. */
+export const llmUsage = pgTable(
+  'llm_usage',
+  {
+    id: id(),
+    userId: userId(),
+    task: text('task').$type<LlmTask>().notNull(),
+    provider: text('provider').$type<LlmProvider>().notNull(),
+    model: text('model').notNull(),
+    keySource: text('key_source').$type<'user' | 'instance'>().notNull(),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    /** Estimated; null when the model's price is unknown. */
+    costUsd: doublePrecision('cost_usd'),
+    cached: boolean('cached').notNull().default(false),
+    ok: boolean('ok').notNull(),
+    errorCode: text('error_code'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('llm_usage_user_created_idx').on(t.userId, t.createdAt)],
 );
 
 // ---------------------------------------------------------------- core tracker
