@@ -1,0 +1,14 @@
+{
+  "adapter": "greenhouse",
+  "roleTitle": "Site Reliability Engineer",
+  "companyName": "Vandelay Industries",
+  "location": "Remote - India",
+  "workMode": "remote",
+  "jobUrl": "https://job-boards.greenhouse.io/vandelay/jobs/7000001",
+  "externalId": "7000001",
+  "source": "greenhouse",
+  "applyOnSite": true,
+  "missing": [],
+  "jdIncludes": ["Vandelay Industries imports and exports latex", "Responsibilities", "• Lead incident reviews"],
+  "jdExcludes": ["First Name", "Submit application"]
+}

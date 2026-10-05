@@ -1,0 +1,13 @@
+{
+  "adapter": "workday",
+  "roleTitle": "Software Engineer II",
+  "companyName": "Initech",
+  "location": "Bengaluru, India · Chennai, India",
+  "workMode": "hybrid",
+  "externalId": "R-20451",
+  "source": "workday",
+  "jobUrl": "https://initech.wd5.myworkdayjobs.com/Careers/job/Bengaluru-India/Software-Engineer-II_R-20451",
+  "missing": [],
+  "jdIncludes": ["Initech makes TPS report software.", "• 3+ years of Python"],
+  "jdExcludes": ["Sign In", "time type"]
+}

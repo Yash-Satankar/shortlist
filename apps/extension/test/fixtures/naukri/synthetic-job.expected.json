@@ -1,0 +1,16 @@
+{
+  "adapter": "naukri",
+  "roleTitle": "Java Developer",
+  "companyName": "Umbrella Systems",
+  "location": "Bengaluru, Hyderabad",
+  "workMode": "hybrid",
+  "experienceAsked": "3 - 6 years",
+  "salaryListed": "12-18 Lacs P.A.",
+  "externalId": "031025500123",
+  "source": "naukri",
+  "jobUrl": "https://www.naukri.com/job-listings-java-developer-umbrella-systems-bengaluru-3-to-6-years-031025500123",
+  "applyOnSite": true,
+  "missing": [],
+  "jdIncludes": ["Umbrella Systems is hiring Java developers", "• Kafka and PostgreSQL"],
+  "jdExcludes": ["Reviews", "My Naukri"]
+}

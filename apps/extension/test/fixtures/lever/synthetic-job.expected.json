@@ -1,0 +1,14 @@
+{
+  "adapter": "lever",
+  "roleTitle": "Backend Engineer, Payments",
+  "companyName": "Wonka Industries",
+  "location": "Bengaluru",
+  "workMode": "hybrid",
+  "jobUrl": "https://jobs.lever.co/wonka/1f2e3d4c-5b6a-4987-8a1b-2c3d4e5f6a7b",
+  "externalId": "1f2e3d4c-5b6a-4987-8a1b-2c3d4e5f6a7b",
+  "source": "lever",
+  "applyOnSite": true,
+  "missing": [],
+  "jdIncludes": ["moves chocolate money", "What you'll need", "• Idempotent payment flows", "golden tickets"],
+  "jdExcludes": ["Apply for this job"]
+}

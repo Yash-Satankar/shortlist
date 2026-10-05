@@ -1,0 +1,11 @@
+{
+  "adapter": "generic",
+  "roleTitle": "Senior QA Engineer",
+  "companyName": "Umbrella Corp",
+  "location": null,
+  "jobUrl": "https://jobs.umbrella.example/positions/412",
+  "missing": [],
+  "origins": { "roleTitle": "meta", "companyName": "meta", "jd": "heuristic" },
+  "jdIncludes": ["lead test automation", "• Playwright or Cypress"],
+  "jdExcludes": ["All rights reserved", "All jobs"]
+}

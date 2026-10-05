@@ -1,0 +1,14 @@
+{
+  "adapter": "linkedin",
+  "roleTitle": "Senior Backend Engineer",
+  "companyName": "Acme Robotics",
+  "location": "Bengaluru, Karnataka, India",
+  "workMode": "hybrid",
+  "jobUrl": "https://www.linkedin.com/jobs/view/4000000001/",
+  "externalId": "4000000001",
+  "source": "linkedin",
+  "applyOnSite": true,
+  "missing": [],
+  "jdIncludes": ["Acme Robotics builds warehouse robots.", "• Design and run Node.js services on Postgres", "• 5+ years building backend systems"],
+  "jdExcludes": ["About the job", "Meet the hiring team", "Messaging", "Test User"]
+}

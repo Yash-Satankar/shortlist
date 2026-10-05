@@ -1,0 +1,13 @@
+{
+  "adapter": "linkedin",
+  "roleTitle": "Platform Engineer",
+  "companyName": "Globex",
+  "location": "Pune, Maharashtra, India",
+  "workMode": "remote",
+  "jobUrl": "https://www.linkedin.com/jobs/view/4000000002/",
+  "externalId": "4000000002",
+  "applyOnSite": false,
+  "missing": [],
+  "jdIncludes": ["Globex runs the platform team", "• Kubernetes and Terraform"],
+  "jdExcludes": ["Data Engineer", "Initech"]
+}

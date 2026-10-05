@@ -1,0 +1,12 @@
+{
+  "adapter": "generic",
+  "roleTitle": "ML Engineer",
+  "companyName": "Stark Industries",
+  "location": "Mumbai, India · Remote",
+  "salaryListed": "INR 2500000–4000000 per year",
+  "experienceAsked": "3+ years",
+  "jobUrl": "https://careers.stark.example/openings/ml-engineer",
+  "source": null,
+  "missing": [],
+  "jdIncludes": ["Train models for suits.", "• Distributed training"]
+}
