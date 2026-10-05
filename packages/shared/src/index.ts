@@ -1,6 +1,7 @@
 export * from './brand';
 export * from './duplicates';
 export * from './enums';
+export * from './features';
 export * from './lpa';
 export * from './normalize';
 export * from './profile';

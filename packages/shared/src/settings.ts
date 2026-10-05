@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { userFeaturesSchema } from './features';
 
 /**
  * Per-user settings stored in users.settings (jsonb). Every field is optional:
@@ -11,6 +12,8 @@ export const userSettingsSchema = z
     followUpAfterDays: z.number().int().min(1).max(365),
     postInterviewFollowUpDays: z.number().int().min(1).max(365),
     timezone: z.string().min(1),
+    /** Per-user feature switches within what the instance offers (missing = on). */
+    features: userFeaturesSchema,
   })
   .partial();
 
