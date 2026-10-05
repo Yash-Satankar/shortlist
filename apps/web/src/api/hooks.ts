@@ -1,4 +1,4 @@
-import { parseLpa, parseRelocation, type ApplicationStatus, type Feature, type FeatureState, type UserFeatures } from '@jt/shared';
+import { parseLpa, parseRelocation, type ApplicationStatus, type Feature, type FeatureState, type LlmProvider, type LlmTask, type ModelChoice, type UserFeatures } from '@jt/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
@@ -350,3 +350,58 @@ export function useSetFeatures() {
     onSuccess: (data) => qc.setQueryData(['features'], data),
   });
 }
+
+// ---------------------------------------------------------------- AI (bring your own key)
+
+export interface AiKeyRow {
+  provider: LlmProvider;
+  baseUrl: string | null;
+  last4: string;
+  validatedAt: string | null;
+  createdAt: string;
+}
+
+export interface AiOverview {
+  keys: AiKeyRow[];
+  /** Admins: providers covered by the server's own keys. */
+  instanceProviders: LlmProvider[];
+  settings: { models: Partial<Record<LlmTask, ModelChoice>>; monthlyCap: number; currency: string; usdRate: number };
+  /** What each task runs on right now (null = no usable key). */
+  tasks: Record<LlmTask, { provider: LlmProvider; model: string; keySource: 'user' | 'instance' } | null>;
+  defaults: Record<Exclude<LlmProvider, 'openai_compatible'>, Record<LlmTask, string>>;
+}
+
+export interface AiUsageSummary {
+  month: string;
+  calls: number;
+  cachedHits: number;
+  failed: number;
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+  unpricedCalls: number;
+  cap: number;
+  currency: string;
+}
+
+export const useAi = (enabled = true) => useQuery({ queryKey: ['ai'], queryFn: () => api<AiOverview>('/ai'), enabled, retry: false });
+export const useAiUsage = (enabled = true) =>
+  useQuery({ queryKey: ['ai-usage'], queryFn: () => api<{ mine: AiUsageSummary; instance: (AiUsageSummary & { activeUsers: number; instanceKeyCalls: number }) | null }>('/ai/usage'), enabled });
+
+function useAiMutation<V>(fn: (v: V) => Promise<AiOverview | void>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (data) => {
+      if (data) qc.setQueryData(['ai'], data);
+      else void qc.invalidateQueries({ queryKey: ['ai'] });
+      void qc.invalidateQueries({ queryKey: ['features'] }); // a key turns AI features on/off
+      void qc.invalidateQueries({ queryKey: ['ai-usage'] });
+    },
+  });
+}
+
+export const useSaveAiKey = () =>
+  useAiMutation((v: { provider: LlmProvider; apiKey: string; baseUrl?: string }) => api<AiOverview>(`/ai/keys/${v.provider}`, { method: 'PUT', json: { apiKey: v.apiKey, baseUrl: v.baseUrl || null } }));
+export const useDeleteAiKey = () => useAiMutation((provider: LlmProvider) => api<void>(`/ai/keys/${provider}`, { method: 'DELETE' }));
+export const useUpdateAiSettings = () => useAiMutation((patch: Partial<AiOverview['settings']>) => api<AiOverview>('/ai/settings', { method: 'PATCH', json: patch }));

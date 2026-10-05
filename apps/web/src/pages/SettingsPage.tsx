@@ -21,6 +21,7 @@ import { describeDevice } from '../lib/device';
 import { formatDate, relativeDays } from '../lib/format';
 import { useThemePref, type ThemePref } from '../lib/theme';
 import { ExtensionSection } from './settings/ExtensionSection';
+import { AiSection } from './settings/AiSection';
 import { FeaturesSection } from './settings/FeaturesSection';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
@@ -42,6 +43,8 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
       <div className="px-4">{profile.data && <ResumeEditor profile={profile.data} />}</div>
 
       {extensionOn !== false && <ExtensionSection />}
+
+      <AiSection />
 
       <FeaturesSection />
 
