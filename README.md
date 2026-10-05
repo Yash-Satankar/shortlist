@@ -220,6 +220,22 @@ the web app under Settings → Browser extension → Pair a browser, then paste 
   dominated by cookie/privacy text, and with job-description signals when it was found by page
   shape alone. Late-rendered pages are re-checked for up to `VITE_JD_SETTLE_MAX_MS` (default 4 s).
 
+### Distribution (unlisted Chrome Web Store listing)
+
+- **Release zip:** `pnpm --filter @jt/extension release` builds production and writes
+  `apps/extension/release/job-status-tracker-<version>.zip`. It refuses to pack a dev build.
+  CI builds the same zip on every push and uploads it as the `job-status-tracker-extension`
+  artifact, after `check:prod` proves no dev-only switch or code is in the build.
+- **Listing:** texts, permission justifications and data-use answers are in
+  `apps/extension/store/listing.md`; screenshots (1280×800) and the promo tile (440×280) are in
+  `apps/extension/store/`.
+- **Privacy policy:** served from the app at `/privacy`, rendered from `PRIVACY.md`.
+- **Publishing, once:**
+  1. In the Developer Dashboard, create the item and upload the zip.
+  2. Paste the listing texts and set visibility to **Unlisted**.
+  3. Give reviewers a test account in "Test instructions", then submit.
+- **Updates:** bump `apps/extension/package.json` `version`, then upload the new zip.
+
 ### "Application submitted" detection
 
 The extension only detects submissions on sites you switched on. Each detector requires the
