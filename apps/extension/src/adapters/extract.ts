@@ -34,6 +34,11 @@ export function extractJob(doc: Document, href: string, opts: { assumeJob?: bool
   if (!job.workMode) fillGaps(job, origins, { workMode: workModeFrom(job.location) }, origins.location ?? 'heuristic');
 
   const canonical = canonicalJobUrl(href);
+  // Known job sites get their clean canonical link. For other sites the canonical form is for
+  // duplicate matching only (it normalises to https and drops ports), so keep the page's own
+  // origin when they differ; the server canonicalises again for matching either way.
+  const keepOwn = !canonical?.source && canonical && new URL(canonical.canonical).origin !== url.origin;
+  const jobUrl = keepOwn ? `${url.origin}${url.pathname}${url.search}` : (canonical?.canonical ?? href);
   return {
     roleTitle: job.roleTitle ?? null,
     companyName: job.companyName ?? null,
@@ -42,7 +47,7 @@ export function extractJob(doc: Document, href: string, opts: { assumeJob?: bool
     experienceAsked: job.experienceAsked ?? null,
     salaryListed: job.salaryListed ?? null,
     jd: job.jd ?? null,
-    jobUrl: canonical?.canonical ?? href,
+    jobUrl,
     externalId: canonical?.externalId ?? job.externalId ?? null,
     source: canonical?.source ?? sourceFromHost(href),
     applyOnSite: job.applyOnSite ?? null,

@@ -71,3 +71,11 @@ describe('fixture privacy', () => {
     expect(body.match(PROFILE)?.[0] ?? null).toBeNull();
   });
 });
+
+describe('job links', () => {
+  it('unknown sites on http or a port keep their own address (canonical form is for matching only)', () => {
+    const url = 'http://jobs.internal.example:8080/positions/7?utm_source=x';
+    const doc = new JSDOM('<title>QA</title><h1>QA Lead</h1>', { url }).window.document;
+    expect(extractJob(doc, url, { assumeJob: true })!.jobUrl).toBe('http://jobs.internal.example:8080/positions/7?utm_source=x');
+  });
+});
