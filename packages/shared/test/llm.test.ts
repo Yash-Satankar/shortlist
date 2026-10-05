@@ -6,10 +6,10 @@ describe('llm catalogue', () => {
     for (const models of Object.values(DEFAULT_MODELS)) for (const m of Object.values(models)) expect(LLM_PRICES_USD[m], m).toBeDefined();
   });
 
-  it('Together: a small model for structured reading, the 70B model for writing', () => {
+  it('Together: every default is a model confirmed to work on a real key', () => {
     expect(DEFAULT_MODELS.together).toEqual({
-      extraction: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
-      classification: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+      extraction: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      classification: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
       prep: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
       chat: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     });

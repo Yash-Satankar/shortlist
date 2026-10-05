@@ -44,9 +44,11 @@ export const DEFAULT_MODELS: Record<Exclude<LlmProvider, 'openai_compatible'>, R
   anthropic: { extraction: 'claude-haiku-4-5', classification: 'claude-haiku-4-5', prep: 'claude-opus-5-5', chat: 'claude-opus-5-5' },
   groq: { extraction: 'llama-3.1-8b-instant', classification: 'llama-3.1-8b-instant', prep: 'llama-3.3-70b-versatile', chat: 'llama-3.3-70b-versatile' },
   together: {
-    // Small and cheap where the job is structured reading; the 70B model where writing quality matters.
-    extraction: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
-    classification: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+    // A small model would do for extraction/classification, but 'meta-llama/Meta-Llama-3.1-8B-
+    // Instruct-Turbo' was refused (HTTP 400) on a real key: use the 70B model until a small
+    // model id is confirmed against Together's catalog.
+    extraction: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    classification: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     prep: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     chat: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
   },
