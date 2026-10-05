@@ -30,7 +30,8 @@ export default defineConfig(({ mode }) => {
   };
 
   const outDir = path.resolve(import.meta.dirname, 'dist');
-  const contentEntries = ['reader', 'auto'].map((name) => ({ name, file: path.resolve(import.meta.dirname, `src/content/${name}.ts`) }));
+  // capture.js (fixture capture) exists only in development builds.
+  const contentEntries = ['reader', 'auto', ...(dev ? ['capture'] : [])].map((name) => ({ name, file: path.resolve(import.meta.dirname, `src/content/${name}.ts`) }));
   const contentScripts: Plugin = {
     name: 'jst-content-scripts',
     buildStart() {
