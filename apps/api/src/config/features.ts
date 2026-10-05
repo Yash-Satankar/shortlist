@@ -4,6 +4,7 @@ import type { RequestHandler } from 'express';
 import type { DbOrTx } from '../db/client';
 import { users } from '../db/schema';
 import { HttpError } from '../lib/http';
+import { availableKeys } from '../llm/keys';
 import { env, type Env } from './env';
 
 export interface InstanceFeature {
@@ -41,12 +42,9 @@ export function instanceFeatures(e: Env = env()): Record<Feature, InstanceFeatur
 
 const offeredMap = (e?: Env) => Object.fromEntries(Object.entries(instanceFeatures(e)).map(([f, s]) => [f, s.offered])) as Record<Feature, boolean>;
 
-/**
- * Whether the user has an AI key they may use. BYOK keys arrive with the LLM layer
- * (Phase 2 step 5); until then nobody has one, so AI features stay off.
- */
-async function hasUsableAiKey(_db: DbOrTx, _userId: string): Promise<boolean> {
-  return false;
+/** Whether the user has an AI key they may use: their own, or (admins) an instance key. */
+async function hasUsableAiKey(db: DbOrTx, userId: string): Promise<boolean> {
+  return (await availableKeys(db, userId)).size > 0;
 }
 
 export async function featureContext(db: DbOrTx, userId: string): Promise<FeatureContext> {

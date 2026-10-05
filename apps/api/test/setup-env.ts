@@ -9,6 +9,8 @@ const envFile = path.resolve(import.meta.dirname, '../../../.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 process.env.NODE_ENV = 'test';
+// Tests never call real AI providers: drop any instance keys a developer has in .env.
+for (const k of ['ANTHROPIC_API_KEY', 'GROQ_API_KEY', 'TOGETHER_API_KEY', 'OPENAI_COMPATIBLE_API_KEY', 'OPENAI_COMPATIBLE_BASE_URL', 'LLM_PRICES_JSON']) delete process.env[k];
 process.env.LOG_LEVEL = 'silent';
 process.env.APP_ORIGIN = 'http://localhost:5173';
 process.env.ENCRYPTION_KEYS ??= `k1:${Buffer.alloc(32, 7).toString('base64')}`;

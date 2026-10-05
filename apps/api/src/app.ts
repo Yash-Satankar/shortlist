@@ -16,6 +16,7 @@ import { authRouter } from './auth/routes';
 import { env } from './config/env';
 import { assertFeature } from './config/features';
 import { featuresRouter } from './features/routes';
+import { aiRouter } from './llm/routes';
 import type { Db } from './db/client';
 import { HttpError, notFound } from './lib/http';
 import { logger } from './logger';
@@ -87,6 +88,7 @@ export function createApp({ db }: { db: Db }) {
   });
   api.use('/auth', authRouter(db));
   api.use('/features', requireAuth, featuresRouter(db));
+  api.use('/ai', requireAuth, aiRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));
   api.use('/contacts', requireAuth, requireUserIntent, contactsRouter(db));
   api.use('/answer-library', requireAuth, requireUserIntent, answerLibraryRouter(db));

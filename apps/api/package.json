@@ -17,6 +17,7 @@
     "import:xlsx": "tsx --env-file-if-exists=../../.env src/scripts/import-xlsx.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@jt/shared": "workspace:*",
     "@node-rs/argon2": "^2.2.1",
     "cookie-parser": "^1.4.7",

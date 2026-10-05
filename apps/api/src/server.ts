@@ -1,6 +1,7 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { featureSummary } from './config/features';
+import { instanceKeys } from './llm/keys';
 import { closeDb, getDb } from './db/client';
 import { logger } from './logger';
 
@@ -14,6 +15,15 @@ async function main() {
 
   if (e.NODE_ENV === 'production' && e.TRUST_PROXY === 0) {
     logger.warn('TRUST_PROXY=0 in production: behind Railway this makes every client share the proxy IP (rate limits) — set TRUST_PROXY=1');
+  }
+
+  const keys = [...instanceKeys().keys()];
+  if (keys.length) {
+    logger.info(`Instance AI keys set for: ${keys.join(', ')} (used by admin accounts only)`);
+    if (e.ALLOW_SIGNUP) logger.warn('Instance AI keys are set while sign-up is open. They still serve admins only, but a public instance should run without them (BYOK).');
+  }
+  if (e.LLM_ALLOW_PRIVATE_BASE_URLS && e.ALLOW_SIGNUP) {
+    logger.warn('LLM_ALLOW_PRIVATE_BASE_URLS=true with sign-up open: users could make this server call your private network. Turn one of them off.');
   }
 
   // Which optional features this instance offers, and why the others are off.

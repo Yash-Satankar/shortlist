@@ -73,6 +73,47 @@ const envSchema = z
     FEATURE_PREP: bool.default(true),
     FEATURE_CHAT: bool.default(true),
     FEATURE_FOLLOWUP_DRAFTS: bool.default(true),
+
+    /**
+     * AI (bring your own key). Users add keys in Settings. Instance keys below are optional,
+     * for self-hosters, and serve admin accounts only — leave them unset on a public instance.
+     */
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    GROQ_API_KEY: z.string().min(1).optional(),
+    TOGETHER_API_KEY: z.string().min(1).optional(),
+    OPENAI_COMPATIBLE_BASE_URL: z.url().optional(),
+    OPENAI_COMPATIBLE_API_KEY: z.string().min(1).optional(),
+    /** Default monthly AI spend cap per user, in DEFAULT_CURRENCY (users can change theirs). */
+    LLM_MONTHLY_CAP_DEFAULT: z.coerce.number().min(0).default(500),
+    DEFAULT_CURRENCY: z.string().regex(/^[A-Z]{3}$/).default('INR'),
+    /** Units of DEFAULT_CURRENCY per US dollar, for cost estimates (users can change theirs). */
+    DEFAULT_USD_RATE: z.coerce.number().positive().default(88),
+    LLM_CACHE_TTL_DAYS: z.coerce.number().int().positive().default(30),
+    LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+    /** Longest text sent to a model in one call (characters); longer input is refused, not cut. */
+    LLM_MAX_INPUT_CHARS: z.coerce.number().int().positive().default(40_000),
+    LLM_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(20),
+    /**
+     * Allow OpenAI-compatible base URLs on private/local addresses (e.g. a model server on your
+     * LAN). Self-hosting only: on a shared instance this lets users reach your private network.
+     */
+    LLM_ALLOW_PRIVATE_BASE_URLS: bool.default(false),
+    /** Extra/override prices, USD per 1M tokens: {"model-id": [input, output]} */
+    LLM_PRICES_JSON: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        if (!v) return {} as Record<string, [number, number]>;
+        try {
+          const parsed = JSON.parse(v) as unknown;
+          const ok = z.record(z.string(), z.tuple([z.number().min(0), z.number().min(0)])).safeParse(parsed);
+          if (ok.success) return ok.data;
+        } catch {
+          // fall through
+        }
+        ctx.addIssue({ code: 'custom', message: 'LLM_PRICES_JSON must be {"model": [inputUsdPer1M, outputUsdPer1M]}' });
+        return z.NEVER;
+      }),
   })
   .refine((e) => e.ENCRYPTION_KEYS.has(e.ENCRYPTION_ACTIVE_KEY_ID), {
     message: 'ENCRYPTION_ACTIVE_KEY_ID must match a key id in ENCRYPTION_KEYS',
