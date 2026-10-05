@@ -85,6 +85,13 @@
       "when": 1791172697729,
       "tag": "0011_llm_byok_and_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791208799423,
+      "tag": "0012_portal_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,8 @@ import {
   WORK_MODES,
   type LlmProvider,
   type LlmTask,
+  type PortalDecision,
+  type PortalSite,
   type SignalConfidence,
   type UserSettings,
 } from '@jt/shared';
@@ -380,6 +382,58 @@ export const applicationContacts = pgTable(
 );
 
 /** My standard screening answers ("Years of Node.js" -> "3 years"). Prefills new applications. */
+// ---------------------------------------------------------------- portal sync
+
+/**
+ * What the extension read from a portal's applications list. Encrypted; deleted after
+ * PORTAL_SNAPSHOT_RETENTION_DAYS. Timeline events keep only the raw status label.
+ */
+export const portalSnapshots = pgTable(
+  'portal_snapshots',
+  {
+    id: id(),
+    userId: userId(),
+    site: text('site').$type<PortalSite>().notNull(),
+    itemsEnc: encryptedText('items_enc').notNull(),
+    itemCount: integer('item_count').notNull(),
+    capturedAt: timestamp('captured_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('portal_snapshots_user_idx').on(t.userId, t.capturedAt), index('portal_snapshots_expires_idx').on(t.expiresAt)],
+);
+
+/** One proposed change from a sync, waiting for (or after) your review. */
+export const portalSyncItems = pgTable(
+  'portal_sync_items',
+  {
+    id: id(),
+    userId: userId(),
+    site: text('site').$type<PortalSite>().notNull(),
+    /** Set null when the snapshot expires; the item keeps its own copy of what it needs. */
+    snapshotId: uuid('snapshot_id').references(() => portalSnapshots.id, { onDelete: 'set null' }),
+    /** 'status': a tracked job's status changed; 'new': a job you applied to but don't track. */
+    kind: text('kind').$type<'status' | 'new'>().notNull(),
+    applicationId: uuid('application_id').references(() => applications.id, { onDelete: 'cascade' }),
+    matchedBy: text('matched_by').$type<'url' | 'company_role' | null>(),
+    /** Identity of the job on the portal (external id, else canonical URL, else company|role). */
+    jobKey: text('job_key').notNull(),
+    jobUrl: text('job_url'),
+    roleTitle: text('role_title').notNull(),
+    companyName: text('company_name').notNull(),
+    location: text('location'),
+    rawLabel: text('raw_label').notNull(),
+    proposedStatus: applicationStatus('proposed_status').notNull(),
+    decision: text('decision').$type<PortalDecision>().notNull().default('pending'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    eventId: uuid('event_id'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('portal_sync_items_user_decision_idx').on(t.userId, t.decision),
+    index('portal_sync_items_job_idx').on(t.userId, t.site, t.jobKey),
+  ],
+);
+
 export const answerLibrary = pgTable(
   'answer_library',
   {
