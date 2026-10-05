@@ -19,4 +19,8 @@ export const VERIFIED: Readonly<Record<SiteId, Readonly<Record<Capability, boole
   workday: { jobPage: false, submitted: false, applicationsList: false },
 };
 
-export const isVerified = (site: SiteId, capability: Capability) => VERIFIED[site][capability];
+declare const __JST_E2E_VERIFIED__: string[] | undefined;
+/** Dev builds only (E2E): VITE_E2E_VERIFIED="site.capability,…". Always empty in production. */
+const E2E_VERIFIED: string[] = __JST_DEV__ && typeof __JST_E2E_VERIFIED__ !== 'undefined' ? __JST_E2E_VERIFIED__ : [];
+
+export const isVerified = (site: SiteId, capability: Capability) => VERIFIED[site][capability] || E2E_VERIFIED.includes(`${site}.${capability}`);

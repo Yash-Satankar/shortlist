@@ -8,7 +8,7 @@ import { SITES } from './lib/sites.ts';
  * from the popup (nothing is read on any site until you opt in). The only required host
  * is our own API.
  */
-export function buildManifest(opts: { version: string; apiOrigin: string; dev: boolean }) {
+export function buildManifest(opts: { version: string; apiOrigin: string; dev: boolean; e2eHosts?: string[] }) {
   return {
     manifest_version: 3,
     name: opts.dev ? `${PRODUCT_NAME} (dev)` : PRODUCT_NAME,
@@ -23,7 +23,8 @@ export function buildManifest(opts: { version: string; apiOrigin: string; dev: b
     },
     background: { service_worker: 'background.js', type: 'module' },
     permissions: ['storage', 'activeTab', 'scripting'],
-    host_permissions: [...new Set([`${opts.apiOrigin}/*`, ...(opts.dev ? ['http://localhost:5173/*', 'http://localhost:3000/*'] : [])])],
+    // Dev builds only: VITE_E2E_HOSTS pre-grants test hosts (automation can't click Chrome's prompt).
+    host_permissions: [...new Set([`${opts.apiOrigin}/*`, ...(opts.dev ? ['http://localhost:5173/*', 'http://localhost:3000/*', ...(opts.e2eHosts ?? [])] : [])])],
     optional_host_permissions: SITES.flatMap((s) => s.origins),
     minimum_chrome_version: '120',
   };

@@ -24,12 +24,14 @@ export default defineConfig(({ mode }) => {
       this.emitFile({
         type: 'asset',
         fileName: 'manifest.json',
-        source: JSON.stringify(buildManifest({ version: pkg.version, apiOrigin, dev }), null, 2),
+        source: JSON.stringify(buildManifest({ version: pkg.version, apiOrigin, dev, e2eHosts: dev ? (process.env.VITE_E2E_HOSTS ?? '').split(',').filter(Boolean) : [] }), null, 2),
       });
     },
   };
 
   const outDir = path.resolve(import.meta.dirname, 'dist');
+  // Dev builds only: capabilities to treat as verified in E2E runs, e.g. "linkedin.submitted".
+  const e2eVerified = JSON.stringify(dev ? (process.env.VITE_E2E_VERIFIED ?? '').split(',').filter(Boolean) : []);
   // Page-reader thresholds (see src/lib/tuning.ts), overridable at build time.
   const num = (v: string | undefined) => (v && Number.isFinite(Number(v)) ? Number(v) : undefined);
   const tuning = JSON.stringify(
@@ -50,7 +52,7 @@ export default defineConfig(({ mode }) => {
           configFile: false,
           logLevel: 'warn',
           publicDir: false,
-          define: { __JST_DEV__: JSON.stringify(dev), __JST_TUNING__: tuning },
+          define: { __JST_DEV__: JSON.stringify(dev), __JST_TUNING__: tuning, __JST_E2E_VERIFIED__: e2eVerified },
           build: {
             outDir,
             emptyOutDir: false,
@@ -73,6 +75,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_EXTENSION_VERSION': JSON.stringify(pkg.version),
       __JST_DEV__: JSON.stringify(dev),
       __JST_TUNING__: tuning,
+      __JST_E2E_VERIFIED__: e2eVerified,
     },
     build: {
       outDir,
