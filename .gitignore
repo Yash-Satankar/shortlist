@@ -21,3 +21,6 @@ uploads/
 
 # Raw fixture captures waiting for review (never committed as-is)
 apps/extension/test/fixtures/_incoming/
+
+# Extension release zips (built by CI / pnpm --filter @jt/extension release)
+apps/extension/release/
