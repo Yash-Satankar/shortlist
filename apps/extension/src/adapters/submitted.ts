@@ -36,6 +36,8 @@ const textOf = (el: Element | null) => clean(el?.textContent) ?? '';
 
 /** "Applied 3 minutes ago" — LinkedIn's own state line on a job you've applied to. */
 const LI_APPLIED_LINE = /^Applied (?:\d+|an?) (?:second|minute|hour|day|week|month|year)s? ago$/i;
+/** "now", "just now", "30s", "5 minutes ago": a submission made moments ago. */
+const LI_JUST_NOW = /^(?:just )?now$|^\d+\s*(?:s|sec|secs|seconds?|m|min|mins|minutes?)(?: ago)?$/i;
 /** The post-apply dialog's heading: "Your application was sent to Acme!" / "Application sent". */
 const LI_SENT_HEADING = /^(?:your application was sent(?: to .+)?|application sent)!?$/i;
 
@@ -54,7 +56,19 @@ const linkedin: Detector = (doc, url) => {
     }
   }
 
-  // 2) The job's own "Applied … ago" state in the top card (after the dialog closes, or revisits).
+  // 2) Newer layout: LinkedIn's "Application status" card ("Application submitted · now").
+  //    Fresh only within minutes of submitting; an older entry only updates a tracked job.
+  for (const h of Array.from(doc.querySelectorAll('h2, h3'))) {
+    if (!/^application status$/i.test(textOf(h))) continue;
+    const card = h.parentElement?.parentElement ?? null;
+    const lines = card ? Array.from(card.querySelectorAll('p')).map((p) => textOf(p)) : [];
+    const at = lines.findIndex((t) => /^application submitted$/i.test(t));
+    if (at < 0) continue;
+    const when = lines[at + 1] ?? '';
+    return { signal: 'application status', jobUrl, onJobPage: true, fresh: LI_JUST_NOW.test(when) };
+  }
+
+  // 3) The job's own "Applied … ago" state in the top card (after the dialog closes, or revisits).
   for (const line of Array.from(doc.querySelectorAll('.artdeco-inline-feedback--success .artdeco-inline-feedback__message, .jobs-s-apply .artdeco-inline-feedback__message'))) {
     if (LI_APPLIED_LINE.test(textOf(line))) return { signal: 'applied state', jobUrl, onJobPage: true, fresh: false };
   }

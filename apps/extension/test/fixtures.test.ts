@@ -61,9 +61,19 @@ describe('adapter fixtures', () => {
   });
 
   it.each(byCapability('submitted'))('submitted: $name', ({ html, header, expected }) => {
-    const hit = detectSubmitted(load(html, header!.url), header!.url);
+    const doc = load(html, header!.url);
+    const hit = detectSubmitted(doc, header!.url);
     if (expected.submitted === null) expect(hit).toBeNull();
     else expect(hit).toMatchObject(expected.submitted as object);
+    // A submitted page on the job itself can also prove what's read from it.
+    if (expected.job) {
+      const job = extractJob(doc, header!.url, { assumeJob: header!.assumeJob });
+      expect(job, 'job read from the page').not.toBeNull();
+      const { jdIncludes = [], jdExcludes = [], ...fields } = expected.job as { jdIncludes?: string[]; jdExcludes?: string[] };
+      for (const [key, value] of Object.entries(fields)) expect(job![key as keyof typeof job], key).toEqual(value);
+      for (const s of jdIncludes) expect(job!.jd, `jd includes "${s}"`).toContain(s);
+      for (const s of jdExcludes) expect(job!.jd ?? '', `jd excludes "${s}"`).not.toContain(s);
+    }
   });
 
   it('negative submitted fixtures exist for the flows that look closest to a submission', () => {

@@ -24,12 +24,60 @@ const LI_TITLE = [
 ];
 const LI_TITLE_TAG = /^(?:\(\d+\+?\)\s*)?(.+?) \| (.+?) \| LinkedIn$/;
 
+const liJobId = (url: URL) => canonicalJobUrl(url.href)?.externalId ?? null;
+
+/**
+ * LinkedIn's newer job layout (2025+): class names are generated and change, so everything is
+ * keyed by the job id: the "About the job" section id, the title link to /jobs/view/<id>, the
+ * "Company, …" label next to it, and filter chips linking back to currentJobId=<id>.
+ */
+function liNewLayout(doc: Document, id: string) {
+  const about = doc.getElementById(`JobDetails_AboutTheJob_${id}`);
+  let titleLink: Element | null = null;
+  let topCard: Element | null = null;
+  for (const a of Array.from(doc.querySelectorAll(`a[href*="/jobs/view/${id}"]`))) {
+    if (!clean(a.textContent)) continue;
+    for (let up: Element | null = a.parentElement, i = 0; up && i < 8; up = up.parentElement, i++) {
+      if (up.querySelector('[aria-label^="Company, " i]')) {
+        titleLink = a;
+        topCard = up;
+        break;
+      }
+    }
+    if (titleLink) break;
+  }
+  const companyLabel = topCard?.querySelector('[aria-label^="Company, " i]')?.getAttribute('aria-label') ?? null;
+  let locationLine: Element | null = null;
+  for (let n = titleLink?.closest('p')?.parentElement?.nextElementSibling ?? null; n; n = n.nextElementSibling) {
+    if (n.tagName === 'P') {
+      locationLine = n;
+      break;
+    }
+  }
+  const chips = textsOf(doc, `a[href*="currentJobId=${id}"] span`).join(' ');
+  return {
+    found: Boolean(about || titleLink),
+    roleTitle: clean(titleLink?.textContent, 300),
+    companyName: companyLabel ? clean(companyLabel.replace(/^Company,\s*/i, '').replace(/\.$/, ''), 200) : textOf(topCard ?? doc.createElement('div'), ['a[href^="/company/"]'], 200),
+    location: clean(locationLine?.querySelector('span')?.textContent, 200),
+    workMode: workModeFrom(chips),
+    jd: about ? (elementToText(about)?.replace(/^About the job\s*\n+/i, '') ?? null) : null,
+  };
+}
+
 const linkedin: SiteAdapter = {
   id: 'linkedin',
-  isJobPage: (doc, url) => hasJobId(url) && (Boolean(first(doc, LI_TITLE)) || (url.pathname.startsWith('/jobs/view/') && LI_TITLE_TAG.test(doc.title))),
+  isJobPage: (doc, url) => {
+    const id = liJobId(url);
+    if (!id) return false;
+    return Boolean(first(doc, LI_TITLE)) || liNewLayout(doc, id).found || (url.pathname.startsWith('/jobs/view/') && LI_TITLE_TAG.test(doc.title));
+  },
   extract(doc, url) {
-    // On /jobs/view/ the tab title is "<role> | <company> | LinkedIn"; on search pages it's the search.
-    const tag = url.pathname.startsWith('/jobs/view/') ? LI_TITLE_TAG.exec(doc.title.trim()) : null;
+    const id = liJobId(url);
+    const modern = id ? liNewLayout(doc, id) : null;
+    // The tab title is "<role> | <company> | LinkedIn" for a selected job (a search's own title
+    // has two parts, so it can't match).
+    const tag = LI_TITLE_TAG.exec(doc.title.trim());
     const primary = textOf(doc, [
       '.job-details-jobs-unified-top-card__primary-description-container',
       '.job-details-jobs-unified-top-card__tertiary-description-container',
@@ -39,17 +87,17 @@ const linkedin: SiteAdapter = {
     const jdEl = first(doc, ['#job-details', '.jobs-description__content .jobs-box__html-content', '.jobs-description-content__text', '.show-more-less-html__markup', '.description__text']);
     const apply = textOf(doc, ['.jobs-apply-button', '.jobs-s-apply button', '.top-card-layout__cta-container button']);
     return {
-      roleTitle: textOf(doc, LI_TITLE, 300) ?? tag?.[1] ?? null,
+      roleTitle: textOf(doc, LI_TITLE, 300) ?? modern?.roleTitle ?? tag?.[1] ?? null,
       companyName:
         textOf(doc, [
           '.job-details-jobs-unified-top-card__company-name a',
           '.job-details-jobs-unified-top-card__company-name',
           '.jobs-unified-top-card__company-name',
           '.topcard__org-name-link',
-        ], 200) ?? tag?.[2] ?? null,
-      location: clean(primary?.split('·')[0]) ?? textOf(doc, ['.topcard__flavor--bullet', '.jobs-unified-top-card__bullet'], 200),
-      workMode: workModeFrom(prefs),
-      jd: elementToText(jdEl)?.replace(/^About the job\s*\n+/i, '') ?? null,
+        ], 200) ?? modern?.companyName ?? tag?.[2] ?? null,
+      location: clean(primary?.split('·')[0]) ?? textOf(doc, ['.topcard__flavor--bullet', '.jobs-unified-top-card__bullet'], 200) ?? modern?.location ?? null,
+      workMode: workModeFrom(prefs) ?? modern?.workMode ?? null,
+      jd: elementToText(jdEl)?.replace(/^About the job\s*\n+/i, '') ?? modern?.jd ?? null,
       applyOnSite: apply ? /easy apply/i.test(apply) : null,
     };
   },

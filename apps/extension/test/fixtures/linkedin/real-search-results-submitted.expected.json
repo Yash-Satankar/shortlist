@@ -1,0 +1,29 @@
+{
+  "submitted": {
+    "site": "linkedin",
+    "signal": "application status",
+    "jobUrl": "https://www.linkedin.com/jobs/view/4475398470/",
+    "fresh": true,
+    "onJobPage": true,
+    "verified": false
+  },
+  "job": {
+    "adapter": "linkedin",
+    "roleTitle": "Junior Java Developer",
+    "companyName": "Aventra.AI",
+    "location": "Hyderabad, Telangana, India",
+    "workMode": "onsite",
+    "jobUrl": "https://www.linkedin.com/jobs/view/4475398470/",
+    "missing": [],
+    "jdIncludes": [
+      "is looking for a passionate and motivated",
+      "Develop and maintain Java-based applications"
+    ],
+    "jdExcludes": [
+      "About the job",
+      "About the company",
+      "Insights about",
+      "Over 100 applicants"
+    ]
+  }
+}
