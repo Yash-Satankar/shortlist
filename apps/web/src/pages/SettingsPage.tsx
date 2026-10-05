@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   useChangePassword,
   useLibrary,
+  useFeature,
   useLibraryWrite,
   useProfile,
   useRevokeSession,
@@ -20,11 +21,13 @@ import { describeDevice } from '../lib/device';
 import { formatDate, relativeDays } from '../lib/format';
 import { useThemePref, type ThemePref } from '../lib/theme';
 import { ExtensionSection } from './settings/ExtensionSection';
+import { FeaturesSection } from './settings/FeaturesSection';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
   const logout = useLogout();
   const profile = useProfile();
   const [theme, setTheme] = useThemePref();
+  const extensionOn = useFeature('extension');
 
   return (
     <div className="mx-auto max-w-[640px] pb-6">
@@ -38,7 +41,9 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
       <SectionLabel className="pt-[22px]">Resume</SectionLabel>
       <div className="px-4">{profile.data && <ResumeEditor profile={profile.data} />}</div>
 
-      <ExtensionSection />
+      {extensionOn !== false && <ExtensionSection />}
+
+      <FeaturesSection />
 
       <SectionLabel className="pt-[22px]">Appearance</SectionLabel>
       <div className="px-4">

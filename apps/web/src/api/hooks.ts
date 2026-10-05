@@ -1,4 +1,4 @@
-import { parseLpa, parseRelocation, type ApplicationStatus } from '@jt/shared';
+import { parseLpa, parseRelocation, type ApplicationStatus, type Feature, type FeatureState, type UserFeatures } from '@jt/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
@@ -325,5 +325,28 @@ export function useRevokeApiToken() {
   return useMutation({
     mutationFn: (id: string) => api<void>(`/auth/tokens/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['api-tokens'] }),
+  });
+}
+
+// ---------------------------------------------------------------- features
+
+export interface FeaturesResponse {
+  features: Record<Feature, FeatureState>;
+  switches: UserFeatures;
+}
+
+/** Effective feature states for the signed-in user (instance × user switches × AI key). */
+export const useFeatures = () => useQuery({ queryKey: ['features'], queryFn: () => api<FeaturesResponse>('/features'), staleTime: 60_000 });
+
+/** True/false once known; undefined while loading (callers keep their current rendering). */
+export function useFeature(feature: Feature): boolean | undefined {
+  return useFeatures().data?.features[feature].enabled;
+}
+
+export function useSetFeatures() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: UserFeatures) => api<FeaturesResponse>('/features', { method: 'PATCH', json: patch }),
+    onSuccess: (data) => qc.setQueryData(['features'], data),
   });
 }
