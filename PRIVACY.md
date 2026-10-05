@@ -39,6 +39,11 @@ third-party servers, and no ads. This page says exactly what it can read, when, 
   sends your tracker that job's link and, for a job you don't track yet, its title, company and
   description. The change is recorded on the timeline. It is either undoable from a small notice
   in the page, or, for detectors not yet verified, left in Follow-ups for you to confirm.
+- **Portal sync** (only on sites you switched on, only your own applications list such as
+  LinkedIn's My Jobs → Applied). Each listed job's title, company, link and the portal's status
+  label are sent to your tracker. They are stored there as an encrypted snapshot that is deleted
+  automatically after 90 days, and turned into proposals that change nothing until you accept them.
+  Accepted changes keep only the portal's status label as evidence on the timeline.
 - **No passwords.** The extension never reads, stores or sends portal passwords or form fields you
   type into job sites.
 - **Nothing is sent in your name.** It never submits applications, sends messages or emails, or

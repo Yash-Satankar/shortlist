@@ -18,6 +18,7 @@ import { assertFeature } from './config/features';
 import { featuresRouter } from './features/routes';
 import { aiRouter } from './llm/routes';
 import { portalRouter } from './portal/routes';
+import { privacyPage } from './privacy';
 import type { Db } from './db/client';
 import { HttpError, notFound } from './lib/http';
 import { logger } from './logger';
@@ -100,6 +101,8 @@ export function createApp({ db }: { db: Db }) {
 
   api.use((_req, _res, next) => next(notFound('Unknown API route')));
   app.use('/api', api);
+  // Public privacy policy (Chrome Web Store listing link), rendered from PRIVACY.md.
+  app.get('/privacy', privacyPage);
 
   if (e.SERVE_WEB) serveWeb(app, e.WEB_DIST_DIR);
 

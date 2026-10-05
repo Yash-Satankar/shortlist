@@ -32,6 +32,8 @@ COPY --from=build --chown=node:node /app/apps/api/node_modules ./apps/api/node_m
 COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/apps/api/drizzle ./apps/api/drizzle
 COPY --from=build --chown=node:node /app/apps/web/dist ./apps/web/dist
+# Served at /privacy (the extension's store listing links to it).
+COPY --from=build --chown=node:node /app/PRIVACY.md ./PRIVACY.md
 USER node
 EXPOSE 3000
 CMD ["node", "apps/api/dist/server.js"]
