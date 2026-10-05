@@ -195,6 +195,19 @@ the web app under Settings → Browser extension → Pair a browser, then paste 
   after your click and needs no stored permission.
 - Readers look at the rendered DOM only: no auto-scrolling, pagination or extra requests. A read
   stays in session storage for its tab. Nothing is saved or applied without your confirmation.
+- **Adapters** (`apps/extension/src/adapters`) read one job from the rendered page. There is one
+  per site, and a generic reader handles unknown sites. Fields come, in order, from:
+  1. the site's DOM, using layered selectors that prefer stable hooks (`data-automation-id`,
+     `data-qa`, partial class names, the tab title);
+  2. schema.org `JobPosting` JSON-LD;
+  3. meta tags;
+  4. a main-content heuristic for the description.
+
+  Each field records where it came from, and missing required fields are listed so the save
+  form can ask for them. Fixtures and their expected output are in
+  `apps/extension/test/fixtures` (see its README).
+- **Fixture capture** (dev builds only, never in production or the Web Store) saves the current
+  page as a sanitized fixture. Captures are reviewed by hand before they're committed.
 - Content scripts are built as self-contained IIFE files (`content/reader.js`, `content/auto.js`)
   and run in the extension's isolated world, so the page's own scripts can't see them.
 
