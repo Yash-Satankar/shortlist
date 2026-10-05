@@ -95,7 +95,8 @@ export function descriptionByHeuristic(doc: Document): string | null {
     for (const p of Array.from(el.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li, :scope > div > p, :scope > div > ul > li'))) {
       score += Math.min((p.textContent ?? '').trim().length, 600);
     }
-    if (score > (best?.score ?? 0)) best = { el, score };
+    // On a tie keep the innermost container (the posting itself, not the page around it).
+    if (score > (best?.score ?? 0) || (best && score === best.score && best.el.contains(el))) best = { el, score };
   }
   return best && best.score >= 400 ? elementToText(best.el) : null;
 }

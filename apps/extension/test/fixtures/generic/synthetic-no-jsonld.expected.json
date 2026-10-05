@@ -7,5 +7,5 @@
   "missing": [],
   "origins": { "roleTitle": "meta", "companyName": "meta", "jd": "heuristic" },
   "jdIncludes": ["lead test automation", "• Playwright or Cypress"],
-  "jdExcludes": ["All rights reserved", "All jobs"]
+  "jdExcludes": ["All rights reserved", "All jobs", "Raccoon City", "Full-time"]
 }
