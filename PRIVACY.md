@@ -34,6 +34,11 @@ third-party servers, and no ads. This page says exactly what it can read, when, 
   the visible text of the page's main content to your tracker. The tracker passes it to the AI
   provider *you* chose in Settings → AI, using *your* key. The result only fills the save form,
   and nothing is saved until you press Save. Without a key this never happens.
+- **Application submitted detection** (only on sites you switched on). When a page shows that
+  platform's own confirmation, for example LinkedIn's "Application sent" dialog, the extension
+  sends your tracker that job's link and, for a job you don't track yet, its title, company and
+  description. The change is recorded on the timeline. It is either undoable from a small notice
+  in the page, or, for detectors not yet verified, left in Follow-ups for you to confirm.
 - **No passwords.** The extension never reads, stores or sends portal passwords or form fields you
   type into job sites.
 - **Nothing is sent in your name.** It never submits applications, sends messages or emails, or

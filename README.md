@@ -210,6 +210,47 @@ the web app under Settings → Browser extension → Pair a browser, then paste 
   page as a sanitized fixture. Captures are reviewed by hand before they're committed.
 - Content scripts are built as self-contained IIFE files (`content/reader.js`, `content/auto.js`)
   and run in the extension's isolated world, so the page's own scripts can't see them.
+- **Job descriptions** come from structured data first (JSON-LD, then schema.org microdata),
+  then the site adapter, then a content scorer. The scorer excludes consent banners, dialogs,
+  overlays and page chrome. A description must pass a quality gate before the popup says
+  "Job description added": at least `VITE_JD_MIN_CHARS` characters (default 600), not
+  dominated by cookie/privacy text, and with job-description signals when it was found by page
+  shape alone. Late-rendered pages are re-checked for up to `VITE_JD_SETTLE_MAX_MS` (default 4 s).
+
+### "Application submitted" detection
+
+The extension only detects submissions on sites you switched on. Each detector requires the
+platform's own confirmation marker, never generic "thank you" text:
+
+| Site | Marker |
+| --- | --- |
+| LinkedIn | post-apply dialog ("Application sent"), or the job's "Applied … ago" state |
+| Greenhouse | `…/jobs/<id>/confirmation` page, or the legacy `#application_confirmation` |
+| Lever | `…/<posting>/thanks` page |
+| Naukri | the "Applied" state of the apply button |
+| Workday | Workday's post-submit dialog/page hooks |
+
+- **Verified detector** (it passes tests on a real captured page): the job is marked Applied
+  with high confidence (`DETECTION_VERIFIED_CONFIDENCE`, 0.95), shown on the timeline, and an
+  in-page notice offers **Undo**.
+- **Unverified detector:** low confidence (`DETECTION_UNVERIFIED_CONFIDENCE`, 0.4). The
+  submission waits in Follow-ups for you to confirm, and the status doesn't change.
+- **Idempotent:** a reload or revisit records nothing new. A local "seen" record skips the
+  call, and the server's per-job evidence key prevents a second event.
+- **New jobs:** a job you don't track yet is saved from a *fresh* confirmation only. A standing
+  "Applied … ago" never creates jobs while you browse. Matching by company and role (a
+  different link) always asks.
+
+**Adapter verification status** (`apps/extension/src/adapters/verification.ts`; a capability is
+marked verified only together with a real captured fixture, and a test enforces this):
+
+| Site | Job page | Submitted | Applications list |
+| --- | --- | --- | --- |
+| LinkedIn | not yet | not yet | not yet |
+| Naukri | not yet | not yet | not yet |
+| Greenhouse | not yet | not yet | not yet |
+| Lever | not yet | not yet | not yet |
+| Workday | not yet | not yet | — (deferred) |
 
 ## Roadmap
 
