@@ -5,6 +5,7 @@ export * from './features';
 export * from './llm';
 export * from './lpa';
 export * from './normalize';
+export * from './portal';
 export * from './profile';
 export * from './relocation';
 export * from './settings';
