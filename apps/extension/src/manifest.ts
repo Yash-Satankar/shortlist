@@ -22,7 +22,8 @@ export function buildManifest(opts: { version: string; apiOrigin: string; dev: b
       default_icon: { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png' },
     },
     background: { service_worker: 'background.js', type: 'module' },
-    permissions: ['storage', 'activeTab', 'scripting'],
+    // 'downloads' only in dev builds: the fixture-capture tool saves files with it.
+    permissions: ['storage', 'activeTab', 'scripting', ...(opts.dev ? ['downloads'] : [])],
     // Dev builds only: VITE_E2E_HOSTS pre-grants test hosts (automation can't click Chrome's prompt).
     host_permissions: [...new Set([`${opts.apiOrigin}/*`, ...(opts.dev ? ['http://localhost:5173/*', 'http://localhost:3000/*', ...(opts.e2eHosts ?? [])] : [])])],
     optional_host_permissions: SITES.flatMap((s) => s.origins),

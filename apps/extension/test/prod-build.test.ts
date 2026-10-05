@@ -34,7 +34,8 @@ afterAll(() => {
 
 describe('production build (dev switches set while building)', () => {
   it('grants only the tracker’s own host; job sites stay optional', () => {
-    const manifest = JSON.parse(readFileSync(path.join(out, 'manifest.json'), 'utf8')) as { name: string; host_permissions: string[]; optional_host_permissions: string[] };
+    const manifest = JSON.parse(readFileSync(path.join(out, 'manifest.json'), 'utf8')) as { name: string; permissions: string[]; host_permissions: string[]; optional_host_permissions: string[] };
+    expect(manifest.permissions).toEqual(['storage', 'activeTab', 'scripting']); // no dev-only 'downloads'
     expect(manifest.host_permissions).toEqual(['https://your-shortlist.example.com/*']);
     expect(manifest.optional_host_permissions).toEqual(expect.arrayContaining(['https://*.linkedin.com/*', 'https://*.greenhouse.io/*']));
     expect(manifest.name).not.toMatch(/\(dev\)/);
@@ -53,6 +54,8 @@ describe('production build (dev switches set while building)', () => {
       ...TEST_VERIFIED.split(','), // "verified" overrides
       '__jstCapture',
       'sanitized fixture',
+      'save-capture',
+      'jst-captures',
       'localhost:5173',
       'localhost:3000',
     ]) {

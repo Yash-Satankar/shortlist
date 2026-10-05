@@ -21,6 +21,23 @@ chrome.runtime.onStartup.addListener(() => sync('startup'));
 chrome.permissions.onAdded.addListener(() => sync('granted'));
 chrome.permissions.onRemoved.addListener(() => sync('removed'));
 
+// DEV BUILDS ONLY: the popup's fixture-capture tool hands the sanitized page here to save, so the
+// download completes even if the popup closes (a download started in the popup can be cut off).
+if (__JST_DEV__) {
+  chrome.runtime.onMessage.addListener((message: { type?: string; name?: string; html?: string }, sender, sendResponse) => {
+    if (message?.type !== 'save-capture' || sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL('popup/'))) return;
+    const name = String(message.name ?? 'capture.html').replace(/[^a-z0-9._-]/gi, '_');
+    const bytes = new TextEncoder().encode(message.html ?? '');
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    chrome.downloads
+      .download({ url: `data:text/html;base64,${btoa(bin)}`, filename: `jst-captures/${name}`, saveAs: false, conflictAction: 'uniquify' })
+      .then(() => sendResponse({ ok: true, path: `jst-captures/${name}` }))
+      .catch((e: unknown) => sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+    return true;
+  });
+}
+
 chrome.runtime.onMessage.addListener((message: PageReadMessage | SubmittedMessage | ToastActionMessage, sender, sendResponse) => {
   // Only our own content scripts (isolated world of a tab) can send these.
   if (sender.id !== chrome.runtime.id || sender.tab?.id === undefined) return;

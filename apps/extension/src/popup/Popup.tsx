@@ -266,13 +266,12 @@ function DevCapture({ tabId, account, site, host }: { tabId: number; account: Ac
       });
       const html = res?.result as string | null;
       if (!html) throw new Error('Capture script not available (is this a dev build?)');
-      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-      a.download = `${site}-${host.replace(/[^a-z0-9.-]/gi, '')}-${stamp}.html`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-      setState(`Saved ${a.download} · review it before sending`);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+      const name = `${site}-${host.replace(/[^a-z0-9.-]/gi, '')}-${stamp}.html`;
+      // Saved by the background worker, so it completes even if this popup closes.
+      const saved = (await chrome.runtime.sendMessage({ type: 'save-capture', name, html })) as { ok: boolean; path?: string; error?: string };
+      if (!saved?.ok) throw new Error(saved?.error ?? 'Couldn’t save the capture');
+      setState(`Saved to Downloads/${saved.path} · review it before sending`);
     } catch (e) {
       setState(e instanceof Error ? e.message : 'Capture failed');
     }
