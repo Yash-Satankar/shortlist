@@ -29,7 +29,8 @@ export default defineConfig(({ mode }) => {
     },
   };
 
-  const outDir = path.resolve(import.meta.dirname, 'dist');
+  // JST_OUT_DIR: build elsewhere (the production-build check builds into a temp folder).
+  const outDir = process.env.JST_OUT_DIR ? path.resolve(process.env.JST_OUT_DIR) : path.resolve(import.meta.dirname, 'dist');
   // Dev builds only: capabilities to treat as verified in E2E runs, e.g. "linkedin.submitted".
   const e2eVerified = JSON.stringify(dev ? (process.env.VITE_E2E_VERIFIED ?? '').split(',').filter(Boolean) : []);
   // Page-reader thresholds (see src/lib/tuning.ts), overridable at build time.

@@ -7,7 +7,8 @@
     "dev": "vite build --watch --mode development",
     "build": "vite build --mode production",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "check:prod": "vitest run test/prod-build.test.ts"
   },
   "dependencies": {
     "@fontsource/geist": "^5.3.0",
