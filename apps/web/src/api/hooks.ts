@@ -1,4 +1,4 @@
-import { parseLpa, parseRelocation, type ApplicationStatus, type Feature, type FeatureState, type LlmProvider, type LlmTask, type ModelChoice, type UserFeatures } from '@jt/shared';
+import { parseLpa, parseRelocation, type ApplicationStatus, type PortalSite, type Feature, type FeatureState, type LlmProvider, type LlmTask, type ModelChoice, type UserFeatures } from '@jt/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
@@ -405,3 +405,39 @@ export const useSaveAiKey = () =>
   useAiMutation((v: { provider: LlmProvider; apiKey: string; baseUrl?: string }) => api<AiOverview>(`/ai/keys/${v.provider}`, { method: 'PUT', json: { apiKey: v.apiKey, baseUrl: v.baseUrl || null } }));
 export const useDeleteAiKey = () => useAiMutation((provider: LlmProvider) => api<void>(`/ai/keys/${provider}`, { method: 'DELETE' }));
 export const useUpdateAiSettings = () => useAiMutation((patch: Partial<AiOverview['settings']>) => api<AiOverview>('/ai/settings', { method: 'PATCH', json: patch }));
+
+// ---------------------------------------------------------------- portal sync
+
+export interface PortalProposal {
+  id: string;
+  site: PortalSite;
+  /** 'status': a tracked job changed on the portal; 'new': you applied there but don't track it. */
+  kind: 'status' | 'new';
+  matchedBy: 'url' | 'company_role' | null;
+  applicationId: string | null;
+  companyName: string;
+  roleTitle: string;
+  location: string | null;
+  jobUrl: string | null;
+  /** The portal's label, exactly as shown. */
+  rawLabel: string;
+  meaning: string | null;
+  currentStatus: ApplicationStatus | null;
+  proposedStatus: ApplicationStatus;
+  createdAt: string;
+}
+
+export const usePortalPending = () =>
+  useQuery({ queryKey: ['portal-pending'], queryFn: async () => (await api<{ items: PortalProposal[] }>('/portal-sync/pending')).items });
+
+export function usePortalReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { accept?: string[]; dismiss?: string[] }) =>
+      api<{ results: Array<{ id: string; outcome: string; applicationId: string | null }>; notFound: number }>('/portal-sync/review', { method: 'POST', json: body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['portal-pending'] });
+      invalidateLists(qc);
+    },
+  });
+}

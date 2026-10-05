@@ -1,7 +1,7 @@
-import type { FollowUpReason } from '@jt/shared';
+import { PORTAL_SITE_LABELS, type FollowUpReason } from '@jt/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useFollowUps, useQuickUpdate, useReviewAny, useReviews, useStats } from '../api/hooks';
+import { useFollowUps, usePortalPending, usePortalReview, useQuickUpdate, useReviewAny, useReviews, useStats, type PortalProposal } from '../api/hooks';
 import type { FollowUpItem, FollowUps } from '../api/types';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
@@ -21,6 +21,7 @@ export function FollowUpsPage() {
   const followUps = useFollowUps();
   const reviews = useReviews();
   const review = useReviewAny();
+  const portal = usePortalPending();
   const quick = useQuickUpdate();
   const toast = useToast();
   const [menuFor, setMenuFor] = useState<FollowUpItem | null>(null);
@@ -34,7 +35,7 @@ export function FollowUpsPage() {
       { onSuccess: () => toast({ message: `${item.companyName}: next follow-up ${formatDay(isoDateFromToday(days))}`, tone: 'info' }), onError },
     );
 
-  const total = (reviews.data?.length ?? 0) + (data?.followUps.length ?? 0) + ghosts.length;
+  const total = (reviews.data?.length ?? 0) + (portal.data?.length ?? 0) + (data?.followUps.length ?? 0) + ghosts.length;
   const today = data ? formatDay(data.settings.today) : '';
 
   return (
@@ -116,6 +117,8 @@ export function FollowUpsPage() {
                 </div>
               </section>
             )}
+
+            {!!portal.data?.length && <PortalSyncSection items={portal.data} onError={onError} />}
 
             {!!data?.followUps.length && (
               <section className="pt-1">
@@ -291,5 +294,83 @@ function AllClear(_props: { settings: FollowUps['settings'] }) {
         </dl>
       )}
     </div>
+  );
+}
+
+/**
+ * Portal sync proposals: statuses read from a job portal's applications list (by the extension,
+ * on a site you switched on). Nothing changes until you accept; accepted changes go through the
+ * normal rules and land on the timeline with the portal's own label.
+ */
+function PortalSyncSection({ items, onError }: { items: PortalProposal[]; onError: (err: unknown) => void }) {
+  const decide = usePortalReview();
+  const toast = useToast();
+  const run = (body: { accept?: string[]; dismiss?: string[] }) =>
+    decide.mutate(body, {
+      onSuccess: ({ results }) => {
+        const n = results.filter((r) => r.outcome !== 'dismissed').length;
+        if (n) toast({ message: n === 1 ? 'Change applied' : `${n} changes applied`, tone: 'info' });
+      },
+      onError,
+    });
+  const site = PORTAL_SITE_LABELS[items[0]!.site];
+
+  return (
+    <section className="pt-1">
+      <SectionLabel
+        count={items.length}
+        className="pt-5"
+        action={
+          items.length > 1 ? (
+            <button type="button" className="font-[inherit] text-ink-2 underline-offset-2 hover:underline" disabled={decide.isPending} onClick={() => run({ accept: items.map((i) => i.id) })}>
+              Accept all
+            </button>
+          ) : (
+            'From your portals'
+          )
+        }
+      >
+        Portal sync
+      </SectionLabel>
+      <div className="flex flex-col gap-2.5 px-4">
+        {items.map((p) => (
+          <article key={p.id} className="card pt-3.5 pb-3">
+            {p.applicationId ? (
+              <Link to={`/applications/${p.applicationId}`} className="flex items-baseline gap-2">
+                <span className="co flex-none">{p.companyName}</span>
+                <span className="role m-0 text-[13px]">{p.roleTitle}</span>
+              </Link>
+            ) : (
+              <div className="flex items-baseline gap-2">
+                <span className="co flex-none">{p.companyName}</span>
+                <span className="role m-0 text-[13px]">{p.roleTitle}</span>
+              </div>
+            )}
+            <div className="mt-2.5 flex items-center gap-2">
+              {p.currentStatus ? <StatusPill status={p.currentStatus} /> : <span className="src">not tracked yet</span>}
+              <Icon name="arrowRight" size="sm" className="text-ink-3" />
+              <StatusPill status={p.proposedStatus} />
+            </div>
+            <div className="ev-m mt-2">
+              <EventSourceBadge source="portal" />
+              <span className="ev-time">{PORTAL_SITE_LABELS[p.site] ?? site}</span>
+              {p.matchedBy === 'company_role' && <span className="ev-time">· matched by company and role</span>}
+            </div>
+            <p className="mt-2 text-[13px] leading-[19px] text-ink-2 italic">
+              “{p.rawLabel}”{p.meaning && p.meaning.toLowerCase() !== p.rawLabel.toLowerCase() ? ` · ${p.meaning}` : ''}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button variant="ink" className="flex-1" disabled={decide.isPending} onClick={() => run({ accept: [p.id] })}>
+                <Icon name="check" />
+                {p.kind === 'new' ? 'Save and accept' : 'Accept'}
+              </Button>
+              <Button className="flex-1" disabled={decide.isPending} onClick={() => run({ dismiss: [p.id] })}>
+                Dismiss
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
