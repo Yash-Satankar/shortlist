@@ -6,7 +6,9 @@ describe('field encryption', () => {
   it('round-trips unicode text', () => {
     const value = 'Expected CTC: ₹12 LPA — negotiable';
     const enc = encrypt(value);
-    expect(enc).not.toContain('12');
+    // The plaintext must not appear (checking for '12' alone was flaky: random base64 can contain it).
+    expect(enc).not.toContain('₹12 LPA');
+    expect(enc).not.toContain('negotiable');
     expect(enc.startsWith('v1.k1.')).toBe(true);
     expect(decrypt(enc)).toBe(value);
   });
