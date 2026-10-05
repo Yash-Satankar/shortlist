@@ -3,9 +3,13 @@ import { useFeatures, useSetFeatures } from '../../api/hooks';
 import { ErrorNote, SectionLabel, Switch } from '../../components/ui';
 
 /** Features that exist in this build, in Settings order. Each one is added here when it ships. */
-const SHOWN: { feature: Feature; detail: string }[] = [{ feature: 'extension', detail: 'Save jobs and sync statuses from Chrome' }];
+const SHOWN: { feature: Feature; detail: string }[] = [
+  { feature: 'extension', detail: 'Save jobs and sync statuses from Chrome' },
+  { feature: 'ai', detail: 'Fills gaps the rules miss, with your key' },
+];
 
-const stateLine = (feature: Feature, s: FeatureState, detail: string) => (s.enabled ? detail : featureOffMessage(feature, s));
+const stateLine = (feature: Feature, s: FeatureState, detail: string) =>
+  s.enabled ? detail : s.reason === 'needs_ai_key' ? 'Needs an API key (see AI above)' : featureOffMessage(feature, s);
 
 /**
  * Settings → Features: switch optional features off (or back on) for yourself, within what
