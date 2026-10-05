@@ -8,6 +8,7 @@ import { connect, disconnect } from '../lib/pairing';
 import { disableSite, enableSite, siteStates, type SiteStates } from '../lib/permissions';
 import { activeTab, lastAutoRead, readTab, type ActiveTab } from '../lib/reads';
 import { SITES, siteForUrl, type SiteId } from '../lib/sites';
+import { SaveJob } from './SaveJob';
 
 /** Popup: pairing, this page (Sync this page), per-site auto-read switches, disconnect. */
 export function Popup() {
@@ -56,7 +57,7 @@ export function Popup() {
         {state !== null && !connected && <PairCard onOpenSettings={openSettings} onConnected={reload} canOpen={!!origin} />}
 
         <SectionLabel className="pt-[18px]">This page</SectionLabel>
-        <div className="px-4">{connected ? <ThisPage account={state?.account ?? null} /> : <div className="group"><div className="gi text-sm text-ink-3"><Icon name="info" size="sm" />Pair first to save jobs from this page.</div></div>}</div>
+        <div className="px-4">{connected ? <ThisPage account={state?.account ?? null} origin={origin} /> : <div className="group"><div className="gi text-sm text-ink-3"><Icon name="info" size="sm" />Pair first to save jobs from this page.</div></div>}</div>
 
         <SiteSwitches onError={setNotice} />
       </main>
@@ -134,7 +135,7 @@ function PairCard({ onOpenSettings, onConnected, canOpen }: { onOpenSettings: ()
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 /** The current tab plus "Sync this page": always available, whether or not its site reads automatically. */
-function ThisPage({ account }: { account: Account | null }) {
+function ThisPage({ account, origin }: { account: Account | null; origin: string }) {
   const [tab, setTab] = useState<ActiveTab | null>(null);
   const [read, setRead] = useState<{ page: PageRead; how: 'auto' | 'manual' } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -187,11 +188,11 @@ function ThisPage({ account }: { account: Account | null }) {
         <div className={`gi text-sm ${error ? 'text-danger' : 'text-ink-2'}`}>
           <Icon name={error ? 'alert' : 'check'} size="sm" />
           <span className="min-w-0 flex-1">
-            {error ?? (read!.how === 'auto' ? `Read automatically on load · ${timeOf(read!.page.readAt)}` : `Read just now · nothing saved yet`)}
+            {error ?? (read!.how === 'auto' ? `Read automatically on load · ${timeOf(read!.page.readAt)}` : `Read just now`)}
           </span>
         </div>
       )}
-      {read && !error && <JobFound page={read.page} />}
+      {read && !error && (read.page.job ? <SaveJob key={read.page.readAt} job={read.page.job} tabId={tab!.id} pageTitle={read.page.title} origin={origin} /> : <NotAJob />)}
       {__JST_DEV__ && tab && <DevCapture tabId={tab.id} account={account} site={site?.id ?? 'generic'} host={host} />}
     </div>
   );
@@ -242,31 +243,14 @@ function SiteSwitches({ onError }: { onError: (msg: string | null) => void }) {
   );
 }
 
-/** What the reader found on the page (saving it arrives with one-click save). */
-function JobFound({ page }: { page: PageRead }) {
-  const job = page.job;
-  if (!job) {
-    return (
-      <div className="gi text-sm text-ink-3">
-        <Icon name="info" size="sm" />
-        <span className="min-w-0 flex-1">This doesn’t look like a job posting.</span>
-      </div>
-    );
-  }
-  const where = [job.companyName, job.location].filter(Boolean).join(' · ');
+function NotAJob() {
   return (
-    <div className="gi">
-      <Icon name="board" className="text-ink-2" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm leading-5 font-semibold">{job.roleTitle ?? 'Role not found'}</div>
-        <div className="ev-time truncate leading-4">{where || 'Company not found'}</div>
-        {job.missing.length > 0 && <div className="hint mt-0.5">You’ll fill in: {job.missing.map((f) => MISSING_LABELS[f]).join(', ')}</div>}
-      </div>
+    <div className="gi text-sm text-ink-3">
+      <Icon name="info" size="sm" />
+      <span className="min-w-0 flex-1">This doesn’t look like a job posting.</span>
     </div>
   );
 }
-
-const MISSING_LABELS: Record<string, string> = { roleTitle: 'role', companyName: 'company', jd: 'description' };
 
 /** DEV BUILDS ONLY (compiled out of production): save this page as a sanitized adapter fixture. */
 function DevCapture({ tabId, account, site, host }: { tabId: number; account: Account | null; site: string; host: string }) {
