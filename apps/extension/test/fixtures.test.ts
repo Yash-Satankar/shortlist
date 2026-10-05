@@ -3,6 +3,8 @@ import path from 'node:path';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { extractJob } from '../src/adapters/extract';
+import { detectSubmitted } from '../src/adapters/submitted';
+import { CAPABILITIES, VERIFIED, type Capability } from '../src/adapters/verification';
 
 const DIR = path.resolve(import.meta.dirname, 'fixtures');
 
@@ -10,6 +12,8 @@ interface Header {
   url: string;
   synthetic?: boolean;
   assumeJob?: boolean;
+  /** What the fixture proves (default jobPage). */
+  capability?: Capability;
 }
 
 const fixtures = readdirSync(DIR, { withFileTypes: true })
@@ -33,9 +37,14 @@ describe('adapter fixtures', () => {
     expect(new Set(fixtures.map((f) => f.name.split('/')[0]))).toEqual(new Set(['linkedin', 'naukri', 'greenhouse', 'lever', 'workday', 'generic']));
   });
 
-  it.each(fixtures)('$name', ({ html, header, expected }) => {
+  const byCapability = (c: Capability) => fixtures.filter((f) => (f.header?.capability ?? 'jobPage') === c);
+
+  it.each(byCapability('jobPage'))('job page: $name', ({ html, header, expected }) => {
     expect(header?.url, 'fixture header with a url').toBeTruthy();
-    const job = extractJob(load(html, header!.url), header!.url, { assumeJob: header!.assumeJob });
+    const doc = load(html, header!.url);
+    // A job page by itself must never count as a submission.
+    expect(detectSubmitted(doc, header!.url), 'no submission on a plain job page').toBeNull();
+    const job = extractJob(doc, header!.url, { assumeJob: header!.assumeJob });
 
     if (expected.isJob === false) {
       expect(job).toBeNull();
@@ -49,6 +58,28 @@ describe('adapter fixtures', () => {
     }
     for (const s of jdIncludes) expect(job!.jd, `jd includes "${s}"`).toContain(s);
     for (const s of jdExcludes) expect(job!.jd ?? '', `jd excludes "${s}"`).not.toContain(s);
+  });
+
+  it.each(byCapability('submitted'))('submitted: $name', ({ html, header, expected }) => {
+    const hit = detectSubmitted(load(html, header!.url), header!.url);
+    if (expected.submitted === null) expect(hit).toBeNull();
+    else expect(hit).toMatchObject(expected.submitted as object);
+  });
+
+  it('negative submitted fixtures exist for the flows that look closest to a submission', () => {
+    const negatives = byCapability('submitted').filter((f) => f.expected.submitted === null).map((f) => f.name);
+    expect(negatives).toEqual(expect.arrayContaining(['linkedin/synthetic-easy-apply-midflow.html', 'greenhouse/synthetic-form-errors.html']));
+  });
+});
+
+describe('verification status', () => {
+  // A capability may be marked verified only with a REAL (non-synthetic) fixture proving it.
+  const cases = Object.entries(VERIFIED).flatMap(([site, caps]) => CAPABILITIES.filter((c) => caps[c]).map((c) => ({ site, capability: c })));
+  it.each(cases.length ? cases : [{ site: '(none)', capability: 'jobPage' as Capability }])('$site $capability has a real capture', ({ site, capability }) => {
+    if (site === '(none)') return; // nothing verified yet
+    const real = fixtures.filter((f) => f.name.startsWith(`${site}/`) && !f.header?.synthetic && (f.header?.capability ?? 'jobPage') === capability);
+    expect(real.length, `${site} ${capability} is marked verified but has no real captured fixture`).toBeGreaterThan(0);
+    if (capability === 'submitted') expect(real.some((f) => f.expected.submitted !== null), 'needs a positive real capture').toBe(true);
   });
 });
 
