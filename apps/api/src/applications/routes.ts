@@ -103,9 +103,9 @@ export function applicationsRouter(db: Db): Router {
   });
 
   router.post('/:id/events/:eventId/undo', async (req, res) => {
-    resolveSource(req, USER_ONLY);
+    const source = resolveSource(req, USER_ONLY);
     const id = uuid(req.params.id);
-    await undoEvent(db, req.auth!.userId, id, uuid(req.params.eventId));
+    await undoEvent(db, req.auth!.userId, id, uuid(req.params.eventId), source);
     res.json({ application: await getApplication(db, req.auth!.userId, id) });
   });
 

@@ -54,6 +54,8 @@ describe('detected submission', () => {
     const undo = await request(app).post(`/api/applications/${id}/events/${res.body.event.id}/undo`).set({ Authorization: `Bearer ${a.token}`, 'X-JT-Intent': 'user' }).send({});
     expect(undo.status).toBe(200);
     expect(undo.body.application.status).toBe('saved');
+    // Undo from the extension is recorded as the extension (a user click, manual rules).
+    expect(undo.body.application.timeline.at(-1)).toMatchObject({ toStatus: 'saved', source: 'extension', confidenceScore: null });
   });
 
   it('unverified detector → waits in Follow-ups (pending review); the status does not change', async () => {

@@ -120,7 +120,8 @@ async function latestEffectiveEvent(tx: Tx, applicationId: string) {
  * effective change can be undone, which keeps the timeline linear: undoing an
  * undo is the same operation and restores the original status.
  */
-export async function undoEvent(db: Db, userId: string, applicationId: string, eventId: string) {
+/** `source`: who clicked Undo ('manual' in the web app, 'extension' from the extension); always a user action. */
+export async function undoEvent(db: Db, userId: string, applicationId: string, eventId: string, source: EventSource = 'manual') {
   return db.transaction(async (tx) => {
     const app = await lockApplication(tx, userId, applicationId);
     const latest = await latestEffectiveEvent(tx, app.id);
@@ -138,7 +139,7 @@ export async function undoEvent(db: Db, userId: string, applicationId: string, e
         applicationId: app.id,
         fromStatus: app.status,
         toStatus: latest.fromStatus,
-        source: 'manual',
+        source,
         disposition: 'applied',
         reason: 'user_action',
         occurredAt: now,
