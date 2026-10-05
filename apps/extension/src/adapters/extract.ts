@@ -1,7 +1,7 @@
 import { canonicalJobUrl, sourceFromHost } from '@jt/shared';
 import { siteForUrl } from '../lib/sites';
 import { workModeFrom } from './dom';
-import { descriptionByHeuristic, fillGaps, fromJsonLd, fromMeta, jobPostingsFromJsonLd } from './generic';
+import { descriptionByHeuristic, fillGaps, fromJsonLd, fromMeta, fromMicrodata, jdQuality, jobPostingsFromJsonLd } from './generic';
 import { ADAPTERS, workdayTenant } from './sites';
 import { REQUIRED_FIELDS, type ExtractedJob, type FieldOrigin, type JobField, type PartialJob } from './types';
 
@@ -20,16 +20,36 @@ export function extractJob(doc: Document, href: string, opts: { assumeJob?: bool
   }
   const site = siteForUrl(href);
   const adapter = site ? ADAPTERS[site.id] : null;
-  const hasPosting = jobPostingsFromJsonLd(doc).length > 0;
+  const jsonLd = fromJsonLd(doc);
+  const microdata = fromMicrodata(doc);
+  const hasPosting = jobPostingsFromJsonLd(doc).length > 0 || Object.values(microdata).some(Boolean);
 
   if (adapter ? !adapter.isJobPage(doc, url) : !hasPosting && !opts.assumeJob) return null;
 
   const job: PartialJob = {};
   const origins: Partial<Record<JobField, FieldOrigin>> = {};
-  if (adapter) fillGaps(job, origins, adapter.extract(doc, url), 'site');
-  fillGaps(job, origins, fromJsonLd(doc), 'json-ld');
+  const fromSite = adapter ? adapter.extract(doc, url) : {};
+
+  // Description: structured data first (JSON-LD, then microdata), then the site adapter, then
+  // the page's shape. The first candidate that passes the quality gate wins; if none does, it
+  // stays empty ("not captured") rather than saving a cookie banner as the job description.
+  const jdCandidates: [string | null | undefined, FieldOrigin, boolean][] = [
+    [jsonLd.jd, 'json-ld', false],
+    [microdata.jd, 'microdata', false],
+    [fromSite.jd, 'site', false],
+    [descriptionByHeuristic(doc), 'heuristic', true],
+  ];
+  for (const [text, origin, needSignals] of jdCandidates) {
+    if (text && jdQuality(text, { needSignals }).ok) {
+      fillGaps(job, origins, { jd: text }, origin);
+      break;
+    }
+  }
+
+  fillGaps(job, origins, { ...fromSite, jd: null }, 'site');
+  fillGaps(job, origins, { ...jsonLd, jd: null }, 'json-ld');
+  fillGaps(job, origins, { ...microdata, jd: null }, 'microdata');
   fillGaps(job, origins, fromMeta(doc), 'meta');
-  if (!job.jd) fillGaps(job, origins, { jd: descriptionByHeuristic(doc) }, 'heuristic');
   if (site?.id === 'workday') fillGaps(job, origins, { companyName: workdayTenant(url) }, 'heuristic');
   if (!job.workMode) fillGaps(job, origins, { workMode: workModeFrom(job.location) }, origins.location ?? 'heuristic');
 

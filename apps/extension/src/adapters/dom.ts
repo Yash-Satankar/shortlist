@@ -34,8 +34,45 @@ const BLOCK = new Set([
 const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'BUTTON', 'IFRAME', 'INPUT', 'SELECT', 'TEXTAREA']);
 
 /**
+ * Page parts that are never job content: consent managers (OneTrust, Cookiebot, TrustArc,
+ * Didomi, Usercentrics, generic cookie/consent banners), dialogs and modal overlays, and page
+ * chrome (nav, header, footer, aside, forms).
+ */
+const NON_CONTENT = [
+  '[id^="onetrust-"]', '.ot-sdk-container', '[id^="CybotCookiebot"]', '[id^="truste"]', '#consent_blackbar', '.truste_overlay',
+  '#didomi-host', '[id^="didomi-"]', '.didomi-popup', '#usercentrics-root', '[id^="usercentrics"]', '#uc-banner', '.cc-window', '.cc-banner',
+  'dialog', '[role="dialog"]', '[role="alertdialog"]', '[aria-modal="true"]',
+  'nav', 'header', 'footer', 'aside', 'form', '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]', '[role="complementary"]',
+].join(',');
+/** id/class/aria-label words that mark consent and privacy notices. */
+const CONSENT_HINT = /cookie|consent|gdpr|privacy[-_ ]?(?:banner|notice|popup|modal|bar|overlay)|onetrust|cookiebot|truste|didomi|usercentrics|\bcmp[-_]/i;
+
+/** Fixed or sticky elements are overlays (banners, chat widgets, sticky bars), not the posting. */
+function isOverlay(el: Element): boolean {
+  const inline = (el as HTMLElement).style?.position;
+  if (inline === 'fixed' || inline === 'sticky') return true;
+  const view = el.ownerDocument.defaultView;
+  if (!view || typeof view.getComputedStyle !== 'function') return false;
+  const pos = view.getComputedStyle(el).position;
+  return pos === 'fixed' || pos === 'sticky';
+}
+
+export function isNonContent(el: Element): boolean {
+  if (el.matches(NON_CONTENT)) return true;
+  const hints = `${el.id} ${el.getAttribute('class') ?? ''} ${el.getAttribute('aria-label') ?? ''}`;
+  if (CONSENT_HINT.test(hints)) return true;
+  return isOverlay(el);
+}
+
+/** Is the element itself, or anything around it, non-content? */
+export const insideNonContent = (el: Element): boolean => {
+  for (let e: Element | null = el; e; e = e.parentElement) if (isNonContent(e)) return true;
+  return false;
+};
+
+/**
  * Element → readable plain text: block elements become lines, list items get "• ",
- * headings stay on their own line. Independent of CSS (works in jsdom and on hidden nodes).
+ * headings stay on their own line. Non-content inside it is left out (see isNonContent).
  */
 export function elementToText(el: Element | null, max = 100_000): string | null {
   if (!el) return null;
@@ -49,6 +86,8 @@ export function elementToText(el: Element | null, max = 100_000): string | null 
     const e = node as Element;
     const tag = e.tagName.toUpperCase();
     if (SKIP.has(tag) || e.getAttribute('aria-hidden') === 'true') return;
+    // Leave out what isn't job content inside it: a consent banner, a dialog, a form, nav…
+    if (e !== el && isNonContent(e)) return;
     if (tag === 'BR') return void out.push('\n');
     const block = BLOCK.has(tag);
     if (block) out.push('\n');

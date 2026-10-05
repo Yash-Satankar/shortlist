@@ -22,7 +22,7 @@ const PAGE = `<!doctype html><html><head>
   <div class="logo-wrap"><img alt="Acme logo" src="https://media.example/acme.png"></div>
   <div class="job-details-jobs-unified-top-card__job-title"><h1 onclick="track()">Staff Engineer</h1></div>
   <div class="job-details-jobs-unified-top-card__primary-description-container"><span class="tvm__text">Pune, India</span> · <span>Priya, you'd be a top applicant</span></div>
-  <div id="job-details"><p>Call our recruiter on +91 98765 43210 or email hiring@acme.example. Posted 2026-09-30.</p><ul><li>Rust</li></ul></div>
+  <div id="job-details"><p>Call our recruiter on +91 98765 43210 or email hiring@acme.example. Posted 2026-09-30.</p><ul><li>Rust</li></ul><p>About the team: you will work with product managers, designers and other engineers in a small, focused team. We value clear writing, careful code review and shipping in small steps. The role offers mentorship, a learning budget and flexible hours.</p><p>What we offer: competitive salary, health insurance for you and your family, paid parental leave and a yearly team offsite. We are an equal opportunity employer and welcome applicants from all backgrounds; experience in a similar role is a plus but not required if you can show strong skills.</p></div>
   <section class="job-details-people-who-can-help__section"><a href="/in/rahul-recruiter/">Rahul Recruiter</a></section>
   <form><input name="phone" value="9876543210"><textarea>Cover letter for Priya</textarea></form>
   <div role="dialog"><p>Priya, upgrade to Premium</p></div>

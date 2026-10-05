@@ -2,7 +2,7 @@ import type { ApplicationSource, WorkMode } from '@jt/shared';
 import type { SiteId } from '../lib/sites';
 
 /** Where a field's value came from, best first. Lower tiers get a "check this" hint in the save form. */
-export type FieldOrigin = 'site' | 'json-ld' | 'meta' | 'heuristic';
+export type FieldOrigin = 'site' | 'json-ld' | 'microdata' | 'meta' | 'heuristic';
 
 /** A job read from the page you're viewing. Field names match the API's create-application input. */
 export interface ExtractedJob {

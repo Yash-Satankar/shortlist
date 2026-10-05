@@ -1,0 +1,6 @@
+{
+  "adapter": "generic",
+  "roleTitle": "QA Analyst",
+  "jd": null,
+  "missing": ["companyName", "jd"]
+}

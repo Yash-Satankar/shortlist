@@ -1,0 +1,9 @@
+{
+  "adapter": "generic",
+  "roleTitle": "DEVELOPER L3",
+  "companyName": "Initrode Limited",
+  "location": "Bengaluru, KA, IN",
+  "missing": [],
+  "jdIncludes": ["Design, build and maintain Java microservices", "Requirements", "5 to 8 years of experience in Java", "Mandatory skills: Java Spring Boot"],
+  "jdExcludes": ["We use cookies", "cookie preferences", "Accept All", "Careers home", "All rights reserved", "Apply now"]
+}

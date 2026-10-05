@@ -1,4 +1,5 @@
-import { clean, elementToText, htmlToText, metaContent } from './dom';
+import { TUNING } from '../lib/tuning';
+import { clean, elementToText, htmlToText, insideNonContent, metaContent } from './dom';
 import type { FieldOrigin, JobField, PartialJob } from './types';
 
 type Json = Record<string, unknown>;
@@ -71,9 +72,40 @@ export function fromJsonLd(doc: Document): PartialJob {
   };
 }
 
-/** OpenGraph / meta / <h1>: weak but better than nothing. */
+/**
+ * schema.org JobPosting as microdata (itemscope/itemprop), e.g. SAP SuccessFactors career
+ * sites, which often have no JSON-LD and keep the description in spans and <br>s.
+ */
+export function fromMicrodata(doc: Document): PartialJob {
+  const scope = doc.querySelector('[itemscope][itemtype*="schema.org/JobPosting" i]');
+  if (!scope) return {};
+  const prop = (root: Element, name: string): Element | null => root.querySelector(`[itemprop~="${name}"]`);
+  const value = (el: Element | null): string | null => (el ? clean(el.getAttribute('content') ?? el.getAttribute('datetime') ?? el.textContent, 300) : null);
+
+  const org = prop(scope, 'hiringOrganization');
+  const companyName = org ? (value(prop(org, 'name')) ?? (org.hasAttribute('itemscope') ? null : value(org))) : null;
+
+  const locations = Array.from(scope.querySelectorAll('[itemprop~="jobLocation"]'))
+    .map((loc) => {
+      const addr = prop(loc, 'address') ?? loc;
+      const parts = ['addressLocality', 'addressRegion', 'addressCountry'].map((n) => value(prop(addr, n))).filter(Boolean);
+      return parts.length ? parts.join(', ') : addr.hasAttribute('itemscope') ? null : value(addr);
+    })
+    .filter((v): v is string => !!v);
+
+  const desc = prop(scope, 'description');
+  return {
+    roleTitle: value(prop(scope, 'title')),
+    companyName,
+    location: locations.length ? [...new Set(locations)].join(' · ').slice(0, 200) : null,
+    jd: desc ? (desc.getAttribute('content') ? htmlToText(desc.getAttribute('content'), doc) : elementToText(desc)) : null,
+  };
+}
+
+/** OpenGraph / meta / <h1>: weak but better than nothing. Headings inside banners don't count. */
 export function fromMeta(doc: Document): PartialJob {
   const h1s = Array.from(doc.querySelectorAll('h1'))
+    .filter((h) => !insideNonContent(h))
     .map((h) => clean(h.textContent, 300))
     .filter(Boolean);
   return {
@@ -82,23 +114,64 @@ export function fromMeta(doc: Document): PartialJob {
   };
 }
 
+// ---------------------------------------------------------------- description quality
+
+/** Words that mark a real job description. */
+const JD_SIGNALS = /responsibilit|requirement|qualification|experience|skills?\b|what you(?:'|’)?ll|you will|about the (?:role|job|team|position)|job description|we(?:'|’)?re looking|we are looking|must[- ]have|nice[- ]to[- ]have|\byears\b/gi;
+/** Consent, privacy and legal vocabulary (cookie banners, privacy notices, terms). */
+const CONSENT_WORDS = /cookies?\b|consent|privacy|gdpr|personal data|third[- ]part(?:y|ies)|opt[- ]out|preferences?\b|tracking|advertis\w*|legitimate interest|accept all|reject all|\bpolicy\b|terms of use/gi;
+
+export interface JdQuality {
+  ok: boolean;
+  reason: 'ok' | 'too_short' | 'consent_text' | 'no_jd_signals';
+  signals: number;
+}
+
 /**
- * The job description by shape: the container with the most paragraph/list text that isn't
- * page chrome. Used only when neither the site adapter nor JSON-LD found one.
+ * Is this text really a job description? Long enough (VITE_JD_MIN_CHARS, default 600), not
+ * dominated by consent/privacy/legal vocabulary, and (for text found by shape alone) showing
+ * at least one job-description signal.
+ */
+export function jdQuality(text: string | null | undefined, opts: { needSignals?: boolean } = {}): JdQuality {
+  const t = text ?? '';
+  const signals = (t.match(JD_SIGNALS) ?? []).length;
+  if (t.length < TUNING.jdMinChars) return { ok: false, reason: 'too_short', signals };
+  const words = Math.max(1, t.split(/\s+/).length);
+  const consent = (t.match(CONSENT_WORDS) ?? []).length;
+  if (consent / words > 0.04 && consent > signals) return { ok: false, reason: 'consent_text', signals };
+  if (opts.needSignals && signals === 0) return { ok: false, reason: 'no_jd_signals', signals };
+  return { ok: true, reason: 'ok', signals };
+}
+
+const CANDIDATES = 'main, article, [role="main"], section, div, td, span[itemprop], [class*="description" i], [id*="description" i]';
+const LINK_TEXT = (el: Element) => Array.from(el.querySelectorAll('a')).reduce((n, a) => n + (a.textContent ?? '').trim().length, 0);
+
+/**
+ * The job description by shape, when no structured source or site adapter has one: score
+ * containers by readable text (minus links), boost job-description signals, then narrow to the
+ * tightest container that still holds most of that text. Consent banners, dialogs, overlays
+ * and page chrome are excluded before scoring.
  */
 export function descriptionByHeuristic(doc: Document): string | null {
-  const candidates = Array.from(doc.querySelectorAll('main, article, [role="main"], section, div'));
-  let best: { el: Element; score: number } | null = null;
-  for (const el of candidates) {
-    if (el.closest('nav, header, footer, aside, [role="navigation"], [role="banner"], [role="contentinfo"], form, dialog')) continue;
-    let score = 0;
-    for (const p of Array.from(el.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li, :scope > div > p, :scope > div > ul > li'))) {
-      score += Math.min((p.textContent ?? '').trim().length, 600);
-    }
-    // On a tie keep the innermost container (the posting itself, not the page around it).
-    if (score > (best?.score ?? 0) || (best && score === best.score && best.el.contains(el))) best = { el, score };
+  type Scored = { el: Element; text: string; score: number };
+  const scored: Scored[] = [];
+  for (const el of Array.from(doc.querySelectorAll(CANDIDATES))) {
+    if (insideNonContent(el)) continue;
+    const text = elementToText(el) ?? '';
+    if (text.length < 200) continue;
+    const linkDensity = Math.min(1, LINK_TEXT(el) / text.length);
+    const signals = (text.match(JD_SIGNALS) ?? []).length;
+    scored.push({ el, text, score: text.length * (1 - linkDensity) * (1 + 0.25 * Math.min(signals, 8)) });
   }
-  return best && best.score >= 400 ? elementToText(best.el) : null;
+  if (!scored.length) return null;
+  let best = scored.reduce((a, b) => (b.score > a.score ? b : a));
+  // Narrow: a descendant that keeps ≥ 80% of the text is the posting itself, not the page around it.
+  for (;;) {
+    const inner = scored.filter((c) => c.el !== best.el && best.el.contains(c.el) && c.text.length >= best.text.length * 0.8);
+    if (!inner.length) break;
+    best = inner.reduce((a, b) => (b.text.length < a.text.length ? b : a));
+  }
+  return best.text;
 }
 
 /** Fill only the empty fields of `base` from `extra`, recording where each came from. */

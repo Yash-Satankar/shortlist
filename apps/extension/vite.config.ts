@@ -30,6 +30,13 @@ export default defineConfig(({ mode }) => {
   };
 
   const outDir = path.resolve(import.meta.dirname, 'dist');
+  // Page-reader thresholds (see src/lib/tuning.ts), overridable at build time.
+  const num = (v: string | undefined) => (v && Number.isFinite(Number(v)) ? Number(v) : undefined);
+  const tuning = JSON.stringify(
+    Object.fromEntries(
+      Object.entries({ jdMinChars: num(process.env.VITE_JD_MIN_CHARS), jdSettleMaxMs: num(process.env.VITE_JD_SETTLE_MAX_MS), jdSettleIdleMs: num(process.env.VITE_JD_SETTLE_IDLE_MS) }).filter(([, v]) => v !== undefined),
+    ),
+  );
   // capture.js (fixture capture) exists only in development builds.
   const contentEntries = ['reader', 'auto', ...(dev ? ['capture'] : [])].map((name) => ({ name, file: path.resolve(import.meta.dirname, `src/content/${name}.ts`) }));
   const contentScripts: Plugin = {
@@ -43,7 +50,7 @@ export default defineConfig(({ mode }) => {
           configFile: false,
           logLevel: 'warn',
           publicDir: false,
-          define: { __JST_DEV__: JSON.stringify(dev) },
+          define: { __JST_DEV__: JSON.stringify(dev), __JST_TUNING__: tuning },
           build: {
             outDir,
             emptyOutDir: false,
@@ -65,6 +72,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_API_ORIGIN': JSON.stringify(apiOrigin),
       'import.meta.env.VITE_EXTENSION_VERSION': JSON.stringify(pkg.version),
       __JST_DEV__: JSON.stringify(dev),
+      __JST_TUNING__: tuning,
     },
     build: {
       outDir,
