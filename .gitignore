@@ -18,3 +18,6 @@ uploads/
 
 # Local editor/agent config
 .claude/
+
+# Raw fixture captures waiting for review (never committed as-is)
+apps/extension/test/fixtures/_incoming/
