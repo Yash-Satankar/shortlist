@@ -150,6 +150,34 @@ against a scratch database.
 Daily backups are Railway's own Postgres backups (Postgres service → Backups tab). Postgres has
 no public endpoint; only the app reaches it over Railway's private network.
 
+## Chrome extension (Job Status Tracker)
+
+`apps/extension` is an MV3 extension, named in one place (`packages/shared/src/brand.ts`).
+
+```bash
+pnpm dev:extension     # watch build → apps/extension/dist (points at http://localhost:5173)
+pnpm build:extension   # production build (points at the Railway URL; no dev-only features)
+```
+
+Load `apps/extension/dist` via `chrome://extensions` → Developer mode → Load unpacked. Pair it in
+the web app under Settings → Browser extension → Pair a browser, then paste the code into the popup.
+
+**Reading pages: how and when** (full detail in [PRIVACY.md](PRIVACY.md)):
+
+- Job sites are *optional* host permissions, defined once in `apps/extension/src/lib/sites.ts`.
+  Every site is **off by default**.
+- A site's switch in the popup *is* Chrome's permission for that site. Turning it on asks Chrome for
+  that site only, and the background worker then registers the reader for it
+  (`chrome.scripting.registerContentScripts`) so pages are read when they load. Turning it off
+  unregisters the reader and removes the permission. A grant or removal made in
+  `chrome://extensions` is picked up as well.
+- **Sync this page** is always available. It uses `activeTab`, so it reads the current tab once
+  after your click and needs no stored permission.
+- Readers look at the rendered DOM only: no auto-scrolling, pagination or extra requests. A read
+  stays in session storage for its tab. Nothing is saved or applied without your confirmation.
+- Content scripts are built as self-contained IIFE files (`content/reader.js`, `content/auto.js`)
+  and run in the extension's isolated world, so the page's own scripts can't see them.
+
 ## Roadmap
 
 - [x] **Phase 1.1**: scaffold, schema + migrations, auth, seed, tests
