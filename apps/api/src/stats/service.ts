@@ -1,3 +1,4 @@
+import { pendingCount } from '../portal/service';
 import type { ApplicationStatus } from '@jt/shared';
 import { and, count, countDistinct, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
@@ -29,7 +30,7 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
   const week = await weekStart(db, timezone, now);
   const mine = and(eq(applications.userId, userId), isNull(applications.archivedAt));
 
-  const [[applied], [active], [interviews], [replies], nextFollowUp, followUps, [reviews]] = await Promise.all([
+  const [[applied], [active], [interviews], [replies], nextFollowUp, followUps, [reviews], portalSync] = await Promise.all([
     db
       .select({ n: count() })
       .from(applications)
@@ -58,6 +59,7 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
       .select({ n: count() })
       .from(statusEvents)
       .where(and(eq(statusEvents.userId, userId), eq(statusEvents.disposition, 'pending_review'))),
+    pendingCount(db, userId),
   ]);
 
   return {
@@ -73,7 +75,9 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
       reviews: reviews!.n,
       followUps: followUps.followUps.length,
       ghosts: followUps.ghostSuggestions.length,
-      total: reviews!.n + followUps.followUps.length + followUps.ghostSuggestions.length,
+      /** Portal sync proposals waiting for review. */
+      portalSync,
+      total: reviews!.n + followUps.followUps.length + followUps.ghostSuggestions.length + portalSync,
     },
   };
 }

@@ -63,6 +63,10 @@ const envSchema = z
     DETECTION_VERIFIED_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.95),
     /** …and for those not verified yet (below the threshold → it waits in Follow-ups). */
     DETECTION_UNVERIFIED_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.4),
+    /** Portal sync: how long the encrypted snapshot of a read list is kept. */
+    PORTAL_SNAPSHOT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+    /** Score of a portal change you accepted in review (at/above the threshold → it applies). */
+    PORTAL_CONFIRMED_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.9),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
 
     /**

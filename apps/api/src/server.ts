@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { featureSummary } from './config/features';
 import { instanceKeys } from './llm/keys';
+import { purgeExpiredSnapshots } from './portal/service';
 import { closeDb, getDb } from './db/client';
 import { logger } from './logger';
 
@@ -28,6 +29,14 @@ async function main() {
 
   // Which optional features this instance offers, and why the others are off.
   logger.info(`Features:\n  ${featureSummary(e).join('\n  ')}`);
+
+  // Portal snapshots expire after PORTAL_SNAPSHOT_RETENTION_DAYS: purge at start and daily.
+  const purge = () =>
+    purgeExpiredSnapshots(getDb())
+      .then((n) => n && logger.info({ deleted: n }, 'Expired portal snapshots deleted'))
+      .catch((err: unknown) => logger.warn({ err }, 'Portal snapshot purge failed'));
+  void purge();
+  setInterval(() => void purge(), 24 * 60 * 60 * 1000).unref();
 
   const server = app.listen(e.PORT, () =>
     logger.info(
