@@ -44,3 +44,15 @@ export async function readTab(tabId: number): Promise<PageRead> {
     throw new UnreadablePageError();
   }
 }
+
+/** "Fill with AI": the page's visible main text (one click, sent only to your server). */
+export async function readPageText(tabId: number): Promise<{ text: string; truncated: boolean }> {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['content/reader.js'] });
+    const [res] = await chrome.scripting.executeScript({ target: { tabId }, func: () => globalThis.__jst?.pageText() ?? null });
+    if (!res?.result) throw new UnreadablePageError();
+    return res.result as { text: string; truncated: boolean };
+  } catch {
+    throw new UnreadablePageError();
+  }
+}

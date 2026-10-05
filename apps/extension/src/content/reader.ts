@@ -20,6 +20,22 @@ function read(manual = false): PageRead {
   };
 }
 
+/** Characters of page text sent for AI fill-in (the server refuses more than LLM_MAX_INPUT_CHARS). */
+const PAGE_TEXT_MAX = 36_000;
+
+/**
+ * The visible text of the page's main content, for "Fill with AI". Only produced on that click
+ * and sent to your own server. Prefers the main/article region over navigation and sidebars.
+ */
+function pageText(): { text: string; truncated: boolean } {
+  const root = (document.querySelector('main, [role="main"], article') ?? document.body) as HTMLElement;
+  const text = (root.innerText || root.textContent || '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return { text: text.slice(0, PAGE_TEXT_MAX), truncated: text.length > PAGE_TEXT_MAX };
+}
+
 /** Single-page sites (Workday, LinkedIn) render the job after load: watch the DOM briefly, never fetch. */
 const RENDER_WAIT_MS = 8000;
 
@@ -49,4 +65,4 @@ function autoRead() {
   });
 }
 
-globalThis.__jst ??= { read, autoRead };
+globalThis.__jst ??= { read, autoRead, pageText };
