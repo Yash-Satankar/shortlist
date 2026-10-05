@@ -36,7 +36,7 @@ export class UnreadablePageError extends Error {
 export async function readTab(tabId: number): Promise<PageRead> {
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ['content/reader.js'] });
-    const [res] = await chrome.scripting.executeScript({ target: { tabId }, func: () => globalThis.__jst?.read() ?? null });
+    const [res] = await chrome.scripting.executeScript({ target: { tabId }, func: () => globalThis.__jst?.read(true) ?? null });
     if (!res?.result) throw new UnreadablePageError();
     return res.result as PageRead;
   } catch (e) {

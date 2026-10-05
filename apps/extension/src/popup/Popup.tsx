@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { AppMark, Icon } from '../../../web/src/components/Icon';
 import { Button, ErrorNote, Field, SectionLabel, Switch } from '../../../web/src/components/ui';
 import type { PageRead } from '../content/types';
-import { apiOrigin, EXTENSION_VERSION, hasChrome, readState, type StoredState } from '../lib/config';
+import { apiOrigin, EXTENSION_VERSION, hasChrome, readState, type Account, type StoredState } from '../lib/config';
 import { connect, disconnect } from '../lib/pairing';
 import { disableSite, enableSite, siteStates, type SiteStates } from '../lib/permissions';
 import { activeTab, lastAutoRead, readTab, type ActiveTab } from '../lib/reads';
@@ -56,7 +56,7 @@ export function Popup() {
         {state !== null && !connected && <PairCard onOpenSettings={openSettings} onConnected={reload} canOpen={!!origin} />}
 
         <SectionLabel className="pt-[18px]">This page</SectionLabel>
-        <div className="px-4">{connected ? <ThisPage /> : <div className="group"><div className="gi text-sm text-ink-3"><Icon name="info" size="sm" />Pair first to save jobs from this page.</div></div>}</div>
+        <div className="px-4">{connected ? <ThisPage account={state?.account ?? null} /> : <div className="group"><div className="gi text-sm text-ink-3"><Icon name="info" size="sm" />Pair first to save jobs from this page.</div></div>}</div>
 
         <SiteSwitches onError={setNotice} />
       </main>
@@ -134,7 +134,7 @@ function PairCard({ onOpenSettings, onConnected, canOpen }: { onOpenSettings: ()
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 /** The current tab plus "Sync this page": always available, whether or not its site reads automatically. */
-function ThisPage() {
+function ThisPage({ account }: { account: Account | null }) {
   const [tab, setTab] = useState<ActiveTab | null>(null);
   const [read, setRead] = useState<{ page: PageRead; how: 'auto' | 'manual' } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -191,6 +191,8 @@ function ThisPage() {
           </span>
         </div>
       )}
+      {read && !error && <JobFound page={read.page} />}
+      {__JST_DEV__ && tab && <DevCapture tabId={tab.id} account={account} site={site?.id ?? 'generic'} host={host} />}
     </div>
   );
 }
@@ -237,5 +239,67 @@ function SiteSwitches({ onError }: { onError: (msg: string | null) => void }) {
         <p className="hint m-0 mt-2 px-1">Only pages you open, read as shown. No scrolling, paging or extra requests. Nothing is saved without your confirmation.</p>
       </div>
     </>
+  );
+}
+
+/** What the reader found on the page (saving it arrives with one-click save). */
+function JobFound({ page }: { page: PageRead }) {
+  const job = page.job;
+  if (!job) {
+    return (
+      <div className="gi text-sm text-ink-3">
+        <Icon name="info" size="sm" />
+        <span className="min-w-0 flex-1">This doesn’t look like a job posting.</span>
+      </div>
+    );
+  }
+  const where = [job.companyName, job.location].filter(Boolean).join(' · ');
+  return (
+    <div className="gi">
+      <Icon name="board" className="text-ink-2" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm leading-5 font-semibold">{job.roleTitle ?? 'Role not found'}</div>
+        <div className="ev-time truncate leading-4">{where || 'Company not found'}</div>
+        {job.missing.length > 0 && <div className="hint mt-0.5">You’ll fill in: {job.missing.map((f) => MISSING_LABELS[f]).join(', ')}</div>}
+      </div>
+    </div>
+  );
+}
+
+const MISSING_LABELS: Record<string, string> = { roleTitle: 'role', companyName: 'company', jd: 'description' };
+
+/** DEV BUILDS ONLY (compiled out of production): save this page as a sanitized adapter fixture. */
+function DevCapture({ tabId, account, site, host }: { tabId: number; account: Account | null; site: string; host: string }) {
+  const [state, setState] = useState<string | null>(null);
+  const capture = async () => {
+    setState('Capturing…');
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['content/capture.js'] });
+      const [res] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (o: { userName: string | null; userEmail: string | null }) => globalThis.__jstCapture?.(o) ?? null,
+        args: [{ userName: account?.name ?? null, userEmail: account?.email ?? null }],
+      });
+      const html = res?.result as string | null;
+      if (!html) throw new Error('Capture script not available (is this a dev build?)');
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      a.download = `${site}-${host.replace(/[^a-z0-9.-]/gi, '')}-${stamp}.html`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+      setState(`Saved ${a.download} · review it before sending`);
+    } catch (e) {
+      setState(e instanceof Error ? e.message : 'Capture failed');
+    }
+  };
+  return (
+    <div className="gi pr-2">
+      <Icon name="file" size="sm" className="text-ink-3" />
+      <span className="hint min-w-0 flex-1">{state ?? 'Dev: save this page as a sanitized fixture'}</span>
+      <Button size="sm" variant="quiet" onClick={() => void capture()}>
+        Capture
+      </Button>
+    </div>
   );
 }
