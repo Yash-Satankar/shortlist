@@ -44,8 +44,9 @@ export const DEFAULT_MODELS: Record<Exclude<LlmProvider, 'openai_compatible'>, R
   anthropic: { extraction: 'claude-haiku-4-5', classification: 'claude-haiku-4-5', prep: 'claude-opus-5-5', chat: 'claude-opus-5-5' },
   groq: { extraction: 'llama-3.1-8b-instant', classification: 'llama-3.1-8b-instant', prep: 'llama-3.3-70b-versatile', chat: 'llama-3.3-70b-versatile' },
   together: {
-    extraction: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
-    classification: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    // Small and cheap where the job is structured reading; the 70B model where writing quality matters.
+    extraction: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+    classification: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
     prep: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     chat: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
   },
@@ -69,6 +70,7 @@ export const LLM_PRICES_USD: Record<string, [number, number]> = {
   'claude-haiku-4-5': [1, 5],
   'llama-3.1-8b-instant': [0.05, 0.08],
   'llama-3.3-70b-versatile': [0.59, 0.79],
+  'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo': [0.18, 0.18],
   'meta-llama/Llama-3.3-70B-Instruct-Turbo': [0.88, 0.88],
 };
 

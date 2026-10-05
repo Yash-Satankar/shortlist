@@ -6,6 +6,15 @@ describe('llm catalogue', () => {
     for (const models of Object.values(DEFAULT_MODELS)) for (const m of Object.values(models)) expect(LLM_PRICES_USD[m], m).toBeDefined();
   });
 
+  it('Together: a small model for structured reading, the 70B model for writing', () => {
+    expect(DEFAULT_MODELS.together).toEqual({
+      extraction: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+      classification: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+      prep: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      chat: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    });
+  });
+
   it('every task has a full provider preference order', () => {
     for (const t of LLM_TASKS) expect(new Set(TASK_PROVIDER_PREFERENCE[t]).size).toBe(4);
   });
