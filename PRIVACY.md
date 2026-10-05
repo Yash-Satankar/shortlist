@@ -30,6 +30,10 @@ third-party servers, and no ads. This page says exactly what it can read, when, 
   that tab, which is cleared when the tab or browser closes, until you choose to save it.
 - What you save (job title, company, URL, description, status) goes only to your own tracker over
   HTTPS, authenticated with the pairing token.
+- **Fill with AI** (only shown when you've added your own AI key, and only when you click it) sends
+  the visible text of the page's main content to your tracker. The tracker passes it to the AI
+  provider *you* chose in Settings → AI, using *your* key. The result only fills the save form,
+  and nothing is saved until you press Save. Without a key this never happens.
 - **No passwords.** The extension never reads, stores or sends portal passwords or form fields you
   type into job sites.
 - **Nothing is sent in your name.** It never submits applications, sends messages or emails, or
