@@ -207,7 +207,10 @@ the web app under Settings → Browser extension → Pair a browser, then paste 
   form can ask for them. Fixtures and their expected output are in
   `apps/extension/test/fixtures` (see its README).
 - **Fixture capture** (dev builds only, never in production or the Web Store) saves the current
-  page as a sanitized fixture. Captures are reviewed by hand before they're committed.
+  page as a sanitized fixture into `Downloads/jst-captures/`. Captures are reviewed by hand
+  before they're committed. *Known dev-tool limitation:* on some setups the file never arrives.
+  Use Chrome's "Save page as… → Webpage, Complete" and `pnpm --filter @jt/extension
+  sanitize:capture` instead (see `apps/extension/test/fixtures/README.md`).
 - Content scripts are built as self-contained IIFE files (`content/reader.js`, `content/auto.js`)
   and run in the extension's isolated world, so the page's own scripts can't see them.
 - **Job descriptions** come from structured data first (JSON-LD, then schema.org microdata),

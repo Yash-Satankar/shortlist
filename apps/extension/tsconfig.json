@@ -14,6 +14,7 @@
     "allowImportingTsExtensions": true
   },
   "include": [
+    "scripts",
     "src",
     "test",
     "vite.config.ts",
