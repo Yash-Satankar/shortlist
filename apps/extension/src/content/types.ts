@@ -14,7 +14,7 @@ export interface PageRead {
 
 export interface PageReader {
   /** `manual`: you pressed Sync, so an unknown site is treated as a job page. */
-  read: (manual?: boolean) => PageRead;
+  read: (manual?: boolean) => Promise<PageRead>;
   autoRead: () => void;
   pageText: () => { text: string; truncated: boolean };
 }

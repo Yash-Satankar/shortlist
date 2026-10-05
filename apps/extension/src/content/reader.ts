@@ -1,4 +1,6 @@
+import { elementToText } from '../adapters/dom';
 import { extractJob } from '../adapters/extract';
+import { TUNING } from '../lib/tuning';
 import { ADAPTERS } from '../adapters/sites';
 import { detectSubmitted } from '../adapters/submitted';
 import { showToast } from './toast';
@@ -11,7 +13,7 @@ import type { PageRead, PageReadMessage, SubmittedMessage, SubmittedReply, Toast
  * it is — no scrolling, clicking, pagination or extra network requests — and sends nothing
  * to the server by itself.
  */
-function read(manual = false): PageRead {
+function readOnce(manual: boolean): PageRead {
   const site = siteForUrl(location.href);
   return {
     url: location.href,
@@ -22,19 +24,50 @@ function read(manual = false): PageRead {
   };
 }
 
+/**
+ * Read the page. Many career sites render the description after load, so if no description
+ * passed the quality gate, keep re-checking as the page changes (throttled, no requests) and
+ * stop as soon as one passes, or after jdSettleMaxMs.
+ */
+async function read(manual = false): Promise<PageRead> {
+  const first = readOnce(manual);
+  if (!first.job?.missing.includes('jd')) return first;
+  return new Promise((resolve) => {
+    let latest = first;
+    let queued = 0;
+    const finish = () => {
+      obs.disconnect();
+      clearTimeout(queued);
+      clearTimeout(cap);
+      resolve(latest);
+    };
+    const recheck = () => {
+      queued = 0;
+      latest = readOnce(manual);
+      if (!latest.job?.missing.includes('jd')) finish();
+    };
+    const obs = new MutationObserver(() => {
+      if (!queued) queued = window.setTimeout(recheck, TUNING.jdSettleIdleMs);
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+    const cap = window.setTimeout(() => {
+      latest = readOnce(manual);
+      finish();
+    }, TUNING.jdSettleMaxMs);
+  });
+}
+
 /** Characters of page text sent for AI fill-in (the server refuses more than LLM_MAX_INPUT_CHARS). */
 const PAGE_TEXT_MAX = 36_000;
 
 /**
- * The visible text of the page's main content, for "Fill with AI". Only produced on that click
- * and sent to your own server. Prefers the main/article region over navigation and sidebars.
+ * The page's main content as text, for "Fill with AI". Only produced on that click and sent to
+ * your own server. Prefers the main/article region, and leaves out consent banners, dialogs,
+ * overlays and page chrome (the same filter the readers use).
  */
 function pageText(): { text: string; truncated: boolean } {
-  const root = (document.querySelector('main, [role="main"], article') ?? document.body) as HTMLElement;
-  const text = (root.innerText || root.textContent || '')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  const root = document.querySelector('main, [role="main"], article') ?? document.body;
+  const text = elementToText(root, Number.MAX_SAFE_INTEGER) ?? '';
   return { text: text.slice(0, PAGE_TEXT_MAX), truncated: text.length > PAGE_TEXT_MAX };
 }
 
@@ -62,8 +95,10 @@ function whenJobRendered(): Promise<void> {
 
 function autoRead() {
   void whenJobRendered().then(() => {
-    const message: PageReadMessage = { type: 'page-read', read: read() };
-    void chrome.runtime.sendMessage(message).catch(() => undefined);
+    void read().then((r) => {
+      const message: PageReadMessage = { type: 'page-read', read: r };
+      void chrome.runtime.sendMessage(message).catch(() => undefined);
+    });
   });
   watchForSubmission();
 }
