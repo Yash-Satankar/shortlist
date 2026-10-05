@@ -70,6 +70,12 @@ describe('pairing', () => {
     expect(store.token).toBeUndefined();
   });
 
+  it('extension switched off on the server: the server’s message is shown, nothing stored', async () => {
+    fetchMock.mockResolvedValue(json(403, { error: { code: 'feature_disabled', message: 'Browser extension is switched off in Settings.' } }));
+    await expect(connect(TOKEN)).rejects.toMatchObject({ status: 403, code: 'feature_disabled', message: 'Browser extension is switched off in Settings.' });
+    expect(store.token).toBeUndefined();
+  });
+
   it('disconnect revokes on the server and forgets the token', async () => {
     store.token = TOKEN;
     store.account = { email: 'a@b.c', name: null };
