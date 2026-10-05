@@ -61,6 +61,7 @@ export function resolveSettings(settings: UserSettings | null | undefined): Reso
     followUpAfterDays: settings?.followUpAfterDays ?? e.FOLLOW_UP_AFTER_DAYS,
     postInterviewFollowUpDays: settings?.postInterviewFollowUpDays ?? e.POST_INTERVIEW_FOLLOW_UP_DAYS,
     timezone: settings?.timezone ?? e.DEFAULT_TIMEZONE,
+    features: settings?.features ?? {},
   };
 }
 

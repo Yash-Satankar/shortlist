@@ -1,5 +1,6 @@
 import { createApp } from './app';
 import { env } from './config/env';
+import { featureSummary } from './config/features';
 import { closeDb, getDb } from './db/client';
 import { logger } from './logger';
 
@@ -14,6 +15,9 @@ async function main() {
   if (e.NODE_ENV === 'production' && e.TRUST_PROXY === 0) {
     logger.warn('TRUST_PROXY=0 in production: behind Railway this makes every client share the proxy IP (rate limits) — set TRUST_PROXY=1');
   }
+
+  // Which optional features this instance offers, and why the others are off.
+  logger.info(`Features:\n  ${featureSummary(e).join('\n  ')}`);
 
   const server = app.listen(e.PORT, () =>
     logger.info(

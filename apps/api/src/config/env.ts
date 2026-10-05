@@ -60,6 +60,19 @@ const envSchema = z
     GHOST_SUGGEST_DAYS: z.coerce.number().int().positive().default(7),
     CONFIDENCE_HIGH_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
+
+    /**
+     * Instance features: what this deployment offers. Users switch them on/off for themselves
+     * within this (Settings). See packages/shared/src/features.ts.
+     */
+    FEATURE_AI: bool.default(true),
+    FEATURE_EMAIL_INTAKE: bool.default(false),
+    EMAIL_INTAKE_MODE: z.enum(['imap', 'inbound']).default('imap'),
+    FEATURE_EXTENSION: bool.default(true),
+    FEATURE_PORTAL_SYNC: bool.default(true),
+    FEATURE_PREP: bool.default(true),
+    FEATURE_CHAT: bool.default(true),
+    FEATURE_FOLLOWUP_DRAFTS: bool.default(true),
   })
   .refine((e) => e.ENCRYPTION_KEYS.has(e.ENCRYPTION_ACTIVE_KEY_ID), {
     message: 'ENCRYPTION_ACTIVE_KEY_ID must match a key id in ENCRYPTION_KEYS',
@@ -83,4 +96,9 @@ let cached: Env | undefined;
 export function env(): Env {
   cached ??= parseEnv(process.env);
   return cached;
+}
+
+/** Tests only: re-read process.env on the next env() call. */
+export function resetEnvCache(): void {
+  cached = undefined;
 }

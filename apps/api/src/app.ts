@@ -14,6 +14,8 @@ import { importRouter } from './import/routes';
 import { profileRouter } from './profile/routes';
 import { authRouter } from './auth/routes';
 import { env } from './config/env';
+import { assertFeature } from './config/features';
+import { featuresRouter } from './features/routes';
 import type { Db } from './db/client';
 import { HttpError, notFound } from './lib/http';
 import { logger } from './logger';
@@ -77,7 +79,14 @@ export function createApp({ db }: { db: Db }) {
   });
 
   api.use(authenticate(db));
+  // API tokens exist for the extension only: with the extension off (instance or user), every
+  // token request is refused — except self-revoke, so Disconnect keeps working.
+  api.use((req, _res, next) => {
+    if (req.auth?.via !== 'token' || (req.method === 'POST' && req.path === '/auth/tokens/self/revoke')) return next();
+    assertFeature(db, req.auth.userId, 'extension').then(() => next(), next);
+  });
   api.use('/auth', authRouter(db));
+  api.use('/features', requireAuth, featuresRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));
   api.use('/contacts', requireAuth, requireUserIntent, contactsRouter(db));
   api.use('/answer-library', requireAuth, requireUserIntent, answerLibraryRouter(db));

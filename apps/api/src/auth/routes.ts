@@ -7,6 +7,7 @@ import type { Db } from '../db/client';
 import { users } from '../db/schema';
 import { badRequest, forbidden, notFound, parse, unauthorized } from '../lib/http';
 import { MIN_PASSWORD_LENGTH, verifyPassword } from '../lib/password';
+import { requireFeature } from '../config/features';
 import { changePassword, createUser, resolveSettings } from '../users/service';
 import { requireAuth, requireSession, sessionCookieName, sessionCookieOptions } from './middleware';
 import {
@@ -109,7 +110,7 @@ export function authRouter(db: Db): Router {
     res.json({ tokens: await listApiTokens(db, req.auth!.userId) });
   });
 
-  router.post('/tokens', requireSession, async (req, res) => {
+  router.post('/tokens', requireSession, requireFeature(db, 'extension'), async (req, res) => {
     const { name } = parse(tokenCreateSchema, req.body);
     res.status(201).json({ token: await createApiToken(db, req.auth!.userId, name) });
   });
