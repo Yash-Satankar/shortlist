@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { userFeaturesSchema } from './features';
+import { userAiSettingsSchema } from './llm';
 
 /**
  * Per-user settings stored in users.settings (jsonb). Every field is optional:
@@ -14,6 +15,8 @@ export const userSettingsSchema = z
     timezone: z.string().min(1),
     /** Per-user feature switches within what the instance offers (missing = on). */
     features: userFeaturesSchema,
+    /** AI: model per task, monthly cap, currency (users.settings.ai). */
+    ai: userAiSettingsSchema,
   })
   .partial();
 
