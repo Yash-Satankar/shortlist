@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { searchCompanies } from '../companies/service';
-import { resolveSource, USER_ONLY, USER_OR_AUTO } from '../auth/intent';
+import { AUTO_ONLY, resolveSource, USER_ONLY, USER_OR_AUTO } from '../auth/intent';
+import { detectedSubmissionSchema, recordDetectedSubmission } from './detected';
 import { requireAuth } from '../auth/middleware';
 import type { Db } from '../db/client';
 import { parse } from '../lib/http';
@@ -52,6 +53,12 @@ export function applicationsRouter(db: Db): Router {
     // One-click save (user) or auto-create from a detected "application submitted" page (auto).
     const result = await createApplication(db, req.auth!.userId, input, resolveSource(req, USER_OR_AUTO, input.via));
     res.status(201).json(result);
+  });
+
+  // The extension saw a platform's "application submitted" confirmation (automatic signal only).
+  router.post('/detected-submission', async (req, res) => {
+    resolveSource(req, AUTO_ONLY);
+    res.json(await recordDetectedSubmission(db, req.auth!.userId, parse(detectedSubmissionSchema, req.body)));
   });
 
   router.post('/check-duplicates', async (req, res) => {

@@ -59,6 +59,10 @@ const envSchema = z
     /** After "Not yet" on a ghost suggestion, ask again after this many days (or on new activity). */
     GHOST_SUGGEST_DAYS: z.coerce.number().int().positive().default(7),
     CONFIDENCE_HIGH_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
+    /** Extension "application submitted" detection: score for detectors verified on real pages… */
+    DETECTION_VERIFIED_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.95),
+    /** …and for those not verified yet (below the threshold → it waits in Follow-ups). */
+    DETECTION_UNVERIFIED_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.4),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
 
     /**
