@@ -2,14 +2,15 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { build, defineConfig, type Plugin } from 'vite';
 import { buildManifest } from './src/manifest.ts';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
 /**
  * Builds the MV3 extension into dist/: popup (React), background service worker and the
- * generated manifest. Content scripts (single-file bundles) are added in a later step.
+ * generated manifest, plus the content scripts as self-contained IIFE files (Chrome can't
+ * load content scripts as ES modules), built by a nested build after the main bundle.
  * `--mode development` points at localhost and adds dev-only features; production builds
  * (the zip and the Web Store) never contain them.
  */
@@ -28,17 +29,44 @@ export default defineConfig(({ mode }) => {
     },
   };
 
+  const outDir = path.resolve(import.meta.dirname, 'dist');
+  const contentEntries = ['reader', 'auto'].map((name) => ({ name, file: path.resolve(import.meta.dirname, `src/content/${name}.ts`) }));
+  const contentScripts: Plugin = {
+    name: 'jst-content-scripts',
+    buildStart() {
+      for (const e of contentEntries) this.addWatchFile(e.file);
+    },
+    async closeBundle() {
+      for (const e of contentEntries) {
+        await build({
+          configFile: false,
+          logLevel: 'warn',
+          publicDir: false,
+          define: { __JST_DEV__: JSON.stringify(dev) },
+          build: {
+            outDir,
+            emptyOutDir: false,
+            copyPublicDir: false,
+            minify: !dev,
+            sourcemap: dev ? 'inline' : false,
+            rollupOptions: { input: e.file, output: { format: 'iife', entryFileNames: `content/${e.name}.js` } },
+          },
+        });
+      }
+    },
+  };
+
   return {
     root: path.resolve(import.meta.dirname, 'src'),
     publicDir: path.resolve(import.meta.dirname, 'public'),
-    plugins: [react(), tailwindcss(), manifest],
+    plugins: [react(), tailwindcss(), manifest, contentScripts],
     define: {
       'import.meta.env.VITE_API_ORIGIN': JSON.stringify(apiOrigin),
       'import.meta.env.VITE_EXTENSION_VERSION': JSON.stringify(pkg.version),
       __JST_DEV__: JSON.stringify(dev),
     },
     build: {
-      outDir: path.resolve(import.meta.dirname, 'dist'),
+      outDir,
       emptyOutDir: true,
       sourcemap: dev,
       rollupOptions: {
