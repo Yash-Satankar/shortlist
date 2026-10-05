@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, phase-2]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck and test
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: jobtracker
+          POSTGRES_PASSWORD: jobtracker
+          POSTGRES_DB: jobtracker_test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U jobtracker -d jobtracker_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # Throwaway values for the test database only; no real secrets are used in CI.
+      DATABASE_URL_TEST: postgres://jobtracker:jobtracker@localhost:5433/jobtracker_test
+      DATABASE_URL: postgres://jobtracker:jobtracker@localhost:5433/jobtracker_test
+      ENCRYPTION_KEYS: k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      ENCRYPTION_ACTIVE_KEY_ID: k1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  extension:
+    name: Extension release zip
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Dev-only switches must leave no trace in a production build (checks the built files).
+      - run: pnpm --filter @jt/extension check:prod
+      - run: pnpm --filter @jt/extension release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: job-status-tracker-extension
+          path: apps/extension/release/*.zip
+          if-no-files-found: error
+          retention-days: 30
