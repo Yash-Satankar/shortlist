@@ -319,6 +319,10 @@ describe('providers (no network)', () => {
     await expect(groq.validate()).rejects.toMatchObject({ code: 'invalid_key' });
     fetchMock.mockResolvedValueOnce(new Response('{}', { status: 429 }));
     await expect(groq.complete('m', { task: 'chat', system: '', user: '', maxTokens: 1, json: false })).rejects.toMatchObject({ code: 'rate_limited' });
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'Unable to access model foo. Please visit https://api.together.ai/models' } }), { status: 400 }));
+    await expect(groq.complete('foo', { task: 'chat', system: '', user: '', maxTokens: 1, json: false })).rejects.toMatchObject({ code: 'provider_error', message: 'Groq error 400: Unable to access model foo. Please visit https://api.together.ai/models' });
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'bad key gsk_abcdefghijklmnop' }), { status: 400 }));
+    await expect(groq.complete('m', { task: 'chat', system: '', user: '', maxTokens: 1, json: false })).rejects.toMatchObject({ message: 'Groq error 400: bad key [key]' });
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: '{"a' }, finish_reason: 'length' }] })));
     await expect(groq.complete('m', { task: 'chat', system: '', user: '', maxTokens: 1, json: true })).rejects.toMatchObject({ code: 'bad_output' });
   });

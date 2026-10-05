@@ -150,7 +150,13 @@ function openAiCompatibleClient(provider: LlmProvider, apiKey: string, baseUrl: 
     }
     if (res.status === 401 || res.status === 403) throw new LlmError('invalid_key', `The ${label} API key was rejected.`);
     if (res.status === 429) throw new LlmError('rate_limited', `${label} is rate-limiting this key. Try again shortly.`);
-    if (!res.ok) throw new LlmError('provider_error', `${label} error ${res.status}`);
+    if (!res.ok) {
+      // Include the provider's own short reason (e.g. "model not found"), never the request.
+      const body = (await res.json().catch(() => null)) as { error?: { message?: unknown } | string; message?: unknown } | null;
+      const raw = typeof body?.error === 'string' ? body.error : (body?.error?.message ?? body?.message);
+      const reason = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').replace(/(sk|gsk|tgp)[-_][A-Za-z0-9_-]{6,}/g, '[key]').slice(0, 160) : '';
+      throw new LlmError('provider_error', `${label} error ${res.status}${reason ? `: ${reason}` : ''}`);
+    }
     return res.json() as Promise<Record<string, unknown>>;
   };
   return {
