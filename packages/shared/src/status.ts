@@ -86,14 +86,14 @@ export function decideStatusChange(input: {
   const proposedRank = PIPELINE_RANK[proposed]!;
   if (current === 'ghosted') {
     // Any sign of life after "ghosted" (viewed or beyond) reopens it; a late confirmation doesn't.
-    return proposedRank >= PIPELINE_RANK.viewed!
-      ? { disposition: 'applied', reason: 'revived' }
-      : { disposition: 'ignored', reason: 'backwards' };
+    if (proposedRank < PIPELINE_RANK.viewed!) return { disposition: 'ignored', reason: 'backwards' };
+    return confidence === 'high' ? { disposition: 'applied', reason: 'revived' } : { disposition: 'pending_review', reason: 'low_confidence' };
   }
 
-  return proposedRank > PIPELINE_RANK[current]!
-    ? { disposition: 'applied', reason: 'forward' }
-    : { disposition: 'ignored', reason: 'backwards' };
+  if (proposedRank <= PIPELINE_RANK[current]!) return { disposition: 'ignored', reason: 'backwards' };
+  // Forward moves apply on their own only when the signal is sure; a false "Applied" is worse
+  // than asking (e.g. a submission detected by an adapter not yet verified on real pages).
+  return confidence === 'high' ? { disposition: 'applied', reason: 'forward' } : { disposition: 'pending_review', reason: 'low_confidence' };
 }
 
 /** Statuses that count as "waiting on the employer" for follow-up / ghost suggestions. */

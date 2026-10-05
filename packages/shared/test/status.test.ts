@@ -43,10 +43,15 @@ describe('automatic sources never move a status backwards', () => {
     }
   });
 
-  it('applies forward moves', () => {
-    expect(decide('applied', 'assessment', 'email')).toEqual({ disposition: 'applied', reason: 'forward' });
-    expect(decide('saved', 'applied', 'extension_auto').disposition).toBe('applied');
-    expect(decide('applied', 'shortlisted', 'portal').disposition).toBe('applied');
+  it('applies forward moves when the signal is sure', () => {
+    expect(decide('applied', 'assessment', 'email', 'high')).toEqual({ disposition: 'applied', reason: 'forward' });
+    expect(decide('saved', 'applied', 'extension_auto', 'high').disposition).toBe('applied');
+    expect(decide('applied', 'shortlisted', 'portal', 'high').disposition).toBe('applied');
+  });
+
+  it('sends unsure forward moves to review (a false "Applied" is worse than asking)', () => {
+    expect(decide('saved', 'applied', 'extension_auto', 'low')).toEqual({ disposition: 'pending_review', reason: 'low_confidence' });
+    expect(decide('applied', 'interview', 'email')).toEqual({ disposition: 'pending_review', reason: 'low_confidence' });
   });
 
 });
@@ -105,10 +110,11 @@ describe('user-only targets', () => {
 });
 
 describe('ghosted applications', () => {
-  it('are revived by a real signal', () => {
-    expect(decide('ghosted', 'interview', 'email')).toEqual({ disposition: 'applied', reason: 'revived' });
-    expect(decide('ghosted', 'viewed', 'portal').disposition).toBe('applied');
+  it('are revived by a sure signal; an unsure one asks first', () => {
+    expect(decide('ghosted', 'interview', 'email', 'high')).toEqual({ disposition: 'applied', reason: 'revived' });
+    expect(decide('ghosted', 'viewed', 'portal', 'high').disposition).toBe('applied');
     expect(decide('ghosted', 'rejected', 'email', 'high').disposition).toBe('applied');
+    expect(decide('ghosted', 'interview', 'email', 'low')).toEqual({ disposition: 'pending_review', reason: 'low_confidence' });
   });
 
   it('ignore a late confirmation', () => {

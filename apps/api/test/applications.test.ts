@@ -192,10 +192,17 @@ describe('status rules (end to end)', () => {
     expect((await agent.get('/api/reviews')).body.items).toHaveLength(0);
   });
 
-  it('applies forward automatic changes', async () => {
+  it('applies forward automatic changes when the signal is sure', async () => {
     const { id } = await create({ status: 'applied' });
-    await automatic(id, 'assessment');
+    await automatic(id, 'assessment', 'email', 'high');
     expect((await detail(id)).status).toBe('assessment');
+  });
+
+  it('an unsure forward signal waits for review instead of changing the status', async () => {
+    const { id } = await create({ status: 'saved' });
+    const { decision } = await automatic(id, 'applied', 'extension_auto', 'low');
+    expect(decision).toEqual({ disposition: 'pending_review', reason: 'low_confidence' });
+    expect((await detail(id)).status).toBe('saved');
   });
 });
 
@@ -333,7 +340,7 @@ describe('undo', () => {
 
   it('undoes an automatic change', async () => {
     const { id } = await create({ status: 'applied' });
-    const { event } = await automatic(id, 'shortlisted');
+    const { event } = await automatic(id, 'shortlisted', 'email', 'high');
     const app = (await post(`/api/applications/${id}/events/${event!.id}/undo`, {}).expect(200)).body.application;
     expect(app.status).toBe('applied');
   });
