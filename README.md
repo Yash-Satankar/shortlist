@@ -241,16 +241,27 @@ platform's own confirmation marker, never generic "thank you" text:
   "Applied … ago" never creates jobs while you browse. Matching by company and role (a
   different link) always asks.
 
-**Adapter verification status** (`apps/extension/src/adapters/verification.ts`; a capability is
-marked verified only together with a real captured fixture, and a test enforces this):
+**Adapter verification status** (`apps/extension/src/adapters/verification.ts`). A capability, or
+for "submitted" each confirmation marker, is marked verified only together with a real captured
+fixture that proves it, and a test enforces this.
 
-| Site | Job page | Submitted | Applications list |
-| --- | --- | --- | --- |
-| LinkedIn | not yet | not yet | not yet |
-| Naukri | not yet | not yet | not yet |
-| Greenhouse | not yet | not yet | not yet |
-| Lever | not yet | not yet | not yet |
-| Workday | not yet | not yet | — (deferred) |
+| Site | Job page | Applications list |
+| --- | --- | --- |
+| LinkedIn | not yet (classic + newer layout read; real capture is a submitted page) | not yet |
+| Naukri | not yet | not yet |
+| Greenhouse | not yet | not yet |
+| Lever | not yet | not yet |
+| Workday | not yet | — (deferred) |
+
+| "Submitted" marker | Verified |
+| --- | --- |
+| LinkedIn: "Application status · Application submitted" card (newer layout) | **yes** (real capture) |
+| LinkedIn: Easy Apply "Application sent" dialog | not yet |
+| LinkedIn: "Applied … ago" state (classic layout) | not yet |
+| Greenhouse: confirmation page / legacy confirmation section | not yet |
+| Lever: thanks page | not yet |
+| Naukri: "Applied" button state | not yet |
+| Workday: post-submit dialog | not yet |
 
 ## Roadmap
 

@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { extractJob } from '../src/adapters/extract';
 import { detectSubmitted } from '../src/adapters/submitted';
-import { CAPABILITIES, VERIFIED, type Capability } from '../src/adapters/verification';
+import { CAPABILITIES, SUBMITTED_MARKERS, VERIFIED, type Capability } from '../src/adapters/verification';
 
 const DIR = path.resolve(import.meta.dirname, 'fixtures');
 
@@ -83,6 +83,22 @@ describe('adapter fixtures', () => {
 });
 
 describe('verification status', () => {
+  const submittedFixtures = fixtures.filter((f) => (f.header?.capability ?? 'jobPage') === 'submitted');
+
+  it('every marker a fixture expects is a known marker (no typos)', () => {
+    for (const f of submittedFixtures) {
+      const sub = f.expected.submitted as { site: keyof typeof SUBMITTED_MARKERS; signal: string } | null;
+      if (sub) expect(Object.keys(SUBMITTED_MARKERS[sub.site]), f.name).toContain(sub.signal);
+    }
+  });
+
+  // Each verified "submitted" marker needs a REAL positive capture of that exact marker.
+  const markerCases = Object.entries(SUBMITTED_MARKERS).flatMap(([site, markers]) => Object.entries(markers).filter(([, v]) => v).map(([marker]) => ({ site, marker })));
+  it.each(markerCases)('$site "$marker" is backed by a real capture', ({ site, marker }) => {
+    const real = submittedFixtures.filter((f) => f.name.startsWith(`${site}/`) && !f.header?.synthetic && (f.expected.submitted as { signal?: string } | null)?.signal === marker);
+    expect(real.length, `${site} marker "${marker}" is verified but no real capture shows it`).toBeGreaterThan(0);
+  });
+
   // A capability may be marked verified only with a REAL (non-synthetic) fixture proving it.
   const cases = Object.entries(VERIFIED).flatMap(([site, caps]) => CAPABILITIES.filter((c) => caps[c]).map((c) => ({ site, capability: c })));
   it.each(cases.length ? cases : [{ site: '(none)', capability: 'jobPage' as Capability }])('$site $capability has a real capture', ({ site, capability }) => {

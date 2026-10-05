@@ -1,7 +1,7 @@
 import { canonicalJobUrl } from '@jt/shared';
 import { siteForUrl, type SiteId } from '../lib/sites';
 import { clean } from './dom';
-import { isVerified } from './verification';
+import { isMarkerVerified } from './verification';
 
 /**
  * "Application submitted" detectors. Conservative by design: each one requires the
@@ -130,5 +130,5 @@ export function detectSubmitted(doc: Document, href: string): SubmittedSignal | 
   const site = siteForUrl(href);
   if (!site) return null;
   const hit = DETECTORS[site.id](doc, new URL(href));
-  return hit ? { ...hit, site: site.id, verified: isVerified(site.id, 'submitted') } : null;
+  return hit ? { ...hit, site: site.id, verified: isMarkerVerified(site.id, hit.signal) } : null;
 }

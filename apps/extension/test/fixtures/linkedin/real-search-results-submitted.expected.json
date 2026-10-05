@@ -5,7 +5,7 @@
     "jobUrl": "https://www.linkedin.com/jobs/view/4475398470/",
     "fresh": true,
     "onJobPage": true,
-    "verified": false
+    "verified": true
   },
   "job": {
     "adapter": "linkedin",
