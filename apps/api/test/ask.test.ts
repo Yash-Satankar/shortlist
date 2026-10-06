@@ -106,7 +106,7 @@ describe('open questions: cited answers from your own records', () => {
   it('answers from sources, keeps only real citations', async () => {
     const a = await save(me, { companyName: 'Tessera', roleTitle: 'Full Stack Engineer', jd: 'You will build data pipelines in Python and React dashboards. Notice period up to 30 days.', notes: 'Recruiter Priya said the panel is on Friday.' });
     await save(other, { companyName: 'Tessera', roleTitle: 'Analyst', notes: 'Other user secret note about Tessera salary' });
-    answer = { answer: 'They want up to 30 days of notice [S2]. The panel is on Friday [S1]. Also [S9].', cited: ['S1', 'S2', 'S9'], found: true };
+    answer = { answer: 'They want up to 30 days of notice [S2]. The panel is on Friday [S1, S9]. Also [S9].', cited: ['S1', 'S2', 'S9'], found: true };
     const res = (await ask(me, 'What did Tessera say about notice period?').expect(200)).body;
     expect(res.kind).toBe('search');
     expect(res.answer).toBe('They want up to 30 days of notice [S2]. The panel is on Friday [S1]. Also.');

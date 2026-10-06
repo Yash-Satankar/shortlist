@@ -45,7 +45,9 @@ Statuses: ${APPLICATION_STATUSES.join(', ')}. Sources: ${APPLICATION_SOURCES.joi
   "still waiting", "currently in interview" → statuses (current). "applications I sent" → dateField "applied".
 - Dates: "this month" = first day of this month to today; "last month" = the whole previous month; "this week" = Monday to today;
   "last N days" = today minus N to today. With reached statuses and a date, use dateField "reached".
-- Only include filters the question asks for. If unsure, use "search".`;
+- Only include filters the question asks for. "statuses" (current status) only when the question is about where
+  applications stand NOW ("still waiting", "currently", "active"); "applications I sent / applied to" never sets statuses.
+- If unsure, use "search".`;
 }
 
 export interface ExactRow {
