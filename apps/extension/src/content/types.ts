@@ -1,3 +1,4 @@
+import type { ApplicationsList } from '../adapters/lists';
 import type { SubmittedSignal } from '../adapters/submitted';
 import type { ExtractedJob } from '../adapters/types';
 import type { SanitizeOptions } from '../capture/sanitize';
@@ -10,6 +11,8 @@ export interface PageRead {
   site: SiteId | null;
   readAt: string;
   job: ExtractedJob | null;
+  /** Your applications list on a portal (portal sync), when this is that page. */
+  list: ApplicationsList | null;
 }
 
 export interface PageReader {

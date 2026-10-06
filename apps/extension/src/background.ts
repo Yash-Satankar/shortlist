@@ -1,6 +1,7 @@
 import type { PageReadMessage, SubmittedMessage, ToastActionMessage } from './content/types';
 import { syncContentScripts } from './lib/permissions';
 import { lastReadKey } from './lib/reads';
+import { listFingerprint, sendPortalSync } from './lib/portal';
 import { handleSubmitted, openApp, undoSubmitted } from './lib/submitted';
 
 /**
@@ -42,9 +43,26 @@ chrome.runtime.onMessage.addListener((message: PageReadMessage | SubmittedMessag
   // Only our own content scripts (isolated world of a tab) can send these.
   if (sender.id !== chrome.runtime.id || sender.tab?.id === undefined) return;
   switch (message?.type) {
-    case 'page-read':
+    case 'page-read': {
       void chrome.storage.session.set({ [lastReadKey(sender.tab.id)]: message.read });
+      // Your applications list on a site you switched on: send it for review (proposals only).
+      // An identical re-read in this browser session isn't sent again; the server dedupes too.
+      const list = message.read.list;
+      if (list && !list.unreadable && list.rows.length) {
+        const key = `portal-sent:${list.site}`;
+        const print = listFingerprint(list);
+        void chrome.storage.session.get(key).then(async (r) => {
+          if (r[key] === print) return;
+          try {
+            await sendPortalSync(list, message.read.url, 'auto');
+            await chrome.storage.session.set({ [key]: print });
+          } catch {
+            // Not paired, portal sync switched off, or offline: try again on the next visit.
+          }
+        });
+      }
       return;
+    }
     case 'submitted':
       void handleSubmitted(message, sender.tab.id).then(sendResponse);
       return true; // async reply

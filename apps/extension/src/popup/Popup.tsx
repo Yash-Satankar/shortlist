@@ -9,6 +9,7 @@ import { disableSite, enableSite, siteStates, type SiteStates } from '../lib/per
 import { activeTab, lastAutoRead, readTab, type ActiveTab } from '../lib/reads';
 import { SITES, siteForUrl, type SiteId } from '../lib/sites';
 import { SaveJob } from './SaveJob';
+import { PortalList } from './PortalList';
 
 /** Popup: pairing, this page (Sync this page), per-site auto-read switches, disconnect. */
 export function Popup() {
@@ -192,7 +193,7 @@ function ThisPage({ account, origin }: { account: Account | null; origin: string
           </span>
         </div>
       )}
-      {read && !error && (read.page.job ? <SaveJob key={read.page.readAt} job={read.page.job} tabId={tab!.id} pageTitle={read.page.title} origin={origin} /> : <NotAJob />)}
+      {read && !error && (read.page.list ? <PortalList key={read.page.readAt} list={read.page.list} pageUrl={read.page.url} origin={origin} /> : read.page.job ? <SaveJob key={read.page.readAt} job={read.page.job} tabId={tab!.id} pageTitle={read.page.title} origin={origin} /> : <NotAJob />)}
       {__JST_DEV__ && tab && <DevCapture tabId={tab.id} account={account} site={site?.id ?? 'generic'} host={host} />}
     </div>
   );

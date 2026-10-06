@@ -1,5 +1,6 @@
 import { elementToText } from '../adapters/dom';
 import { extractJob } from '../adapters/extract';
+import { readApplicationsList } from '../adapters/lists';
 import { TUNING } from '../lib/tuning';
 import { ADAPTERS } from '../adapters/sites';
 import { detectSubmitted } from '../adapters/submitted';
@@ -15,12 +16,15 @@ import type { PageRead, PageReadMessage, SubmittedMessage, SubmittedReply, Toast
  */
 function readOnce(manual: boolean): PageRead {
   const site = siteForUrl(location.href);
+  // Your applications list is never treated as a job page.
+  const list = readApplicationsList(document, location.href);
   return {
     url: location.href,
     title: document.title.trim(),
     site: site?.id ?? null,
     readAt: new Date().toISOString(),
-    job: extractJob(document, location.href, { assumeJob: manual }),
+    job: list ? null : extractJob(document, location.href, { assumeJob: manual }),
+    list,
   };
 }
 
@@ -31,7 +35,10 @@ function readOnce(manual: boolean): PageRead {
  */
 async function read(manual = false): Promise<PageRead> {
   const first = readOnce(manual);
-  if (!first.job?.missing.includes('jd')) return first;
+  // Wait for late rendering only when a job's description is missing, or a list hasn't rendered yet.
+  const waitForJd = first.job?.missing.includes('jd');
+  const waitForList = first.list?.unreadable;
+  if (!waitForJd && !waitForList) return first;
   return new Promise((resolve) => {
     let latest = first;
     let queued = 0;
@@ -44,7 +51,7 @@ async function read(manual = false): Promise<PageRead> {
     const recheck = () => {
       queued = 0;
       latest = readOnce(manual);
-      if (!latest.job?.missing.includes('jd')) finish();
+      if (latest.list ? !latest.list.unreadable : !latest.job?.missing.includes('jd')) finish();
     };
     const obs = new MutationObserver(() => {
       if (!queued) queued = window.setTimeout(recheck, TUNING.jdSettleIdleMs);
@@ -77,7 +84,11 @@ const RENDER_WAIT_MS = 8000;
 function whenJobRendered(): Promise<void> {
   const site = siteForUrl(location.href);
   const adapter = site ? ADAPTERS[site.id] : null;
-  const ready = () => !adapter || adapter.isJobPage(document, new URL(location.href));
+  const ready = () => {
+    if (!adapter) return true;
+    const list = readApplicationsList(document, location.href);
+    return list ? !list.unreadable : adapter.isJobPage(document, new URL(location.href));
+  };
   if (ready()) return Promise.resolve();
   return new Promise((resolve) => {
     const obs = new MutationObserver(() => {
