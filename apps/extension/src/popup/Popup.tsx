@@ -5,6 +5,7 @@ import { Button, ErrorNote, Field, SectionLabel, Switch } from '../../../web/src
 import type { PageRead } from '../content/types';
 import { apiOrigin, EXTENSION_VERSION, hasChrome, readState, type Account, type StoredState } from '../lib/config';
 import { connect, disconnect } from '../lib/pairing';
+import { switchServer } from '../lib/server';
 import { disableSite, enableSite, siteStates, type SiteStates } from '../lib/permissions';
 import { activeTab, lastAutoRead, readTab, type ActiveTab } from '../lib/reads';
 import { SITES, siteForUrl, type SiteId } from '../lib/sites';
@@ -55,7 +56,7 @@ export function Popup() {
           </div>
         )}
 
-        {state !== null && !connected && <PairCard onOpenSettings={openSettings} onConnected={reload} canOpen={!!origin} />}
+        {state !== null && !connected && <PairCard onOpenSettings={openSettings} onConnected={reload} canOpen={!!origin} origin={origin} onServerChanged={(o) => setOrigin(o)} />}
 
         <SectionLabel className="pt-[18px]">This page</SectionLabel>
         <div className="px-4">{connected ? <ThisPage account={state?.account ?? null} origin={origin} /> : <div className="group"><div className="gi text-sm text-ink-3"><Icon name="info" size="sm" />Pair first to save jobs from this page.</div></div>}</div>
@@ -79,8 +80,36 @@ export function Popup() {
   );
 }
 
-function PairCard({ onOpenSettings, onConnected, canOpen }: { onOpenSettings: () => void; onConnected: () => void; canOpen: boolean }) {
+function PairCard({
+  onOpenSettings,
+  onConnected,
+  canOpen,
+  origin,
+  onServerChanged,
+}: {
+  onOpenSettings: () => void;
+  onConnected: () => void;
+  canOpen: boolean;
+  origin: string;
+  onServerChanged: (origin: string) => void;
+}) {
   const [code, setCode] = useState('');
+  const [editingServer, setEditingServer] = useState(false);
+  const [server, setServer] = useState('');
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const saveServer = async () => {
+    setChecking(true);
+    setServerError(null);
+    try {
+      onServerChanged(await switchServer(server));
+      setEditingServer(false);
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Couldn’t use that server');
+    } finally {
+      setChecking(false);
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -128,6 +157,25 @@ function PairCard({ onOpenSettings, onConnected, canOpen }: { onOpenSettings: ()
           Open Settings
           <Icon name="external" size="sm" />
         </Button>
+        {editingServer ? (
+          <div className="flex flex-col gap-2 pt-1 shadow-[inset_0_1px_0_var(--line)]">
+            <Field label="Your tracker’s address" error={serverError ?? undefined} hint="Self-hosting? Chrome will ask to allow this one address.">
+              <input className={`inp ${serverError ? 'err' : ''}`} value={server} onChange={(e) => setServer(e.target.value)} placeholder="https://tracker.example.com" autoComplete="url" spellCheck={false} />
+            </Field>
+            <div className="flex gap-2">
+              <Button className="flex-1" disabled={!server.trim() || checking} busy={checking} onClick={() => void saveServer()}>
+                Use this server
+              </Button>
+              <Button variant="quiet" onClick={() => (setEditingServer(false), setServerError(null))}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="ev-time -mt-1 self-center underline decoration-line-strong underline-offset-[3px]" onClick={() => (setServer(origin), setEditingServer(true))}>
+            Server: {origin ? new URL(origin).host : '…'} · change
+          </button>
+        )}
       </form>
     </div>
   );

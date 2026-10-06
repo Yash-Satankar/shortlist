@@ -26,7 +26,8 @@ export function buildManifest(opts: { version: string; apiOrigin: string; dev: b
     permissions: ['storage', 'activeTab', 'scripting', ...(opts.dev ? ['downloads'] : [])],
     // Dev builds only: VITE_E2E_HOSTS pre-grants test hosts (automation can't click Chrome's prompt).
     host_permissions: [...new Set([`${opts.apiOrigin}/*`, ...(opts.dev ? ['http://localhost:5173/*', 'http://localhost:3000/*', ...(opts.e2eHosts ?? [])] : [])])],
-    optional_host_permissions: SITES.flatMap((s) => s.origins),
+    // Job sites (each switched on by you), and your own tracker if it's self-hosted (asked for when you enter it).
+    optional_host_permissions: [...SITES.flatMap((s) => s.origins), 'https://*/*', 'http://localhost/*', 'http://127.0.0.1/*'],
     minimum_chrome_version: '120',
   };
 }

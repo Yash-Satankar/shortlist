@@ -27,9 +27,9 @@ describe('site registry', () => {
     expect(siteForUrl(url)).toBeNull();
   });
 
-  it('the manifest asks for job sites only as optional permissions, straight from the registry', () => {
+  it('the manifest asks for job sites (from the registry) and a self-hosted tracker only as optional permissions', () => {
     const m = buildManifest({ version: '1.0.0', apiOrigin: 'https://api.example', dev: false });
-    expect(m.optional_host_permissions).toEqual(SITES.flatMap((s) => s.origins));
+    expect(m.optional_host_permissions).toEqual([...SITES.flatMap((s) => s.origins), 'https://*/*', 'http://localhost/*', 'http://127.0.0.1/*']);
     expect(m.host_permissions).toEqual(['https://api.example/*']);
     expect(m.permissions).toEqual(['storage', 'activeTab', 'scripting']);
     expect(JSON.stringify(m)).not.toMatch(/content_scripts|<all_urls>/);
