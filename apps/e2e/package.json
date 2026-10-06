@@ -1,0 +1,14 @@
+{
+  "name": "@jt/e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests of the critical paths, against the production build (API serving the web app) on the test database.",
+  "scripts": {
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "exceljs": "^4.4.0",
+    "pg": "^8.23.1"
+  }
+}

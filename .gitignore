@@ -24,3 +24,7 @@ apps/extension/test/fixtures/_incoming/
 
 # Extension release zips (built by CI / pnpm --filter @jt/extension release)
 apps/extension/release/
+
+# Playwright
+apps/e2e/test-results/
+apps/e2e/playwright-report/

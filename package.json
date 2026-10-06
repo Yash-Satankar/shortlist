@@ -13,6 +13,7 @@
     "start": "pnpm --filter @jt/api start",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
+    "e2e": "pnpm --filter @jt/e2e e2e",
     "test": "pnpm -r test",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
