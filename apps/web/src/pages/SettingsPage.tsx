@@ -22,6 +22,7 @@ import { formatDate, relativeDays } from '../lib/format';
 import { useThemePref, type ThemePref } from '../lib/theme';
 import { ExtensionSection } from './settings/ExtensionSection';
 import { AiSection } from './settings/AiSection';
+import { EmailSection } from './settings/EmailSection';
 import { FeaturesSection } from './settings/FeaturesSection';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
@@ -45,6 +46,8 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
       {extensionOn !== false && <ExtensionSection />}
 
       <AiSection />
+
+      <EmailSection />
 
       <FeaturesSection />
 

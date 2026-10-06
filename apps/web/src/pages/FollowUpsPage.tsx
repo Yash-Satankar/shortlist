@@ -1,7 +1,7 @@
-import { PORTAL_SITE_LABELS, type FollowUpReason } from '@jt/shared';
+import { PORTAL_SITE_LABELS, type ApplicationStatus, type FollowUpReason } from '@jt/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useFollowUps, usePortalPending, usePortalReview, useQuickUpdate, useReviewAny, useReviews, useStats, type PortalProposal } from '../api/hooks';
+import { useApplications, useAssignEmail, useDismissEmail, useFeature, useFollowUps, usePortalPending, usePortalReview, useQuickUpdate, useReviewAny, useReviews, useStats, useUnmatchedEmails, type PortalProposal, type UnmatchedEmail } from '../api/hooks';
 import type { FollowUpItem, FollowUps } from '../api/types';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
@@ -22,6 +22,8 @@ export function FollowUpsPage() {
   const reviews = useReviews();
   const review = useReviewAny();
   const portal = usePortalPending();
+  const emailOn = useFeature('email_intake');
+  const unmatched = useUnmatchedEmails(emailOn === true);
   const quick = useQuickUpdate();
   const toast = useToast();
   const [menuFor, setMenuFor] = useState<FollowUpItem | null>(null);
@@ -35,7 +37,7 @@ export function FollowUpsPage() {
       { onSuccess: () => toast({ message: `${item.companyName}: next follow-up ${formatDay(isoDateFromToday(days))}`, tone: 'info' }), onError },
     );
 
-  const total = (reviews.data?.length ?? 0) + (portal.data?.length ?? 0) + (data?.followUps.length ?? 0) + ghosts.length;
+  const total = (reviews.data?.length ?? 0) + (portal.data?.length ?? 0) + (unmatched.data?.length ?? 0) + (data?.followUps.length ?? 0) + ghosts.length;
   const today = data ? formatDay(data.settings.today) : '';
 
   return (
@@ -119,6 +121,8 @@ export function FollowUpsPage() {
             )}
 
             {!!portal.data?.length && <PortalSyncSection items={portal.data} onError={onError} />}
+
+            {!!unmatched.data?.length && <EmailsToMatch items={unmatched.data} onError={onError} />}
 
             {!!data?.followUps.length && (
               <section className="pt-1">
@@ -365,6 +369,84 @@ function PortalSyncSection({ items, onError }: { items: PortalProposal[]; onErro
                 {p.kind === 'new' ? 'Save and accept' : 'Accept'}
               </Button>
               <Button className="flex-1" disabled={decide.isPending} onClick={() => run({ dismiss: [p.id] })}>
+                Dismiss
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const EMAIL_STATUS: Record<UnmatchedEmail['category'], ApplicationStatus> = {
+  received: 'applied',
+  viewed: 'viewed',
+  assessment: 'assessment',
+  interview: 'interview',
+  rejected: 'rejected',
+  offer: 'offer',
+};
+
+/**
+ * Job emails the tracker couldn't tie to one application (e.g. two roles at the same company).
+ * Picking the application proposes the change through the normal rules; nothing changes before.
+ */
+function EmailsToMatch({ items, onError }: { items: UnmatchedEmail[]; onError: (err: unknown) => void }) {
+  const apps = useApplications(useMemo(() => new URLSearchParams({ archived: 'false' }), []));
+  const assign = useAssignEmail();
+  const dismiss = useDismissEmail();
+  const toast = useToast();
+  const [choice, setChoice] = useState<Record<string, string>>({});
+  const options = useMemo(
+    () => [...(apps.data?.items ?? [])].sort((a, b) => a.companyName.localeCompare(b.companyName) || a.roleTitle.localeCompare(b.roleTitle)),
+    [apps.data],
+  );
+
+  return (
+    <section className="pt-1">
+      <SectionLabel count={items.length} className="pt-5" action="From your email">
+        Emails to match
+      </SectionLabel>
+      <div className="flex flex-col gap-2.5 px-4">
+        {items.map((m) => (
+          <article key={m.id} className="card pt-3.5 pb-3">
+            <div className="truncate text-[15px] leading-5 font-semibold">{m.subject}</div>
+            <div className="ev-time mt-1 truncate">
+              {m.from} · {formatEventTime(m.receivedAt)}
+            </div>
+            <div className="mt-2.5 flex items-center gap-2">
+              <span className="src">email says</span>
+              <Icon name="arrowRight" size="sm" className="text-ink-3" />
+              <StatusPill status={EMAIL_STATUS[m.category]} />
+            </div>
+            <label className="field mt-3">
+              <span className="lbl">Which application is this about?</span>
+              <select className="inp" value={choice[m.id] ?? ''} onChange={(e) => setChoice((c) => ({ ...c, [m.id]: e.target.value }))}>
+                <option value="">Choose…</option>
+                {options.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.companyName} · {a.roleTitle}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="mt-3 flex gap-2">
+              <Button
+                variant="ink"
+                className="flex-1"
+                disabled={!choice[m.id] || assign.isPending}
+                onClick={() =>
+                  assign.mutate(
+                    { emailId: m.id, applicationId: choice[m.id]! },
+                    { onSuccess: (r) => toast({ message: r.outcome === 'applied' ? 'Status updated' : r.outcome === 'review' ? 'Sent to review' : 'Matched', tone: 'info' }), onError },
+                  )
+                }
+              >
+                <Icon name="check" />
+                Assign
+              </Button>
+              <Button className="flex-1" disabled={dismiss.isPending} onClick={() => dismiss.mutate(m.id, { onError })}>
                 Dismiss
               </Button>
             </div>

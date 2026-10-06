@@ -441,3 +441,47 @@ export function usePortalReview() {
     },
   });
 }
+
+// ---------------------------------------------------------------- email updates
+
+export interface EmailStatus {
+  mode: 'imap' | 'inbound';
+  offered: boolean;
+  why: string | null;
+  /** The instance mailbox, shown to its owner only. */
+  mailbox: { address: string; folder: string; lastRunAt: string | null; lastError: string | null } | null;
+  counts: { applied: number; review: number; unmatched: number };
+}
+
+export interface UnmatchedEmail {
+  id: string;
+  from: string;
+  subject: string;
+  receivedAt: string;
+  category: 'received' | 'viewed' | 'assessment' | 'interview' | 'rejected' | 'offer';
+  confidence: number;
+}
+
+export const useEmailStatus = (enabled = true) => useQuery({ queryKey: ['email-status'], queryFn: () => api<EmailStatus>('/emails/status'), enabled, refetchInterval: 60_000 });
+export const useUnmatchedEmails = (enabled = true) =>
+  useQuery({ queryKey: ['emails-unmatched'], queryFn: async () => (await api<{ items: UnmatchedEmail[] }>('/emails/unmatched')).items, enabled });
+export const useInboundAddress = (enabled: boolean) => useQuery({ queryKey: ['email-inbound'], queryFn: () => api<{ address: string }>('/emails/inbound-address'), enabled, retry: false });
+
+function useEmailMutation<V, R>(fn: (v: V) => Promise<R>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: ['emails-unmatched'] });
+      void qc.invalidateQueries({ queryKey: ['email-status'] });
+      if (data && typeof data === 'object' && 'address' in data) qc.setQueryData(['email-inbound'], data);
+      invalidateLists(qc);
+    },
+  });
+}
+
+export const useCheckEmail = () => useEmailMutation(() => api<{ queued: boolean }>('/emails/check', { method: 'POST' }));
+export const useAssignEmail = () =>
+  useEmailMutation((v: { emailId: string; applicationId: string }) => api<{ outcome: string }>(`/emails/${v.emailId}/assign`, { method: 'POST', json: { applicationId: v.applicationId } }));
+export const useDismissEmail = () => useEmailMutation((emailId: string) => api<void>(`/emails/${emailId}/dismiss`, { method: 'POST' }));
+export const useRegenerateInbound = () => useEmailMutation(() => api<{ address: string }>('/emails/inbound-address/regenerate', { method: 'POST' }));

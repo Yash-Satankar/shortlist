@@ -6,6 +6,7 @@ import { ErrorNote, SectionLabel, Switch } from '../../components/ui';
 const SHOWN: { feature: Feature; detail: string }[] = [
   { feature: 'extension', detail: 'Save jobs and sync statuses from Chrome' },
   { feature: 'ai', detail: 'Fills gaps the rules miss, with your key' },
+  { feature: 'email_intake', detail: 'Status updates from your job emails' },
 ];
 
 const stateLine = (feature: Feature, s: FeatureState, detail: string) =>
