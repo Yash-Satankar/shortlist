@@ -14,6 +14,7 @@
     "db:seed": "tsx --env-file-if-exists=../../.env src/scripts/seed.ts",
     "user:create": "tsx --env-file-if-exists=../../.env src/scripts/create-user.ts",
     "user:password": "tsx --env-file-if-exists=../../.env src/scripts/set-password.ts",
+    "email:dry-run": "tsx --env-file-if-exists=../../.env src/scripts/email-dry-run.ts",
     "import:xlsx": "tsx --env-file-if-exists=../../.env src/scripts/import-xlsx.ts"
   },
   "dependencies": {

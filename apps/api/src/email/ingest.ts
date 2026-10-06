@@ -1,4 +1,4 @@
-import { canonicalJobUrl, featureState, normalizeCompanyName, normalizeRoleTitle, type ApplicationStatus } from '@jt/shared';
+import { canonicalJobUrl, confidenceLevel, decideStatusChange, featureState, normalizeCompanyName, normalizeRoleTitle, type ApplicationStatus } from '@jt/shared';
 import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { env } from '../config/env';
@@ -112,6 +112,34 @@ async function matchApplication(db: Db, userId: string, raw: RawEmail): Promise<
   if (byRole.length === 1) return { applicationId: byRole[0]!.id, status: byRole[0]!.status, by: 'company_role' };
   if (byCompany.length === 1) return { applicationId: byCompany[0]!.id, status: byCompany[0]!.status, by: 'company' };
   return null; // several applications at that company and the email doesn't say which: ask
+}
+
+export interface EmailPreview {
+  fromDomain: string;
+  category: EmailCategory;
+  confidence: number;
+  /** Rules were unsure and the email looks job-related: the real run would ask the AI (if on). */
+  wouldAskAi: boolean;
+  match: { applicationId: string; by: 'url' | 'company_role' | 'company'; current: ApplicationStatus } | null;
+  /** What the status rules would do (null when unmatched or not job-related). */
+  proposal: { to: ApplicationStatus; confidence: number; disposition: string; reason: string } | null;
+  duplicate: boolean;
+}
+
+/** Dry run: classify (rules only), match and decide, writing nothing. */
+export async function previewEmail(db: Db, userId: string, raw: RawEmail): Promise<EmailPreview> {
+  const e = env();
+  const fromDomain = domainOf(raw.from.address);
+  const [dup] = await db.select({ id: emails.id }).from(emails).where(and(eq(emails.userId, userId), eq(emails.messageId, raw.messageId)));
+  const c = classifyEmail({ subject: raw.subject, text: raw.text, fromDomain });
+  const base = { fromDomain, category: c.category, confidence: c.confidence, wouldAskAi: c.category === 'other' && looksJobRelated(raw, c), duplicate: Boolean(dup) };
+  if (c.category === 'other') return { ...base, match: null, proposal: null };
+  const m = await matchApplication(db, userId, raw);
+  if (!m) return { ...base, match: null, proposal: null };
+  const confidence = m.by === 'company' ? Math.min(c.confidence, e.EMAIL_COMPANY_MATCH_CONFIDENCE) : c.confidence;
+  const to = CATEGORY_STATUS[c.category];
+  const d = decideStatusChange({ current: m.status, proposed: to, source: 'email', confidence: confidenceLevel(confidence, e.CONFIDENCE_HIGH_THRESHOLD) });
+  return { ...base, match: { applicationId: m.applicationId, by: m.by, current: m.status }, proposal: { to, confidence, disposition: d.disposition, reason: d.reason } };
 }
 
 /**
