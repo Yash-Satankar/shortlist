@@ -65,6 +65,7 @@ export function resolveSettings(settings: UserSettings | null | undefined): Reso
     timezone: settings?.timezone ?? e.DEFAULT_TIMEZONE,
     features: settings?.features ?? {},
     ai: settings?.ai ?? {},
+    ask: settings?.ask ?? {},
   };
 }
 

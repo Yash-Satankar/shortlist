@@ -224,6 +224,29 @@ const envSchema = z
       }),
     LLM_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
     LLM_REASONING_HEADROOM_TOKENS: z.coerce.number().int().min(0).default(1024),
+    /**
+     * Ask my job search. Emails are only searched for users who switch it on (this is the
+     * default for everyone else): their decrypted excerpts go to the user's AI provider.
+     */
+    ASK_INCLUDE_EMAILS_DEFAULT: bool.default(false),
+    /** Most sources (applications, JDs, answers, emails) sent with one question. */
+    ASK_MAX_SOURCES: z.coerce.number().int().positive().default(12),
+    /** Characters of each source sent (a window around the matching words). */
+    ASK_SNIPPET_CHARS: z.coerce.number().int().positive().default(700),
+    /** Most stored emails decrypted (in memory) and scanned per question, newest first. */
+    ASK_MAX_EMAILS_SCANNED: z.coerce.number().int().positive().default(500),
+    ASK_MAX_QUESTION_CHARS: z.coerce.number().int().positive().default(500),
+    /** Rows listed in an exact (database) answer. */
+    ASK_MAX_LIST_ROWS: z.coerce.number().int().positive().default(50),
+    ASK_ANSWER_MAX_TOKENS: z.coerce.number().int().positive().default(700),
+    /** Prep packs: the model's output budget, and the most JD / resume text sent. */
+    PREP_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(3000),
+    PREP_MAX_JD_CHARS: z.coerce.number().int().positive().default(12_000),
+    PREP_MAX_RESUME_CHARS: z.coerce.number().int().positive().default(8000),
+    PREP_MAX_ANSWERS: z.coerce.number().int().positive().default(30),
+    /** Follow-up drafts: output budget, and LinkedIn's connection-note limit (enforced). */
+    DRAFT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(900),
+    LINKEDIN_NOTE_MAX_CHARS: z.coerce.number().int().positive().default(300),
     /** Extra/override prices, USD per 1M tokens: {"model-id": [input, output]} */
     LLM_PRICES_JSON: z
       .string()

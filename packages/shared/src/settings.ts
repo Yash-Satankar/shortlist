@@ -17,6 +17,8 @@ export const userSettingsSchema = z
     features: userFeaturesSchema,
     /** AI: model per task, monthly cap, currency (users.settings.ai). */
     ai: userAiSettingsSchema,
+    /** Ask my job search: include your stored job emails (default from the instance, ASK_INCLUDE_EMAILS_DEFAULT). */
+    ask: z.object({ includeEmails: z.boolean() }).partial(),
   })
   .partial();
 

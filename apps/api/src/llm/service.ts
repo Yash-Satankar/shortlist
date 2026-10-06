@@ -107,6 +107,11 @@ export interface RunInput<S extends z.ZodType> {
   input: string;
   schema: S;
   maxTokens: number;
+  /**
+   * false: never read or write the cache (e.g. the input holds decrypted emails, which must not
+   * be stored in any form). 'refresh': skip the read but store the new result (Regenerate).
+   */
+  cache?: boolean | 'refresh';
 }
 
 export interface RunResult<T> {
@@ -114,6 +119,8 @@ export interface RunResult<T> {
   cached: boolean;
   provider: LlmProvider;
   model: string;
+  /** This call's tokens and estimated cost (USD); absent on a cache hit. */
+  usage?: { inputTokens: number; outputTokens: number; model: string; costUsd: number | null };
 }
 
 /**
@@ -136,10 +143,13 @@ export async function runLlm<S extends z.ZodType>(db: DbOrTx, args: RunInput<S>)
   const log = (row: Partial<typeof llmUsage.$inferInsert> & { ok: boolean }) =>
     db.insert(llmUsage).values({ userId: args.userId, task: args.task, provider: key.provider, model, keySource: key.source, ...row });
 
-  const [hit] = await db
-    .select({ result: llmCache.resultEnc })
-    .from(llmCache)
-    .where(and(eq(llmCache.userId, args.userId), eq(llmCache.contentHash, contentHash), gt(llmCache.expiresAt, new Date())));
+  const useCache = args.cache ?? true;
+  const [hit] = useCache === true
+    ? await db
+        .select({ result: llmCache.resultEnc })
+        .from(llmCache)
+        .where(and(eq(llmCache.userId, args.userId), eq(llmCache.contentHash, contentHash), gt(llmCache.expiresAt, new Date())))
+    : [];
   if (hit) {
     const parsed = args.schema.safeParse(JSON.parse(hit.result));
     if (parsed.success) {
@@ -169,12 +179,36 @@ export async function runLlm<S extends z.ZodType>(db: DbOrTx, args: RunInput<S>)
   }
 
   await log({ ok: true, model: usage.model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, costUsd: estimateCostUsd(usage.model, usage.inputTokens, usage.outputTokens, prices()) });
+  if (useCache === false) return { data, cached: false, provider: key.provider, model, usage: { ...usage, costUsd: estimateCostUsd(usage.model, usage.inputTokens, usage.outputTokens, prices()) } };
   const expiresAt = new Date(Date.now() + e.LLM_CACHE_TTL_DAYS * 86_400_000);
   await db
     .insert(llmCache)
     .values({ userId: args.userId, task: args.task, contentHash, provider: key.provider, model, resultEnc: JSON.stringify(data), expiresAt })
     .onConflictDoUpdate({ target: [llmCache.userId, llmCache.contentHash], set: { resultEnc: JSON.stringify(data), expiresAt } });
-  return { data, cached: false, provider: key.provider, model };
+  return { data, cached: false, provider: key.provider, model, usage: { ...usage, costUsd: estimateCostUsd(usage.model, usage.inputTokens, usage.outputTokens, prices()) } };
+}
+
+/** Rough tokens for a text (≈4 characters per token for English). For estimates only. */
+export const roughTokens = (chars: number) => Math.ceil(chars / 4);
+
+export interface CostEstimate {
+  provider: LlmProvider;
+  model: string;
+  /** In the user's currency; null when the model's price isn't known. */
+  cost: number | null;
+  currency: string;
+}
+
+/**
+ * What a run would cost at most, before it runs ("Generate — about ₹0.40"): the input's rough
+ * token count plus the full output budget, at the resolved model's price. null = no usable key.
+ */
+export async function estimateLlmCost(db: DbOrTx, userId: string, task: LlmTask, inputChars: number, maxTokens: number): Promise<CostEstimate | null> {
+  const settings = await aiSettings(db, userId);
+  const resolved = resolveModel(task, await availableKeys(db, userId), settings.models);
+  if (!resolved) return null;
+  const usd = estimateCostUsd(resolved.model, roughTokens(inputChars), maxTokens, prices());
+  return { provider: resolved.key.provider, model: resolved.model, cost: usd == null ? null : Math.round(usd * settings.usdRate * 100) / 100, currency: settings.currency };
 }
 
 export interface UsageSummary {
