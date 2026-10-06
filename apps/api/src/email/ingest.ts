@@ -63,7 +63,7 @@ async function classifyWithAi(db: Db, userId: string, raw: RawEmail): Promise<Cl
       maxTokens: 60,
     });
     // The AI is a fallback: never more sure than a strong rule would be.
-    return { category: res.data.category, confidence: Math.min(res.data.confidence, 0.85), rule: 'ai', fromAts: isAtsDomain(domainOf(raw.from.address)) };
+    return { category: res.data.category, confidence: Math.min(res.data.confidence, env().EMAIL_AI_MAX_CONFIDENCE), rule: 'ai', fromAts: isAtsDomain(domainOf(raw.from.address)) };
   } catch (err) {
     if (err instanceof LlmError) return null; // no key, cap reached, provider down: rules result stands
     throw err;
@@ -79,6 +79,21 @@ function companyHints(raw: RawEmail): string[] {
   const domain = domainOf(raw.from.address);
   if (domain && !isAtsDomain(domain)) hints.add(domain.split('.').slice(-2, -1)[0] ?? '');
   return [...hints].filter(Boolean);
+}
+
+/**
+ * How sure we are that this email means this status for this application:
+ *  - matched by company alone: capped (it might be another role there) → review;
+ *  - classified by the rules, sent by a known job portal / ATS, and matched by the job's own
+ *    link: raised to EMAIL_ATS_LINK_MATCH_CONFIDENCE (the portal's own notice about that job);
+ *  - otherwise the classification's own score.
+ * The status rules still decide (Offer always reviewed, nothing leaves a final state, …).
+ */
+export function emailConfidence(c: Classification, by: 'rules' | 'ai', matchedBy: Match['by']): number {
+  const e = env();
+  if (matchedBy === 'company') return Math.min(c.confidence, e.EMAIL_COMPANY_MATCH_CONFIDENCE);
+  if (matchedBy === 'url' && by === 'rules' && c.fromAts) return Math.max(c.confidence, e.EMAIL_ATS_LINK_MATCH_CONFIDENCE);
+  return c.confidence;
 }
 
 type Match = { applicationId: string; status: ApplicationStatus; by: 'url' | 'company_role' | 'company' };
@@ -131,12 +146,12 @@ export async function previewEmail(db: Db, userId: string, raw: RawEmail): Promi
   const e = env();
   const fromDomain = domainOf(raw.from.address);
   const [dup] = await db.select({ id: emails.id }).from(emails).where(and(eq(emails.userId, userId), eq(emails.messageId, raw.messageId)));
-  const c = classifyEmail({ subject: raw.subject, text: raw.text, fromDomain });
+  const c = classifyEmail({ subject: raw.subject, text: raw.text, fromDomain }, e.EMAIL_RULE_CONFIDENCE_JSON);
   const base = { fromDomain, category: c.category, confidence: c.confidence, wouldAskAi: c.category === 'other' && looksJobRelated(raw, c), duplicate: Boolean(dup) };
   if (c.category === 'other') return { ...base, match: null, proposal: null };
   const m = await matchApplication(db, userId, raw);
   if (!m) return { ...base, match: null, proposal: null };
-  const confidence = m.by === 'company' ? Math.min(c.confidence, e.EMAIL_COMPANY_MATCH_CONFIDENCE) : c.confidence;
+  const confidence = emailConfidence(c, 'rules', m.by);
   const to = CATEGORY_STATUS[c.category];
   const d = decideStatusChange({ current: m.status, proposed: to, source: 'email', confidence: confidenceLevel(confidence, e.CONFIDENCE_HIGH_THRESHOLD) });
   return { ...base, match: { applicationId: m.applicationId, by: m.by, current: m.status }, proposal: { to, confidence, disposition: d.disposition, reason: d.reason } };
@@ -152,7 +167,7 @@ export async function ingestEmail(db: Db, userId: string, source: 'imap' | 'inbo
   if (dup) return { outcome: 'duplicate', emailId: dup.id, category: 'other', applicationId: null };
 
   const fromDomain = domainOf(raw.from.address);
-  let c = classifyEmail({ subject: raw.subject, text: raw.text, fromDomain });
+  let c = classifyEmail({ subject: raw.subject, text: raw.text, fromDomain }, e.EMAIL_RULE_CONFIDENCE_JSON);
   let by: 'rules' | 'ai' = 'rules';
   if (c.category === 'other' && looksJobRelated(raw, c)) {
     const ai = await classifyWithAi(db, userId, raw);
@@ -188,7 +203,7 @@ export async function ingestEmail(db: Db, userId: string, source: 'imap' | 'inbo
   if (!row) return { outcome: 'duplicate', emailId: null, category: c.category, applicationId: null };
   if (!match) return { outcome: 'unmatched', emailId: row.id, category: c.category, applicationId: null };
 
-  return proposeFromEmail(db, userId, row.id, match.applicationId, c, match.by === 'company' ? Math.min(c.confidence, e.EMAIL_COMPANY_MATCH_CONFIDENCE) : c.confidence, raw.date, fromDomain);
+  return proposeFromEmail(db, userId, row.id, match.applicationId, c, emailConfidence(c, by, match.by), raw.date, fromDomain);
 }
 
 /** The status proposal for an email (also used when you assign an unmatched email yourself). */

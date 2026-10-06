@@ -101,15 +101,17 @@ const RULES: Rule[] = [
 /** Precedence when several rules match: a decision outranks an acknowledgement. */
 const ORDER: EmailCategory[] = ['rejected', 'offer', 'interview', 'assessment', 'viewed', 'received'];
 
-export function classifyEmail(input: { subject: string; text: string; fromDomain: string }): Classification {
+/** `scores` overrides the rules' confidence per category (EMAIL_RULE_CONFIDENCE_JSON). */
+export function classifyEmail(input: { subject: string; text: string; fromDomain: string }, scores: Partial<Record<EmailCategory, number>> = {}): Classification {
   const subject = input.subject ?? '';
   const body = (input.text ?? '').slice(0, 20_000);
   const fromAts = isAtsDomain(input.fromDomain);
   const hits = RULES.filter((r) => r.test(subject, body)).sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.category));
   const top = hits[0];
   if (!top) return { category: 'other', confidence: 0, rule: null, fromAts };
+  const score = scores[top.category] ?? top.confidence;
   // "Thank you for applying… but we have an interview slot" style mixes: keep the precedence
   // winner, slightly less sure when an acknowledgement also matched.
   const mixed = hits.length > 1 && hits.some((h) => h.category === 'received') && top.category !== 'received';
-  return { category: top.category, confidence: mixed ? Math.max(0, top.confidence - 0.05) : top.confidence, rule: top.name, fromAts };
+  return { category: top.category, confidence: mixed ? Math.max(0, score - 0.05) : score, rule: top.name, fromAts };
 }

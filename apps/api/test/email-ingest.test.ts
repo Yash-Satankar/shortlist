@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { eq, sql } from 'drizzle-orm';
 import request from 'supertest';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
+import { resetEnvCache } from '../src/config/env';
 import { closeDb, getDb } from '../src/db/client';
 import { emails } from '../src/db/schema';
-import { ingestEmail } from '../src/email/ingest';
+import { ingestEmail, previewEmail } from '../src/email/ingest';
 import { parseRawMessage, postmarkAdapter, unwrap } from '../src/email/sources';
 import { providerFactory } from '../src/llm/providers';
 import { createUser } from '../src/users/service';
@@ -131,6 +132,61 @@ describe('ingest', () => {
     expect(r).toMatchObject({ outcome: 'unmatched', applicationId: null });
     expect((await detail(id)).status).toBe('applied');
     expect((await db.select().from(emails).where(eq(emails.userId, userId)))).toHaveLength(0);
+  });
+});
+
+describe('confidence: job portal sender + the job’s own link', () => {
+  const LINKEDIN_JOB = 'https://www.linkedin.com/jobs/view/4100000001/';
+  afterEach(() => {
+    delete process.env.EMAIL_ATS_LINK_MATCH_CONFIDENCE;
+    delete process.env.EMAIL_RULE_CONFIDENCE_JSON;
+    resetEnvCache();
+  });
+
+  it('a "viewed" notice from LinkedIn matched by the job link scores high and applies, undoable', async () => {
+    const { id } = await save({ companyName: 'Initech', roleTitle: 'Node JS Developer', jobUrl: LINKEDIN_JOB });
+    const preview = await previewEmail(db, userId, await fixture('linkedin-viewed.eml'));
+    expect(preview).toMatchObject({ category: 'viewed', match: { by: 'url' }, proposal: { to: 'viewed', confidence: 0.92, disposition: 'applied' } });
+    const r = await ingestEmail(db, userId, 'imap', await fixture('linkedin-viewed.eml'));
+    expect(r).toMatchObject({ outcome: 'applied', category: 'viewed', applicationId: id });
+    const d = await detail(id);
+    expect(d.status).toBe('viewed');
+    const ev = d.timeline.at(-1);
+    expect(ev).toMatchObject({ source: 'email', confidence: 'high', note: 'Email from linkedin.com: application viewed' });
+    expect((await agent.post(`/api/applications/${id}/events/${ev.id}/undo`).set('Origin', ORIGIN).send({})).body.application.status).toBe('applied');
+  });
+
+  it('the same notice matched by company alone stays capped and waits for review', async () => {
+    const { id } = await save({ companyName: 'Initech', roleTitle: 'Backend Developer' }); // no job link saved, another title
+    const raw = await fixture('linkedin-viewed.eml');
+    raw.subject = 'Your application was viewed: update from Initech';
+    const r = await ingestEmail(db, userId, 'imap', raw);
+    expect(r).toMatchObject({ outcome: 'review', applicationId: id });
+    expect((await detail(id)).status).toBe('applied');
+  });
+
+  it('an employer’s own domain (not a portal) matched by link keeps the rule’s score', async () => {
+    const raw = await fixture('linkedin-viewed.eml');
+    raw.from = { address: 'talent@initech.example', name: 'Initech Talent' };
+    await save({ companyName: 'Initech', roleTitle: 'Node JS Developer', jobUrl: LINKEDIN_JOB });
+    expect((await previewEmail(db, userId, raw)).proposal).toMatchObject({ confidence: 0.75, disposition: 'pending_review' });
+  });
+
+  it('the scores are env-tunable', async () => {
+    process.env.EMAIL_ATS_LINK_MATCH_CONFIDENCE = '0.7';
+    process.env.EMAIL_RULE_CONFIDENCE_JSON = '{"viewed": 0.5}';
+    resetEnvCache();
+    await save({ companyName: 'Initech', roleTitle: 'Node JS Developer', jobUrl: LINKEDIN_JOB });
+    const p = await previewEmail(db, userId, await fixture('linkedin-viewed.eml'));
+    expect(p).toMatchObject({ confidence: 0.5, proposal: { confidence: 0.7, disposition: 'pending_review' } });
+  });
+
+  it('the boost never overrides the status rules: an offer from a portal still waits for review', async () => {
+    const raw = await fixture('linkedin-viewed.eml');
+    raw.subject = 'Your job offer from Initech';
+    raw.text = `We are delighted to extend you an offer of employment. ${LINKEDIN_JOB}`;
+    await save({ companyName: 'Initech', roleTitle: 'Node JS Developer', jobUrl: LINKEDIN_JOB });
+    expect((await previewEmail(db, userId, raw)).proposal).toMatchObject({ to: 'offer', disposition: 'pending_review' });
   });
 });
 
