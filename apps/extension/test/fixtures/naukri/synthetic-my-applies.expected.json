@@ -1,0 +1,12 @@
+{
+  "list": {
+    "site": "naukri",
+    "unreadable": false,
+    "dropped": 1,
+    "verified": false,
+    "rows": [
+      { "externalId": "031025500123", "jobUrl": "https://www.naukri.com/job-listings-java-developer-umbrella-systems-bengaluru-3-to-6-years-031025500123", "roleTitle": "Java Developer", "companyName": "Umbrella Systems", "location": "Bengaluru", "statusLabel": "Viewed by recruiter" },
+      { "externalId": "041025500456", "jobUrl": "https://www.naukri.com/job-listings-react-developer-wonka-tech-pune-2-to-5-years-041025500456", "roleTitle": "React Developer", "companyName": "Wonka Tech", "location": "Pune", "statusLabel": "Shortlisted", "statusAt": "2 days ago" }
+    ]
+  }
+}

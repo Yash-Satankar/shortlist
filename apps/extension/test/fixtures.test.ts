@@ -3,6 +3,7 @@ import path from 'node:path';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { extractJob } from '../src/adapters/extract';
+import { readApplicationsList, splitStatus } from '../src/adapters/lists';
 import { detectSubmitted } from '../src/adapters/submitted';
 import { CAPABILITIES, SUBMITTED_MARKERS, VERIFIED, type Capability } from '../src/adapters/verification';
 
@@ -74,6 +75,27 @@ describe('adapter fixtures', () => {
       for (const s of jdIncludes) expect(job!.jd, `jd includes "${s}"`).toContain(s);
       for (const s of jdExcludes) expect(job!.jd ?? '', `jd excludes "${s}"`).not.toContain(s);
     }
+  });
+
+  it.each(byCapability('applicationsList'))('applications list: $name', ({ html, header, expected }) => {
+    const doc = load(html, header!.url);
+    expect(detectSubmitted(doc, header!.url), 'a list page is never a submission').toBeNull();
+    const list = readApplicationsList(doc, header!.url);
+    expect(list).not.toBeNull();
+    expect(list).toMatchObject(expected.list as object);
+    expect(list!.rows).toEqual((expected.list as { rows: unknown[] }).rows);
+  });
+
+  it('job pages are not applications lists', () => {
+    for (const f of byCapability('jobPage')) expect(readApplicationsList(load(f.html, f.header!.url), f.header!.url), f.name).toBeNull();
+  });
+
+  it('splitStatus separates the portal label from its time', () => {
+    expect(splitStatus('Applied 3d ago')).toEqual({ label: 'Applied', at: '3d ago' });
+    expect(splitStatus('Application viewed · 1w ago')).toEqual({ label: 'Application viewed', at: '1w ago' });
+    expect(splitStatus('Shortlisted · 2 days ago')).toEqual({ label: 'Shortlisted', at: '2 days ago' });
+    expect(splitStatus('Applied on 12 Sep 2026')).toEqual({ label: 'Applied', at: 'on 12 Sep 2026' });
+    expect(splitStatus('No longer accepting applications')).toEqual({ label: 'No longer accepting applications' });
   });
 
   it('negative submitted fixtures exist for the flows that look closest to a submission', () => {

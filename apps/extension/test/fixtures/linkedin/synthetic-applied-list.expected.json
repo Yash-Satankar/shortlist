@@ -1,0 +1,13 @@
+{
+  "list": {
+    "site": "linkedin",
+    "unreadable": false,
+    "dropped": 1,
+    "verified": false,
+    "rows": [
+      { "externalId": "4100000001", "jobUrl": "https://www.linkedin.com/jobs/view/4100000001/", "roleTitle": "Backend Engineer", "companyName": "Acme Robotics", "location": "Pune, Maharashtra, India (Hybrid)", "statusLabel": "Application viewed", "statusAt": "2d ago" },
+      { "externalId": "4100000002", "jobUrl": "https://www.linkedin.com/jobs/view/4100000002/", "roleTitle": "Platform Engineer", "companyName": "Globex", "location": "Bengaluru, Karnataka, India", "statusLabel": "Applied", "statusAt": "1w ago" },
+      { "externalId": "4100000003", "jobUrl": "https://www.linkedin.com/jobs/view/4100000003/", "roleTitle": "Data Engineer II", "companyName": "Hooli", "location": "Hyderabad, Telangana, India", "statusLabel": "No longer accepting applications" }
+    ]
+  }
+}
