@@ -19,6 +19,7 @@ import { featuresRouter } from './features/routes';
 import { aiRouter } from './llm/routes';
 import { askRouter } from './ask/routes';
 import { prepRouter } from './prep/routes';
+import { draftsRouter } from './drafts/routes';
 import { portalRouter } from './portal/routes';
 import { privacyPage } from './privacy';
 import { emailsRouter, inboundWebhook } from './email/routes';
@@ -96,6 +97,7 @@ export function createApp({ db }: { db: Db }) {
   api.use('/ai', requireAuth, aiRouter(db));
   api.use('/ask', requireAuth, askRouter(db));
   api.use('/prep', requireAuth, prepRouter(db));
+  api.use('/drafts', requireAuth, draftsRouter(db));
   api.use('/portal-sync', requireAuth, portalRouter(db));
   api.use('/emails', requireAuth, emailsRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));
