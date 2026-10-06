@@ -382,6 +382,70 @@ export const applicationContacts = pgTable(
 );
 
 /** My standard screening answers ("Years of Node.js" -> "3 years"). Prefills new applications. */
+// ---------------------------------------------------------------- email intake
+
+/**
+ * Emails read for status updates (IMAP or an inbound-forwarding webhook). Sender, subject and an
+ * excerpt are encrypted; deleted after EMAIL_RETENTION_DAYS. Timeline events point here.
+ */
+export const emails = pgTable(
+  'emails',
+  {
+    id: id(),
+    userId: userId(),
+    source: text('source').$type<'imap' | 'inbound'>().notNull(),
+    /** RFC 5322 Message-ID (dedupe key per user). */
+    messageId: text('message_id').notNull(),
+    fromDomain: text('from_domain').notNull(),
+    fromEnc: encryptedText('from_enc').notNull(),
+    subjectEnc: encryptedText('subject_enc').notNull(),
+    excerptEnc: encryptedText('excerpt_enc'),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+    category: text('category').notNull(),
+    confidence: doublePrecision('confidence').notNull(),
+    classifiedBy: text('classified_by').$type<'rules' | 'ai'>().notNull(),
+    /** applied | review | unmatched | ignored | other */
+    outcome: text('outcome').notNull(),
+    applicationId: uuid('application_id').references(() => applications.id, { onDelete: 'set null' }),
+    matchedBy: text('matched_by').$type<'url' | 'company_role' | 'company' | null>(),
+    eventId: uuid('event_id'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('emails_user_message_uq').on(t.userId, t.messageId),
+    index('emails_user_outcome_idx').on(t.userId, t.outcome),
+    index('emails_expires_idx').on(t.expiresAt),
+  ],
+);
+
+/** Where an IMAP mailbox was last read up to (incremental, read-only). */
+export const emailCursors = pgTable(
+  'email_cursors',
+  {
+    id: id(),
+    userId: userId(),
+    /** Identifies the mailbox (host + user + folder hashed; no credentials). */
+    mailboxKey: text('mailbox_key').notNull(),
+    uidValidity: text('uid_validity'),
+    lastUid: integer('last_uid').notNull().default(0),
+    lastRunAt: timestamp('last_run_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex('email_cursors_user_mailbox_uq').on(t.userId, t.mailboxKey)],
+);
+
+/** Inbound mode: each user's random forwarding address (local part), regenerable. */
+export const emailInboundAddresses = pgTable('email_inbound_addresses', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  /** Random local part, e.g. "u-7f3k9q2m…" in u-7f3k9q2m…@<INBOUND_EMAIL_DOMAIN>. */
+  localPart: text('local_part').notNull().unique(),
+  createdAt: createdAt(),
+});
+
 // ---------------------------------------------------------------- portal sync
 
 /**
