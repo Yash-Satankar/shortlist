@@ -72,6 +72,31 @@ const envSchema = z
     JOBS_ENABLED: bool.default(true),
     /** Daily clean-up: expired portal snapshots, AI cache (and stored emails, with email intake). */
     JOB_PURGE_CRON: z.string().default('17 3 * * *'),
+
+    /**
+     * Email intake. imap: one mailbox per instance (self-hosting), read-only, owned by
+     * IMAP_OWNER_EMAIL (default: the first admin). Use an app password, never your main one.
+     */
+    IMAP_HOST: z.string().min(1).optional(),
+    IMAP_PORT: z.coerce.number().int().positive().default(993),
+    IMAP_SECURE: bool.default(true),
+    IMAP_USER: z.string().min(1).optional(),
+    IMAP_PASSWORD: z.string().min(1).optional(),
+    IMAP_MAILBOX: z.string().default('INBOX'),
+    IMAP_OWNER_EMAIL: z.string().email().optional(),
+    /** First run reads this many days back; later runs continue from where they stopped. */
+    IMAP_SINCE_DAYS: z.coerce.number().int().positive().default(30),
+    IMAP_MAX_PER_RUN: z.coerce.number().int().positive().default(200),
+    EMAIL_POLL_CRON: z.string().default('*/10 * * * *'),
+    /** inbound: per-user forwarding addresses at this domain, delivered by Postmark's webhook. */
+    INBOUND_EMAIL_DOMAIN: z.string().min(3).optional(),
+    INBOUND_WEBHOOK_USER: z.string().min(1).optional(),
+    INBOUND_WEBHOOK_PASSWORD: z.string().min(12).optional(),
+    /** Stored emails (encrypted) are deleted after this many days. */
+    EMAIL_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+    EMAIL_EXCERPT_CHARS: z.coerce.number().int().positive().default(4000),
+    /** Highest confidence an email gets when matched by company alone (below the threshold → review). */
+    EMAIL_COMPANY_MATCH_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.6),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
 
     /**

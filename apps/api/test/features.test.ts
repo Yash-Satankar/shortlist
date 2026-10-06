@@ -46,9 +46,16 @@ describe('instance layer (env)', () => {
     expect(f.ai.why).toMatch(/own API key/);
   });
 
-  it('email intake switched on but not available yet says why, and the summary covers every feature', () => {
+  it('email intake is offered only when its mode is configured; otherwise the summary says what is missing', () => {
+    const imapOk = parseEnv({ ...process.env, FEATURE_EMAIL_INTAKE: 'true', EMAIL_INTAKE_MODE: 'imap', IMAP_HOST: 'imap.example.com', IMAP_USER: 'me@example.com', IMAP_PASSWORD: 'app-password' });
+    expect(instanceFeatures(imapOk).email_intake).toEqual({ offered: true, why: 'FEATURE_EMAIL_INTAKE=true (imap)' });
+    const inboundMissing = parseEnv({ ...process.env, FEATURE_EMAIL_INTAKE: 'true', EMAIL_INTAKE_MODE: 'inbound', INBOUND_EMAIL_DOMAIN: 'in.example.com' });
+    expect(instanceFeatures(inboundMissing).email_intake.why).toBe('FEATURE_EMAIL_INTAKE=true (inbound), but INBOUND_WEBHOOK_USER, INBOUND_WEBHOOK_PASSWORD are not set');
+  });
+
+  it('email intake switched on without its settings says why, and the summary covers every feature', () => {
     const e = parseEnv({ ...process.env, FEATURE_EMAIL_INTAKE: 'true', FEATURE_CHAT: 'false' });
-    expect(instanceFeatures(e).email_intake).toMatchObject({ offered: false, why: expect.stringMatching(/isn’t available/) });
+    expect(instanceFeatures(e).email_intake).toMatchObject({ offered: false, why: expect.stringMatching(/IMAP_HOST, IMAP_USER, IMAP_PASSWORD are not set/) });
     const summary = featureSummary(e);
     expect(summary).toHaveLength(7);
     expect(summary.find((l) => l.includes('chat'))).toMatch(/^off .*FEATURE_CHAT=false/);

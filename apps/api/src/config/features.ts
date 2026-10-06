@@ -34,7 +34,13 @@ export function instanceFeatures(e: Env = env()): Record<Feature, InstanceFeatur
     out[f] = e[flag] ? { offered: true, why: `${flag}=true` } : { offered: false, why: `${flag}=false` };
   }
   if (out.email_intake.offered) {
-    out.email_intake = { offered: false, why: `FEATURE_EMAIL_INTAKE=true, but email intake (${e.EMAIL_INTAKE_MODE}) isn’t available in this version yet` };
+    const missing =
+      e.EMAIL_INTAKE_MODE === 'imap'
+        ? (['IMAP_HOST', 'IMAP_USER', 'IMAP_PASSWORD'] as const).filter((k) => !e[k])
+        : (['INBOUND_EMAIL_DOMAIN', 'INBOUND_WEBHOOK_USER', 'INBOUND_WEBHOOK_PASSWORD'] as const).filter((k) => !e[k]);
+    out.email_intake = missing.length
+      ? { offered: false, why: `FEATURE_EMAIL_INTAKE=true (${e.EMAIL_INTAKE_MODE}), but ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not set` }
+      : { offered: true, why: `FEATURE_EMAIL_INTAKE=true (${e.EMAIL_INTAKE_MODE})` };
   }
   if (out.ai.offered) out.ai.why += ' (each user adds their own API key)';
   return out;
