@@ -266,11 +266,16 @@ fixture that proves it, and a test enforces this.
 
 | Site | Job page | Applications list |
 | --- | --- | --- |
-| LinkedIn | not yet (classic + newer layout read; real capture is a submitted page) | not yet |
-| Naukri | not yet | not yet |
-| Greenhouse | not yet | not yet |
-| Lever | not yet | not yet |
-| Workday | not yet | — (deferred) |
+| LinkedIn | built, unverified (classic + newer layout; the real capture is a submitted page) | built, unverified (My Jobs → Applied) |
+| Naukri | built, unverified | built, unverified (My Applies) |
+| Greenhouse | built, unverified | — |
+| Lever | built, unverified | — |
+| Workday | built, unverified | — (deferred) |
+
+Unverified readers are defensive. An applications-list row is read only when its job link, title,
+company and status are all found where the reader expects them. Incomplete rows are dropped and
+counted, never guessed. An unrecognised page reads nothing, and the popup says "Couldn't read this
+page". Portal sync from any reader only ever creates proposals for you to review.
 
 | "Submitted" marker | Verified |
 | --- | --- |
