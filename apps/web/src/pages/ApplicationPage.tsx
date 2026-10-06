@@ -6,6 +6,7 @@ import {
   useApplication,
   useChangeStatus,
   useDeleteApplication,
+  useFeature,
   useLibrary,
   useReplaceAnswers,
   useReview,
@@ -15,6 +16,7 @@ import {
 } from '../api/hooks';
 import type { ApplicationDetail, TimelineEvent } from '../api/types';
 import { Icon } from '../components/Icon';
+import { PrepSheet } from '../components/PrepSheet';
 import {
   Button,
   Confidence,
@@ -91,6 +93,8 @@ function Detail({ app }: { app: ApplicationDetail }) {
   const tab = (TABS.find((t) => t.id === params.get('tab'))?.id ?? 'timeline') as TabId;
   const [statusOpen, setStatusOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [prepOpen, setPrepOpen] = useState(false);
+  const prepOn = useFeature('prep');
   const [compact, setCompact] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -226,7 +230,8 @@ function Detail({ app }: { app: ApplicationDetail }) {
       </main>
 
       <StatusSheet app={app} open={statusOpen} onClose={() => setStatusOpen(false)} />
-      <ActionsSheet app={app} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <ActionsSheet app={app} open={menuOpen} onClose={() => setMenuOpen(false)} onPrep={prepOn ? () => (setMenuOpen(false), setPrepOpen(true)) : undefined} />
+      {prepOn && <PrepSheet applicationId={app.id} title={company} open={prepOpen} onClose={() => setPrepOpen(false)} />}
     </div>
   );
 }
@@ -287,7 +292,7 @@ function StatusSheet({ app, open, onClose }: { app: ApplicationDetail; open: boo
   );
 }
 
-function ActionsSheet({ app, open, onClose }: { app: ApplicationDetail; open: boolean; onClose: () => void }) {
+function ActionsSheet({ app, open, onClose, onPrep }: { app: ApplicationDetail; open: boolean; onClose: () => void; onPrep?: () => void }) {
   const update = useUpdateApplication(app.id);
   const del = useDeleteApplication(app.id);
   const navigate = useNavigate();
@@ -297,6 +302,12 @@ function ActionsSheet({ app, open, onClose }: { app: ApplicationDetail; open: bo
   return (
     <Sheet open={open} onClose={onClose} title={app.company?.name ?? 'Application'}>
       <div className="pb-2">
+        {onPrep && (
+          <button type="button" className="opt-row w-full text-left" onClick={onPrep}>
+            <Icon name="sparkle" className="text-ink-3" />
+            Interview prep pack
+          </button>
+        )}
         {app.jobUrl && (
           <a href={app.jobUrl} target="_blank" rel="noreferrer" className="opt-row" onClick={onClose}>
             <Icon name="external" className="text-ink-3" />

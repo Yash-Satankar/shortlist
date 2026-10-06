@@ -149,7 +149,7 @@ export async function searchUserData(db: DbOrTx, userId: string, question: strin
       .where(and(eq(jobDescriptions.userId, userId), eq(applications.userId, userId), sql`(${match(jobDescriptions.search)} or ${inNamed(jobDescriptions.applicationId)})`))
       .orderBy(jobDescriptions.applicationId, desc(jobDescriptions.capturedAt));
     for (const j of jds) {
-      out.push({ type: 'jd', id: j.id, applicationId: j.applicationId, label: `${label(j.company, j.role)} — job description`, date: j.capturedAt.toISOString(), text: j.content, score: (j.matches ? j.rank : 0) + (namedIds.has(j.applicationId) ? NAMED_BOOST * 0.6 : 0) });
+      out.push({ type: 'jd', id: j.id, applicationId: j.applicationId, label: label(j.company, j.role), date: j.capturedAt.toISOString(), text: j.content, score: (j.matches ? j.rank : 0) + (namedIds.has(j.applicationId) ? NAMED_BOOST * 0.6 : 0) });
     }
 
     const answers = await db
@@ -161,7 +161,7 @@ export async function searchUserData(db: DbOrTx, userId: string, question: strin
       .orderBy(desc(rank(applicationAnswers.search)))
       .limit(20);
     for (const a of answers) {
-      out.push({ type: 'answer', id: a.id, applicationId: a.applicationId, label: `${label(a.company, a.role)} — answer`, date: null, text: `Q: ${a.question}\nA: ${a.answer}`, score: a.rank + (namedIds.has(a.applicationId) ? NAMED_BOOST * 0.5 : 0) });
+      out.push({ type: 'answer', id: a.id, applicationId: a.applicationId, label: label(a.company, a.role), date: null, text: `Q: ${a.question}\nA: ${a.answer}`, score: a.rank + (namedIds.has(a.applicationId) ? NAMED_BOOST * 0.5 : 0) });
     }
 
     // Timeline of the applications the question names (status changes with their notes).
@@ -175,7 +175,7 @@ export async function searchUserData(db: DbOrTx, userId: string, question: strin
         .orderBy(desc(statusEvents.occurredAt))
         .limit(20);
       for (const ev of events) {
-        out.push({ type: 'event', id: ev.id, applicationId: ev.applicationId, label: `${label(ev.company, ev.role)} — timeline`, date: ev.at.toISOString(), text: `${ev.from ?? 'new'} → ${ev.to} (${ev.source})${ev.note ? `: ${ev.note}` : ''}`, score: NAMED_BOOST * 0.4 });
+        out.push({ type: 'event', id: ev.id, applicationId: ev.applicationId, label: label(ev.company, ev.role), date: ev.at.toISOString(), text: `${ev.from ?? 'new'} → ${ev.to} (${ev.source})${ev.note ? `: ${ev.note}` : ''}`, score: NAMED_BOOST * 0.4 });
       }
     }
   }
@@ -192,7 +192,7 @@ export async function searchUserData(db: DbOrTx, userId: string, question: strin
     const scores = scoreDocs(docs, terms);
     docs.forEach((d, i) => {
       const s = scores[i]! / 4 + (d.applicationId && namedIds.has(d.applicationId) ? NAMED_BOOST * 0.8 : 0);
-      if (s > 0) out.push({ type: 'email', id: d.id, applicationId: d.applicationId, label: `Email: ${d.subject}`, date: d.receivedAt.toISOString(), text: d.text, score: s });
+      if (s > 0) out.push({ type: 'email', id: d.id, applicationId: d.applicationId, label: d.subject, date: d.receivedAt.toISOString(), text: d.text, score: s });
     });
   }
 

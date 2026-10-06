@@ -1,5 +1,5 @@
 import { FEATURE_LABELS, featureOffMessage, type Feature, type FeatureState } from '@jt/shared';
-import { useFeatures, useSetFeatures } from '../../api/hooks';
+import { useAskSettings, useFeatures, useSetAskSettings, useSetFeatures } from '../../api/hooks';
 import { ErrorNote, SectionLabel, Switch } from '../../components/ui';
 
 /** Features that exist in this build, in Settings order. Each one is added here when it ships. */
@@ -7,6 +7,9 @@ const SHOWN: { feature: Feature; detail: string }[] = [
   { feature: 'extension', detail: 'Save jobs and sync statuses from Chrome' },
   { feature: 'ai', detail: 'Fills gaps the rules miss, with your key' },
   { feature: 'email_intake', detail: 'Status updates from your job emails' },
+  { feature: 'chat', detail: 'Questions about your applications' },
+  { feature: 'prep', detail: 'From the JD and your resume' },
+  { feature: 'followup_drafts', detail: 'Email and LinkedIn, sent by you' },
 ];
 
 const stateLine = (feature: Feature, s: FeatureState, detail: string) =>
@@ -20,6 +23,10 @@ export function FeaturesSection() {
   const features = useFeatures();
   const set = useSetFeatures();
   const rows = SHOWN.filter(({ feature }) => features.data && features.data.features[feature].reason !== 'instance_off');
+  // Ask can include stored job emails: only where this server reads email, and only while Ask is on.
+  const askEmails = !!features.data?.features.chat.enabled && features.data.features.email_intake.reason !== 'instance_off';
+  const ask = useAskSettings(askEmails);
+  const setAsk = useSetAskSettings();
   if (!rows.length) return null;
 
   return (
@@ -42,8 +49,17 @@ export function FeaturesSection() {
               </div>
             );
           })}
+          {askEmails && ask.data && (
+            <div className="gi pr-3">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm leading-5 font-semibold">Include job emails in Ask</div>
+                <div className="ev-time leading-4">Email excerpts go to your AI provider when you ask</div>
+              </div>
+              <Switch checked={ask.data.includeEmails} label="Include job emails in Ask" onChange={(v) => setAsk.mutate({ includeEmails: v })} />
+            </div>
+          )}
         </div>
-        {set.error && <ErrorNote error={set.error} />}
+        {(set.error || setAsk.error) && <ErrorNote error={set.error ?? setAsk.error} />}
       </div>
     </>
   );

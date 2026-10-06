@@ -9,6 +9,7 @@ import { Button, buttonClass, Confidence, ErrorNote, EventSourceBadge, SectionLa
 import { formatDate, formatDay, formatEventTime, isoDateFromToday, REASON_LABELS, shortAge } from '../lib/format';
 import { dismissGhost, useVisibleGhosts } from '../lib/ghost';
 import { mailboxProblem } from './settings/EmailSection';
+import { DraftSheet } from '../components/DraftSheet';
 
 const REASON: Record<FollowUpReason, { icon: IconName; label: (s: FollowUps['settings']) => string }> = {
   due: { icon: 'calendar', label: () => 'Follow-up date due' },
@@ -30,6 +31,8 @@ export function FollowUpsPage() {
   const quick = useQuickUpdate();
   const toast = useToast();
   const [menuFor, setMenuFor] = useState<FollowUpItem | null>(null);
+  const [draftFor, setDraftFor] = useState<(FollowUpItem & { reason?: FollowUpReason }) | null>(null);
+  const draftsOn = useFeature('followup_drafts');
   const data = followUps.data;
   const ghosts = useVisibleGhosts(data?.ghostSuggestions);
 
@@ -221,6 +224,19 @@ export function FollowUpsPage() {
       <Sheet open={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor?.companyName ?? ''}>
         {menuFor && (
           <div className="pb-2">
+            {draftsOn && (
+              <button
+                type="button"
+                className="opt-row w-full text-left"
+                onClick={() => {
+                  setDraftFor(menuFor);
+                  setMenuFor(null);
+                }}
+              >
+                <Icon name="sparkle" className="text-ink-3" />
+                Draft a follow-up message
+              </button>
+            )}
             {[3, 14].map((d) => (
               <button
                 key={d}
@@ -249,6 +265,7 @@ export function FollowUpsPage() {
           </div>
         )}
       </Sheet>
+      {draftsOn && <DraftSheet item={draftFor} purpose={draftFor && 'reason' in draftFor && draftFor.reason ? draftFor.reason : 'general'} open={!!draftFor} onClose={() => setDraftFor(null)} />}
     </div>
   );
 }

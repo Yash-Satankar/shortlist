@@ -1,10 +1,11 @@
 import { APPLICATION_SOURCES, WORK_MODE_LABELS, type ApplicationSource, type ApplicationStatus } from '@jt/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Outlet, useMatch, useSearchParams } from 'react-router';
-import { useApplications, useFollowUps } from '../api/hooks';
+import { useApplications, useFeature, useFollowUps } from '../api/hooks';
 import type { ApplicationListItem } from '../api/types';
 import { Icon } from '../components/Icon';
-import { Button, EmptyState, ErrorNote, Segmented, Sheet, SkeletonRows, StatusGlyph, StatusPill } from '../components/ui';
+import { openAsk } from '../components/AskSheet';
+import { Button, EmptyState, ErrorNote, IconButton, Segmented, Sheet, SkeletonRows, StatusGlyph, StatusPill } from '../components/ui';
 import { daysAgo, formatDate, isThisWeek, shortAge } from '../lib/format';
 import { useVisibleGhosts } from '../lib/ghost';
 import { ACTIVE_STATUSES, CLOSED_STATUSES, sourceShort, STATUS_GROUPS, STATUS_SHORT } from '../lib/status';
@@ -101,6 +102,7 @@ export function NoSelection() {
 
 function ApplicationsList({ selectedId }: { selectedId?: string }) {
   const [filters, setFilters] = useListFilters();
+  const askOn = useFeature('chat');
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
@@ -199,6 +201,7 @@ function ApplicationsList({ selectedId }: { selectedId?: string }) {
             <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={scrolled && data ? `Search ${data.total} applications` : 'Company, role or city'} />
             <span className="kbd mr-1.5 hidden md:inline">/</span>
           </label>
+          {askOn && <IconButton icon="sparkle" label="Ask my job search" onClick={openAsk} className="md:h-[38px] md:w-[38px]" />}
         </div>
         <div className="chips no-scrollbar overflow-x-auto md:gap-1.5" role="toolbar" aria-label="Filters">
           {chip('Status', filters.statuses.map((s) => STATUS_SHORT[s]), true)}

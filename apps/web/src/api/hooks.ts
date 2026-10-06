@@ -1,4 +1,4 @@
-import { parseLpa, parseRelocation, type ApplicationStatus, type PortalSite, type Feature, type FeatureState, type LlmProvider, type LlmTask, type ModelChoice, type UserFeatures } from '@jt/shared';
+import { parseLpa, type Draft, type DraftRequest, type PrepOutdatedReason, type PrepPack, parseRelocation, type ApplicationStatus, type PortalSite, type Feature, type FeatureState, type LlmProvider, type LlmTask, type ModelChoice, type UserFeatures } from '@jt/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
@@ -496,3 +496,70 @@ export const useAssignEmail = () =>
   useEmailMutation((v: { emailId: string; applicationId: string }) => api<{ outcome: string }>(`/emails/${v.emailId}/assign`, { method: 'POST', json: { applicationId: v.applicationId } }));
 export const useDismissEmail = () => useEmailMutation((emailId: string) => api<void>(`/emails/${emailId}/dismiss`, { method: 'POST' }));
 export const useRegenerateInbound = () => useEmailMutation(() => api<{ address: string }>('/emails/inbound-address/regenerate', { method: 'POST' }));
+
+// ---------------------------------------------------------------- Ask, prep packs, drafts
+
+export interface AskCitation {
+  ref: string;
+  type: 'application' | 'jd' | 'answer' | 'event' | 'email';
+  id: string;
+  applicationId: string | null;
+  label: string;
+  date: string | null;
+}
+
+export interface AskExactRow {
+  id: string;
+  company: string;
+  role: string;
+  status: ApplicationStatus;
+  appliedOn: string | null;
+  reachedAt: string | null;
+}
+
+export type AskAnswer =
+  | { kind: 'exact'; answer: string; result: { count: number; rows: AskExactRow[]; groups: { key: string; count: number }[] | null; description: string } }
+  | { kind: 'search'; answer: string; found: boolean; citations: AskCitation[]; emailsSearched: boolean };
+
+export const useAsk = () => useMutation({ mutationFn: (question: string) => api<AskAnswer>('/ask', { method: 'POST', json: { question } }) });
+
+export interface AskSettings {
+  includeEmails: boolean;
+  instanceDefault: boolean;
+}
+export const useAskSettings = (enabled = true) => useQuery({ queryKey: ['ask-settings'], queryFn: () => api<AskSettings>('/ask/settings'), enabled });
+export function useSetAskSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: { includeEmails: boolean }) => api<AskSettings>('/ask/settings', { method: 'PATCH', json: patch }),
+    onSuccess: (data) => qc.setQueryData(['ask-settings'], data),
+  });
+}
+
+export interface CostEstimate {
+  provider: LlmProvider;
+  model: string;
+  cost: number | null;
+  currency: string;
+}
+
+export interface PrepState {
+  pack: { content: PrepPack; generatedAt: string; provider: LlmProvider; model: string } | null;
+  outdated: PrepOutdatedReason[];
+  missing: ('jd' | 'resume')[];
+  estimate: CostEstimate | null;
+}
+export const usePrep = (applicationId: string, enabled = true) =>
+  useQuery({ queryKey: ['prep', applicationId], queryFn: () => api<PrepState>(`/prep/${applicationId}`), enabled });
+export function useGeneratePrep(applicationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<PrepState>(`/prep/${applicationId}`, { method: 'POST' }),
+    onSuccess: (data) => {
+      qc.setQueryData(['prep', applicationId], data);
+      void qc.invalidateQueries({ queryKey: ['ai'] });
+    },
+  });
+}
+
+export const useDraft = () => useMutation({ mutationFn: (req: DraftRequest) => api<Draft>('/drafts', { method: 'POST', json: req }) });
