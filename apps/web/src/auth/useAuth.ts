@@ -17,10 +17,37 @@ const ME_KEY = ['auth', 'me'] as const;
 export function usePublicConfig() {
   const { data } = useQuery({
     queryKey: ['config'],
-    queryFn: () => api<{ sessionTtlDays: number }>('/config'),
+    queryFn: () => api<PublicConfig>('/config'),
     staleTime: Infinity,
   });
-  return { sessionTtlDays: data?.sessionTtlDays ?? 30 };
+  return { sessionTtlDays: data?.sessionTtlDays ?? 30, signupMode: data?.signupMode ?? 'closed', needsSetup: data?.needsSetup ?? false, emailEnabled: data?.emailEnabled ?? false, loaded: Boolean(data) };
+}
+
+export interface PublicConfig {
+  sessionTtlDays: number;
+  signupMode: 'closed' | 'invite' | 'open';
+  /** No accounts yet: show the first-run setup. */
+  needsSetup: boolean;
+  /** Email sending configured: "Forgot password?" works. */
+  emailEnabled: boolean;
+}
+
+/**
+ * Signed-out actions that may sign you in (setup, sign-up with an invite, confirming your email):
+ * when the server returns a user, they're the current user from then on.
+ */
+export function useAuthAction<V>(path: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: V) => api<{ user?: CurrentUser; verificationSent?: boolean } | undefined>(path, { method: 'POST', json: input }),
+    onSuccess: (res) => {
+      if (res?.user) {
+        setDisplayTimezone(res.user.settings.timezone);
+        void qc.invalidateQueries({ queryKey: ['config'] });
+        qc.setQueryData(ME_KEY, res.user);
+      }
+    },
+  });
 }
 
 export function useCurrentUser() {

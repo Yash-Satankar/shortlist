@@ -25,6 +25,7 @@ import { AiSection } from './settings/AiSection';
 import { EmailSection } from './settings/EmailSection';
 import { FeaturesSection } from './settings/FeaturesSection';
 import { ErrorsSection } from './settings/ErrorsSection';
+import { AccountSection, InvitesSection } from './settings/AccountSection';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
   const logout = useLogout();
@@ -52,6 +53,8 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
 
       <FeaturesSection />
 
+      <InvitesSection user={user} />
+
       {user.role === 'admin' && <ErrorsSection />}
 
       <SectionLabel className="pt-[22px]">Appearance</SectionLabel>
@@ -67,6 +70,8 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
           ]}
         />
       </div>
+
+      <AccountSection />
 
       <SectionLabel className="pt-[22px]">Security</SectionLabel>
       <div className="flex flex-col gap-2.5 px-4">
