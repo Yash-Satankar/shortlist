@@ -44,9 +44,9 @@ export const DEFAULT_MODELS: Record<Exclude<LlmProvider, 'openai_compatible'>, R
   anthropic: { extraction: 'claude-haiku-4-5', classification: 'claude-haiku-4-5', prep: 'claude-opus-5-5', chat: 'claude-opus-5-5' },
   groq: { extraction: 'llama-3.1-8b-instant', classification: 'llama-3.1-8b-instant', prep: 'llama-3.3-70b-versatile', chat: 'llama-3.3-70b-versatile' },
   together: {
-    // A small model would do for extraction/classification, but 'meta-llama/Meta-Llama-3.1-8B-
-    // Instruct-Turbo' was refused (HTTP 400) on a real key: use the 70B model until a small
-    // model id is confirmed against Together's catalog.
+    // A smaller model would do for extraction/classification. 'Meta-Llama-3.1-8B-Instruct-Turbo'
+    // is listed but "non-serverless" (refused on a real key). Candidate: Llama-4-Scout-17B-16E-
+    // Instruct (serverless per the catalog), not yet confirmed with a call: 70B until it is.
     extraction: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     classification: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     prep: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
@@ -72,8 +72,8 @@ export const LLM_PRICES_USD: Record<string, [number, number]> = {
   'claude-haiku-4-5': [1, 5],
   'llama-3.1-8b-instant': [0.05, 0.08],
   'llama-3.3-70b-versatile': [0.59, 0.79],
-  'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo': [0.18, 0.18],
-  'meta-llama/Llama-3.3-70B-Instruct-Turbo': [0.88, 0.88],
+  'meta-llama/Llama-4-Scout-17B-16E-Instruct': [0.18, 0.59],
+  'meta-llama/Llama-3.3-70B-Instruct-Turbo': [1.04, 1.04],
 };
 
 export function estimateCostUsd(model: string, inputTokens: number, outputTokens: number, prices: Record<string, [number, number]> = LLM_PRICES_USD): number | null {
