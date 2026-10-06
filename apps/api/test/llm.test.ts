@@ -213,12 +213,43 @@ describe('runLlm via /api/ai/extract-job', () => {
     await addKey(b, 'groq').expect(200);
     await addKey(b, 'anthropic').expect(200);
     const overview = (await b.get('/api/ai')).body;
-    expect(overview.tasks.extraction).toMatchObject({ provider: 'groq', model: 'llama-3.1-8b-instant' });
+    expect(overview.tasks.extraction).toMatchObject({ provider: 'groq', model: 'openai/gpt-oss-20b' });
     expect(overview.tasks.prep).toMatchObject({ provider: 'anthropic', model: 'claude-opus-5-5' });
     const changed = await b.patch('/api/ai/settings').set('Origin', ORIGIN).send({ models: { extraction: { provider: 'anthropic', model: 'claude-sonnet-5-5' } } });
     expect(changed.body.tasks.extraction).toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-5-5' });
     await extract(b).expect(200);
     expect(calls[0]!.model).toBe('claude-sonnet-5-5');
+  });
+
+  it('Groq + Together: page reading and email sorting on Groq’s small model; prep and chat on Together 70B', async () => {
+    const b = await login('b@example.com');
+    await addKey(b, 'groq').expect(200);
+    await addKey(b, 'together').expect(200);
+    const { tasks } = (await b.get('/api/ai')).body;
+    expect(tasks.extraction).toMatchObject({ provider: 'groq', model: 'openai/gpt-oss-20b' });
+    expect(tasks.classification).toMatchObject({ provider: 'groq', model: 'openai/gpt-oss-20b' });
+    expect(tasks.prep).toMatchObject({ provider: 'together', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' });
+    expect(tasks.chat).toMatchObject({ provider: 'together', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' });
+  });
+
+  it('default models and provider order are env-tunable', async () => {
+    process.env.LLM_DEFAULT_MODELS_JSON = '{"groq": {"extraction": "qwen/qwen3.8-27b"}}';
+    process.env.LLM_TASK_PROVIDERS_JSON = '{"classification": ["together"], "prep": ["groq"]}';
+    resetEnvCache();
+    try {
+      const b = await login('b@example.com');
+      await addKey(b, 'groq').expect(200);
+      await addKey(b, 'together').expect(200);
+      const { tasks, defaults } = (await b.get('/api/ai')).body;
+      expect(tasks.extraction).toMatchObject({ provider: 'groq', model: 'qwen/qwen3.8-27b' });
+      expect(tasks.classification).toMatchObject({ provider: 'together' });
+      expect(tasks.prep).toMatchObject({ provider: 'groq', model: 'openai/gpt-oss-120b' });
+      expect(defaults.groq.extraction).toBe('qwen/qwen3.8-27b');
+    } finally {
+      delete process.env.LLM_DEFAULT_MODELS_JSON;
+      delete process.env.LLM_TASK_PROVIDERS_JSON;
+      resetEnvCache();
+    }
   });
 
   it('monthly cap: once reached, calls stop with a clear message (cache hits still work)', async () => {
@@ -314,6 +345,12 @@ describe('providers (no network)', () => {
     expect(JSON.parse(init.body)).toMatchObject({ response_format: { type: 'json_object' }, max_tokens: 50 });
     expect(init.headers.Authorization).toBe('Bearer gsk_x');
     expect(init.redirect).toBe('error');
+
+    // Reasoning models (GPT-OSS): low effort, reasoning not returned, room for it in the token budget.
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ model: 'openai/gpt-oss-20b', choices: [{ message: { content: '{"a":1}' }, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 90 } })));
+    await groq.complete('openai/gpt-oss-20b', { task: 'classification', system: 's', user: 'u', maxTokens: 60, json: true });
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({ max_tokens: 60 + 1024, reasoning_effort: 'low', include_reasoning: false, response_format: { type: 'json_object' } });
+    expect(JSON.parse(init.body)).not.toHaveProperty('reasoning_effort');
 
     fetchMock.mockResolvedValueOnce(new Response('{}', { status: 401 }));
     await expect(groq.validate()).rejects.toMatchObject({ code: 'invalid_key' });

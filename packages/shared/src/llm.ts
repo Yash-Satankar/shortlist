@@ -42,11 +42,11 @@ export const LLM_TASK_FEATURE: Record<LlmTask, Feature> = {
 /** Defaults per provider and task: small fast models for extraction/classification, strong ones for writing. */
 export const DEFAULT_MODELS: Record<Exclude<LlmProvider, 'openai_compatible'>, Record<LlmTask, string>> = {
   anthropic: { extraction: 'claude-haiku-4-5', classification: 'claude-haiku-4-5', prep: 'claude-opus-5-5', chat: 'claude-opus-5-5' },
-  groq: { extraction: 'llama-3.1-8b-instant', classification: 'llama-3.1-8b-instant', prep: 'llama-3.3-70b-versatile', chat: 'llama-3.3-70b-versatile' },
+  // Groq retired its Llama 3.1 8B / 3.3 70B models on 2026-08-16; GPT-OSS replaced them.
+  groq: { extraction: 'openai/gpt-oss-20b', classification: 'openai/gpt-oss-20b', prep: 'openai/gpt-oss-120b', chat: 'openai/gpt-oss-120b' },
   together: {
-    // A smaller model would do for extraction/classification. 'Meta-Llama-3.1-8B-Instruct-Turbo'
-    // is listed but "non-serverless" (refused on a real key). Candidate: Llama-4-Scout-17B-16E-
-    // Instruct (serverless per the catalog), not yet confirmed with a call: 70B until it is.
+    // Smaller Together models (Llama 3.1 8B Turbo, Llama 4 Scout) were refused as "non-serverless"
+    // on a real key, so every task uses 70B here; with a Groq key too, the small tasks go to Groq.
     extraction: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     classification: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     prep: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
@@ -58,8 +58,8 @@ export const DEFAULT_MODELS: Record<Exclude<LlmProvider, 'openai_compatible'>, R
 export const TASK_PROVIDER_PREFERENCE: Record<LlmTask, LlmProvider[]> = {
   extraction: ['groq', 'anthropic', 'together', 'openai_compatible'],
   classification: ['groq', 'anthropic', 'together', 'openai_compatible'],
-  prep: ['anthropic', 'groq', 'together', 'openai_compatible'],
-  chat: ['anthropic', 'groq', 'together', 'openai_compatible'],
+  prep: ['anthropic', 'together', 'groq', 'openai_compatible'],
+  chat: ['anthropic', 'together', 'groq', 'openai_compatible'],
 };
 
 /**
@@ -70,6 +70,8 @@ export const LLM_PRICES_USD: Record<string, [number, number]> = {
   'claude-opus-5-5': [4, 20],
   'claude-sonnet-5-5': [2, 10],
   'claude-haiku-4-5': [1, 5],
+  'openai/gpt-oss-20b': [0.075, 0.3],
+  'openai/gpt-oss-120b': [0.15, 0.6],
   'llama-3.1-8b-instant': [0.05, 0.08],
   'llama-3.3-70b-versatile': [0.59, 0.79],
   'meta-llama/Llama-4-Scout-17B-16E-Instruct': [0.18, 0.59],

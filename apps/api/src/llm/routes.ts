@@ -1,4 +1,4 @@
-import { DEFAULT_MODELS, LLM_PROVIDERS, userAiSettingsSchema } from '@jt/shared';
+import { LLM_PROVIDERS, userAiSettingsSchema } from '@jt/shared';
 import { eq, sql } from 'drizzle-orm';
 import { Router, type ErrorRequestHandler, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -12,7 +12,7 @@ import { HttpError, notFound, parse } from '../lib/http';
 import { extractJobRequestSchema, extractJobWithAi } from './extract-job';
 import { availableKeys, deleteKey, instanceKeys, listKeys, saveKey } from './keys';
 import { LlmError, type LlmErrorCode } from './providers';
-import { aiSettings, instanceUsageSummary, resolveModel, usageSummary } from './service';
+import { aiSettings, defaultModels, instanceUsageSummary, resolveModel, usageSummary } from './service';
 
 const STATUS: Record<LlmErrorCode, number> = {
   no_key: 403,
@@ -68,7 +68,7 @@ export function aiRouter(db: Db) {
       instanceProviders: me?.role === 'admin' ? [...instanceKeys().keys()] : [],
       settings: { models: settings.models, monthlyCap: settings.monthlyCap, currency: settings.currency, usdRate: settings.usdRate },
       tasks,
-      defaults: DEFAULT_MODELS,
+      defaults: defaultModels(),
     };
   };
 

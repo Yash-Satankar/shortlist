@@ -161,11 +161,17 @@ function openAiCompatibleClient(provider: LlmProvider, apiKey: string, baseUrl: 
   };
   return {
     async complete(model, req) {
+      const e = env();
+      // Reasoning models think before answering, and that counts toward the token limit.
+      const reasoning = e.LLM_REASONING_MODELS.test(model);
       const body = await call('/chat/completions', {
         method: 'POST',
         body: JSON.stringify({
           model,
-          max_tokens: req.maxTokens,
+          max_tokens: req.maxTokens + (reasoning ? e.LLM_REASONING_HEADROOM_TOKENS : 0),
+          ...(reasoning ? { reasoning_effort: e.LLM_REASONING_EFFORT } : {}),
+          // Groq returns the reasoning in its own field unless told not to; we never use it.
+          ...(reasoning && provider === 'groq' ? { include_reasoning: false } : {}),
           temperature: 0.2,
           messages: [
             { role: 'system', content: req.system },

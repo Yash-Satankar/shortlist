@@ -30,6 +30,20 @@ export async function aiSettings(db: DbOrTx, userId: string): Promise<ResolvedAi
   };
 }
 
+/** Default model for a provider's task: LLM_DEFAULT_MODELS_JSON over the built-in defaults. */
+export function defaultModels(): Record<Exclude<LlmProvider, 'openai_compatible'>, Record<LlmTask, string>> {
+  const over = env().LLM_DEFAULT_MODELS_JSON;
+  return Object.fromEntries(
+    Object.entries(DEFAULT_MODELS).map(([p, tasks]) => [p, { ...tasks, ...over[p as keyof typeof over] }]),
+  ) as ReturnType<typeof defaultModels>;
+}
+
+/** Provider order for a task: LLM_TASK_PROVIDERS_JSON first, then the built-in order for the rest. */
+export function taskProviderOrder(task: LlmTask): LlmProvider[] {
+  const first = env().LLM_TASK_PROVIDERS_JSON[task] ?? [];
+  return [...new Set([...first, ...TASK_PROVIDER_PREFERENCE[task]])];
+}
+
 /**
  * Which provider + model runs a task: the user's choice when they have a key for it, otherwise
  * the task's preferred provider among their keys with its default model. null = no usable key.
@@ -37,9 +51,10 @@ export async function aiSettings(db: DbOrTx, userId: string): Promise<ResolvedAi
 export function resolveModel(task: LlmTask, keys: Map<LlmProvider, AvailableKey>, models: ResolvedAiSettings['models']): { key: AvailableKey; model: string } | null {
   const chosen = models[task];
   if (chosen && keys.has(chosen.provider)) return { key: keys.get(chosen.provider)!, model: chosen.model };
-  for (const p of TASK_PROVIDER_PREFERENCE[task]) {
+  const defaults = defaultModels();
+  for (const p of taskProviderOrder(task)) {
     const key = keys.get(p);
-    if (key && p !== 'openai_compatible') return { key, model: DEFAULT_MODELS[p][task] };
+    if (key && p !== 'openai_compatible') return { key, model: defaults[p][task] };
   }
   return null; // only a custom endpoint, and no model picked for this task yet
 }
