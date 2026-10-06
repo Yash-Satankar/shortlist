@@ -1,14 +1,15 @@
 import { eq } from 'drizzle-orm';
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { env } from '../config/env';
 import type { Db } from '../db/client';
 import { users } from '../db/schema';
-import { badRequest, forbidden, notFound, parse, unauthorized } from '../lib/http';
+import { badRequest, forbidden, HttpError, notFound, parse, unauthorized } from '../lib/http';
 import { MIN_PASSWORD_LENGTH, verifyPassword } from '../lib/password';
 import { requireFeature } from '../config/features';
-import { changePassword, createUser, resolveSettings } from '../users/service';
+import { changePassword, resolveSettings } from '../users/service';
+import { requestPasswordReset, resendVerification, resetPassword, setupAdmin, signUp, verifyEmail } from '../accounts/service';
 import { requireAuth, requireSession, sessionCookieName, sessionCookieOptions } from './middleware';
 import {
   authenticateUser,
@@ -26,7 +27,14 @@ const credentialsSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
-const signupSchema = credentialsSchema.extend({ name: z.string().trim().max(100).optional() });
+const signupSchema = credentialsSchema.extend({
+  name: z.string().trim().max(100).optional(),
+  password: z.string().min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`).max(200),
+  invite: z.string().trim().max(200).optional(),
+});
+const emailOnlySchema = z.object({ email: z.email().max(254) });
+const tokenSchema = z.object({ token: z.string().trim().min(10).max(200) });
+const resetSchema = tokenSchema.extend({ newPassword: z.string().min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`).max(200) });
 const tokenCreateSchema = z.object({ name: z.string().trim().min(1).max(60) });
 const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1).max(200),
@@ -49,19 +57,53 @@ export function authRouter(db: Db): Router {
     const { email, password } = parse(credentialsSchema, req.body);
     const user = await authenticateUser(db, email, password);
     if (!user) throw unauthorized('Invalid email or password');
+    if (!user.emailVerifiedAt) throw new HttpError(403, 'Confirm your email first: we sent you a link.', 'email_unverified');
     const { token, expiresAt } = await createSession(db, user.id, req.get('user-agent'));
     res.cookie(sessionCookieName(), token, sessionCookieOptions(expiresAt));
     res.json({ user: publicUser(user) });
   });
 
-  router.post('/signup', loginLimiter, async (req, res) => {
-    if (!env().ALLOW_SIGNUP) throw forbidden('Sign-up is disabled');
-    const input = parse(signupSchema, req.body);
-    const created = await createUser(db, input);
-    const { token, expiresAt } = await createSession(db, created.id, req.get('user-agent'));
+  const startSession = async (req: Request, res: Response, userId: string, status = 200) => {
+    const { token, expiresAt } = await createSession(db, userId, req.get('user-agent'));
     res.cookie(sessionCookieName(), token, sessionCookieOptions(expiresAt));
-    const user = await db.query.users.findFirst({ where: eq(users.id, created.id) });
-    res.status(201).json({ user: publicUser(user!) });
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    res.status(status).json({ user: publicUser(user!) });
+  };
+
+  /** First-run setup: creates the admin while the server has no accounts (then it's gone). */
+  router.post('/setup', loginLimiter, async (req, res) => {
+    const input = parse(signupSchema.omit({ invite: true }), req.body);
+    const created = await setupAdmin(db, input);
+    await startSession(req, res, created.id, 201);
+  });
+
+  /** Sign-up per SIGNUP_MODE: invite → signed in at once; open → confirm your email first. */
+  router.post('/signup', loginLimiter, async (req, res) => {
+    const input = parse(signupSchema, req.body);
+    const { userId, verified } = await signUp(db, input);
+    if (verified) return startSession(req, res, userId, 201);
+    res.status(201).json({ verificationSent: true });
+  });
+
+  router.post('/verify', loginLimiter, async (req, res) => {
+    const userId = await verifyEmail(db, parse(tokenSchema, req.body).token);
+    await startSession(req, res, userId);
+  });
+
+  router.post('/verify/resend', loginLimiter, async (req, res) => {
+    await resendVerification(db, parse(emailOnlySchema, req.body).email);
+    res.status(204).end();
+  });
+
+  router.post('/password-reset/request', loginLimiter, async (req, res) => {
+    await requestPasswordReset(db, parse(emailOnlySchema, req.body).email);
+    res.status(204).end();
+  });
+
+  router.post('/password-reset/confirm', loginLimiter, async (req, res) => {
+    const { token, newPassword } = parse(resetSchema, req.body);
+    await resetPassword(db, token, newPassword);
+    res.status(204).end();
   });
 
   router.post('/logout', async (req, res) => {

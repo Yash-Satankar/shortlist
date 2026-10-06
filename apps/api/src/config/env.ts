@@ -48,7 +48,29 @@ const envSchema = z
 
     SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
     SESSION_COOKIE_NAME: z.string().default('jt_sid'),
+    /**
+     * Who can create an account: closed (only the CLI or the first-run setup), invite (an admin's
+     * invite link), open (anyone; needs email sending for verification, else it acts as invite).
+     */
+    SIGNUP_MODE: z.enum(['closed', 'invite', 'open']).optional(),
+    /** DEPRECATED: use SIGNUP_MODE. ALLOW_SIGNUP=true means SIGNUP_MODE=open. */
     ALLOW_SIGNUP: bool.default(false),
+    INVITE_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),
+    EMAIL_VERIFY_TTL_HOURS: z.coerce.number().int().positive().default(48),
+    /**
+     * Email sending (verification, password reset). Off unless SMTP_HOST and MAIL_FROM are set;
+     * without it, sign-up can't be open and "Forgot password" is hidden (admins reset with the CLI).
+     */
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().positive().default(587),
+    /** true: TLS from the start (port 465); false: STARTTLS when the server offers it. */
+    SMTP_SECURE: bool.default(false),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASSWORD: z.string().min(1).optional(),
+    MAIL_FROM: z.string().min(3).optional(),
+    /** Per-user requests per minute to the expensive endpoints (AI, import, resume upload, mailbox check). */
+    RATE_LIMIT_EXPENSIVE_PER_MIN: z.coerce.number().int().positive().default(20),
     LOGIN_RATE_LIMIT_PER_15MIN: z.coerce.number().int().positive().default(10),
 
     /** Defaults for per-user settings (users can override in the app). */

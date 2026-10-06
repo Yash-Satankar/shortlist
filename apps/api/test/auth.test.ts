@@ -304,9 +304,9 @@ describe('health', () => {
 });
 
 describe('public config', () => {
-  it('exposes only the session length, without signing in', async () => {
+  it('exposes only what signed-out screens need (no secrets, no user data), without signing in', async () => {
     const res = await request(app).get('/api/config');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ sessionTtlDays: 30 });
+    expect(res.body).toEqual({ sessionTtlDays: 30, signupMode: 'closed', needsSetup: false, emailEnabled: false });
   });
 });

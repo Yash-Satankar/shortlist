@@ -6,6 +6,8 @@ import { jobDefinitions } from './jobs';
 import { startJobs, stopJobs } from './jobs/runner';
 import { closeDb, getDb } from './db/client';
 import { logger } from './logger';
+import { signupMode } from './accounts/service';
+import { mailEnabled } from './lib/mailer';
 
 /**
  * Starts the HTTP server. Migrations are NOT run here: in production they are the
@@ -22,9 +24,14 @@ async function main() {
   const keys = [...instanceKeys().keys()];
   if (keys.length) {
     logger.info(`Instance AI keys set for: ${keys.join(', ')} (used by admin accounts only)`);
-    if (e.ALLOW_SIGNUP) logger.warn('Instance AI keys are set while sign-up is open. They still serve admins only, but a public instance should run without them (BYOK).');
+    if (signupMode() === 'open') logger.warn('Instance AI keys are set while sign-up is open. They still serve admins only, but a public instance should run without them (BYOK).');
   }
-  if (e.LLM_ALLOW_PRIVATE_BASE_URLS && e.ALLOW_SIGNUP) {
+  if (e.ALLOW_SIGNUP && !e.SIGNUP_MODE) logger.warn('ALLOW_SIGNUP is deprecated: set SIGNUP_MODE=open (or invite / closed) instead.');
+  if ((e.SIGNUP_MODE ?? (e.ALLOW_SIGNUP ? 'open' : 'closed')) === 'open' && signupMode() !== 'open') {
+    logger.warn('SIGNUP_MODE=open needs email sending (SMTP_HOST, MAIL_FROM) to verify addresses; until then sign-up works by invite only.');
+  }
+  logger.info(`Sign-up: ${signupMode()}${mailEnabled() ? ' · email sending on' : ' · email sending off (no password reset by email)'}`);
+  if (e.LLM_ALLOW_PRIVATE_BASE_URLS && signupMode() === 'open') {
     logger.warn('LLM_ALLOW_PRIVATE_BASE_URLS=true with sign-up open: users could make this server call your private network. Turn one of them off.');
   }
 

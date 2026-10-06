@@ -21,6 +21,10 @@ import { askRouter } from './ask/routes';
 import { prepRouter } from './prep/routes';
 import { draftsRouter } from './drafts/routes';
 import { adminRouter } from './admin/routes';
+import { accountRouter } from './accounts/routes';
+import { signupMode, userCount } from './accounts/service';
+import { mailEnabled } from './lib/mailer';
+import { expensiveLimiter } from './lib/rate-limits';
 import { recordError, routePattern } from './lib/error-log';
 import { portalRouter } from './portal/routes';
 import { privacyPage } from './privacy';
@@ -60,7 +64,11 @@ export function createApp({ db }: { db: Db }) {
 
   // Public, non-sensitive settings the signed-out screens need (e.g. the login hint).
   api.get('/config', (_req, res) => {
-    res.json({ sessionTtlDays: e.SESSION_TTL_DAYS });
+    // Public: what the signed-out screens need (sign-up, first-run setup, password reset).
+    void userCount(db).then(
+      (n) => res.json({ sessionTtlDays: e.SESSION_TTL_DAYS, signupMode: signupMode(), needsSetup: n === 0, emailEnabled: mailEnabled() }),
+      () => res.status(500).json({ error: { code: 'internal', message: 'Something went wrong' } }),
+    );
   });
 
   // Proxy diagnostics: how this server resolves the caller's own request. Behind
@@ -94,6 +102,9 @@ export function createApp({ db }: { db: Db }) {
     if (req.auth?.via !== 'token' || (req.method === 'POST' && req.path === '/auth/tokens/self/revoke')) return next();
     assertFeature(db, req.auth.userId, 'extension').then(() => next(), next);
   });
+  // Per-user limits on the expensive endpoints (writes only), before their routes.
+  const expensive = expensiveLimiter();
+  for (const p of ['/ask', '/prep', '/drafts', '/import', '/profile/resume', '/emails/check', '/ai/extract-job']) api.use(p, expensive);
   api.use('/auth', authRouter(db));
   api.use('/features', requireAuth, featuresRouter(db));
   api.use('/ai', requireAuth, aiRouter(db));
@@ -101,6 +112,7 @@ export function createApp({ db }: { db: Db }) {
   api.use('/prep', requireAuth, prepRouter(db));
   api.use('/drafts', requireAuth, draftsRouter(db));
   api.use('/admin', requireAuth, adminRouter(db));
+  api.use('/account', requireAuth, accountRouter(db));
   api.use('/portal-sync', requireAuth, portalRouter(db));
   api.use('/emails', requireAuth, emailsRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));

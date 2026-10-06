@@ -10,7 +10,7 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 export async function createUser(
   db: Db,
-  input: { email: string; password: string; name?: string | null },
+  input: { email: string; password: string; name?: string | null; emailVerified?: boolean },
 ): Promise<{ id: string; email: string }> {
   if (input.password.length < MIN_PASSWORD_LENGTH) {
     throw badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
@@ -25,7 +25,8 @@ export async function createUser(
     const [{ n }] = (await tx.execute(sql`select count(*)::int as n from users`)).rows as [{ n: number }];
     const [user] = await tx
       .insert(users)
-      .values({ email, passwordHash, name: input.name ?? null, role: n === 0 ? 'admin' : 'user' })
+      // Verified unless created by open sign-up, which confirms the address by email first.
+      .values({ email, passwordHash, name: input.name ?? null, role: n === 0 ? 'admin' : 'user', emailVerifiedAt: input.emailVerified === false ? null : new Date() })
       .returning({ id: users.id, email: users.email });
     await tx.insert(profiles).values({ userId: user!.id, fullName: input.name ?? null });
     return user!;

@@ -5,6 +5,11 @@ import type { Db } from '../db/client';
 import { users } from '../db/schema';
 import { forbidden } from '../lib/http';
 import { recentErrors } from '../lib/error-log';
+import { parse } from '../lib/http';
+import { requireSession } from '../auth/middleware';
+import { requireUserIntent } from '../auth/intent';
+import { createInvite, listInvites, revokeInvite, signupMode } from '../accounts/service';
+import { z } from 'zod';
 
 /** Admin-only endpoints for running the instance. */
 export function adminRouter(db: Db) {
@@ -20,6 +25,19 @@ export function adminRouter(db: Db) {
   /** Recent server errors (sanitized), newest first. */
   router.get('/errors', async (_req, res) => {
     res.set('Cache-Control', 'no-store').json({ items: await recentErrors(db), retentionDays: env().ERROR_LOG_RETENTION_DAYS });
+  });
+
+  /** Invite links (SIGNUP_MODE=invite). The code is shown once, when created. */
+  router.get('/invites', async (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({ items: await listInvites(db), signupMode: signupMode(), ttlDays: env().INVITE_TTL_DAYS });
+  });
+  router.post('/invites', requireSession, requireUserIntent, async (req, res) => {
+    const { email } = parse(z.object({ email: z.email().max(254).nullish() }), req.body ?? {});
+    res.status(201).json(await createInvite(db, req.auth!.userId, email));
+  });
+  router.delete('/invites/:id', requireSession, requireUserIntent, async (req, res) => {
+    await revokeInvite(db, parse(z.uuid(), req.params.id));
+    res.status(204).end();
   });
 
   return router;

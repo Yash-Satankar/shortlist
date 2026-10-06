@@ -120,6 +120,13 @@
       "when": 1791306751694,
       "tag": "0016_app_errors",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791307229824,
+      "tag": "0017_accounts",
+      "breakpoints": true
     }
   ]
 }

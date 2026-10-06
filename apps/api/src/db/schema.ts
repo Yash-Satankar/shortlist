@@ -69,6 +69,8 @@ export const users = pgTable('users', {
   name: text('name'),
   /** 'admin' may use instance-level AI keys and (later) manage the instance. The first user is admin. */
   role: text('role').$type<'admin' | 'user'>().notNull().default('user'),
+  /** Null until the address is confirmed (only required where sign-up is open). */
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   settings: jsonb('settings').$type<UserSettings>().notNull().default({}),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -572,6 +574,40 @@ export const prepPacks = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('prep_packs_application_uq').on(t.applicationId), index('prep_packs_user_idx').on(t.userId)],
+);
+
+/** Admin invite links (SIGNUP_MODE=invite). Only the code's hash is stored. */
+export const invites = pgTable(
+  'invites',
+  {
+    id: id(),
+    codeHash: text('code_hash').notNull(),
+    /** Optional: the invite only works for this address. */
+    email: text('email'),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    usedBy: uuid('used_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('invites_code_hash_uq').on(t.codeHash)],
+);
+
+/** One-time links sent by email: password reset and address verification. Only hashes are stored. */
+export const authTokens = pgTable(
+  'auth_tokens',
+  {
+    id: id(),
+    userId: userId(),
+    purpose: text('purpose').$type<'reset' | 'verify'>().notNull(),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('auth_tokens_hash_uq').on(t.tokenHash), index('auth_tokens_user_idx').on(t.userId)],
 );
 
 /**

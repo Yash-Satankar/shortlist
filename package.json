@@ -22,6 +22,7 @@
     "db:seed": "pnpm --filter @jt/api db:seed",
     "user:create": "pnpm --filter @jt/api user:create",
     "user:password": "pnpm --filter @jt/api user:password",
+    "user:role": "pnpm --filter @jt/api user:role",
     "keygen": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
     "import:xlsx": "pnpm --filter @jt/api import:xlsx",
     "build:extension": "pnpm --filter @jt/extension build",

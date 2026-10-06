@@ -14,6 +14,8 @@ process.env.JOBS_ENABLED = 'false'; // tests call job handlers directly
 for (const k of ['ANTHROPIC_API_KEY', 'GROQ_API_KEY', 'TOGETHER_API_KEY', 'OPENAI_COMPATIBLE_API_KEY', 'OPENAI_COMPATIBLE_BASE_URL', 'LLM_PRICES_JSON']) delete process.env[k];
 // …and never read a real mailbox: drop any email-intake settings from .env.
 for (const k of Object.keys(process.env)) if (/^(FEATURE_EMAIL_INTAKE|EMAIL_INTAKE_MODE|IMAP_|INBOUND_)/.test(k)) delete process.env[k];
+// …never send real email, and start from a closed sign-up (tests switch modes themselves).
+for (const k of Object.keys(process.env)) if (/^(SMTP_|MAIL_FROM$|SIGNUP_MODE$|ALLOW_SIGNUP$|RATE_LIMIT_EXPENSIVE_PER_MIN$)/.test(k)) delete process.env[k];
 process.env.LOG_LEVEL = 'silent';
 process.env.APP_ORIGIN = 'http://localhost:5173';
 process.env.ENCRYPTION_KEYS ??= `k1:${Buffer.alloc(32, 7).toString('base64')}`;
