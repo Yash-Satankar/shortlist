@@ -80,7 +80,13 @@ export interface SearchOptions {
   includeEmails: boolean;
 }
 
-/** The user's applications whose company the question names ("what did Tessera say…"). */
+/** First words too generic to identify a company on their own ("Data Corp" isn't named by "data"). */
+const GENERIC_FIRST = new Set('data tech info digital global india soft software systems solutions labs group the new first next smart cloud net web app apps'.split(' '));
+
+/**
+ * The user's applications whose company the question names ("what did Tessera say…"): the full
+ * normalized name, or its distinctive first word ("Vandelay" for "Vandelay Industries").
+ */
 async function namedApplications(db: DbOrTx, userId: string, question: string) {
   const rows = await db
     .select({ id: applications.id, company: companies.name, role: applications.roleTitle })
@@ -90,7 +96,9 @@ async function namedApplications(db: DbOrTx, userId: string, question: string) {
   const q = ` ${normalizeCompanyName(question)} `;
   return rows.filter((r) => {
     const c = normalizeCompanyName(r.company);
-    return c.length >= 3 && q.includes(` ${c} `);
+    if (c.length >= 3 && q.includes(` ${c} `)) return true;
+    const first = c.split(' ')[0] ?? '';
+    return first.length >= 4 && !GENERIC_FIRST.has(first) && q.includes(` ${first} `);
   });
 }
 
@@ -118,6 +126,8 @@ export async function searchUserData(db: DbOrTx, userId: string, question: strin
         location: applications.location,
         appliedOn: applications.appliedOn,
         notes: applications.notes,
+        experienceAsked: applications.experienceAsked,
+        salaryListed: applications.salaryListed,
         updated: applications.statusChangedAt,
         rank: rank(applications.search),
       })
@@ -127,7 +137,16 @@ export async function searchUserData(db: DbOrTx, userId: string, question: strin
       .orderBy(desc(rank(applications.search)))
       .limit(30);
     for (const a of apps) {
-      const text = [`Status: ${a.status}`, a.appliedOn && `Applied: ${a.appliedOn}`, a.location && `Location: ${a.location}`, a.notes && `Notes: ${a.notes}`].filter(Boolean).join('. ');
+      const text = [
+        `Status: ${a.status}`,
+        a.appliedOn && `Applied: ${a.appliedOn}`,
+        a.location && `Location: ${a.location}`,
+        a.experienceAsked && `Experience asked: ${a.experienceAsked}`,
+        a.salaryListed && `Salary listed: ${a.salaryListed}`,
+        a.notes && `Notes: ${a.notes}`,
+      ]
+        .filter(Boolean)
+        .join('. ');
       out.push({ type: 'application', id: a.id, applicationId: a.id, label: label(a.company, a.role), date: a.updated.toISOString(), text, score: a.rank + (namedIds.has(a.id) ? NAMED_BOOST : 0) });
     }
 

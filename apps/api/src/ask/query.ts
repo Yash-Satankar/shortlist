@@ -26,6 +26,8 @@ export const planSchema = z.object({
   from: isoDate.nullable().default(null),
   to: isoDate.nullable().default(null),
   groupBy: z.enum(['status', 'source', 'company', 'month']).nullable().default(null),
+  /** Status hasn't changed since before this date ("haven't moved in 2 weeks"). */
+  statusUnchangedSince: isoDate.nullable().default(null),
   includeArchived: z.boolean().default(false),
 });
 export type AskPlan = z.infer<typeof planSchema>;
@@ -38,7 +40,7 @@ Return one JSON object:
  "statuses": [current statuses], "reached": [statuses ever reached],
  "companies": [company names as written], "sources": [where they applied],
  "dateField": "applied" | "reached" | "added" | null, "from": "YYYY-MM-DD" | null, "to": "YYYY-MM-DD" | null,
- "groupBy": "status" | "source" | "company" | "month" | null, "includeArchived": false}
+ "groupBy": "status" | "source" | "company" | "month" | null, "statusUnchangedSince": "YYYY-MM-DD" | null, "includeArchived": false}
 Statuses: ${APPLICATION_STATUSES.join(', ')}. Sources: ${APPLICATION_SOURCES.join(', ')}.
 - "count": how many…; "list": which… / list / show me…; "search": anything about content (what someone said, what a job requires, advice, summaries, emails, notes).
 - "rejections", "rejected me" → reached ["rejected"]; "interviews I got" → reached ["interview"]; "offers" → reached ["offer"].
@@ -47,6 +49,8 @@ Statuses: ${APPLICATION_STATUSES.join(', ')}. Sources: ${APPLICATION_SOURCES.joi
   "last N days" = today minus N to today. With reached statuses and a date, use dateField "reached".
 - Only include filters the question asks for. "statuses" (current status) only when the question is about where
   applications stand NOW ("still waiting", "currently", "active"); "applications I sent / applied to" never sets statuses.
+- "haven't moved / no update in N days|weeks": statusUnchangedSince = today minus that period, with the open statuses
+  (applied, viewed, assessment, shortlisted, interview) unless the question names others.
 - If unsure, use "search".`;
 }
 
@@ -80,6 +84,7 @@ export function describePlan(p: AskPlan): string {
     const what = p.dateField === 'reached' ? 'happened' : p.dateField === 'added' ? 'added' : 'applied';
     parts.push(p.from && p.to ? `${what} ${fmtDate(p.from)} – ${fmtDate(p.to)}` : p.from ? `${what} since ${fmtDate(p.from)}` : `${what} until ${fmtDate(p.to!)}`);
   }
+  if (p.statusUnchangedSince) parts.push(`no status change since ${fmtDate(p.statusUnchangedSince)}`);
   if (!p.includeArchived) parts.push('not archived');
   return parts.join(' · ') || 'all applications';
 }
@@ -93,6 +98,7 @@ export async function runExactQuery(db: DbOrTx, userId: string, plan: AskPlan, t
   if (plan.companies.length) {
     where.push(or(...plan.companies.map((c) => sql`${companies.normalizedName} like ${`%${normalizeCompanyName(c).replace(/[%_\\]/g, '')}%`}`)));
   }
+  if (plan.statusUnchangedSince) where.push(sql`(${applications.statusChangedAt} at time zone ${timezone})::date < ${plan.statusUnchangedSince}::date`);
   const dated = plan.from || plan.to;
   if (dated && plan.dateField !== 'reached') {
     const col = plan.dateField === 'added' ? sql`(${applications.createdAt} at time zone ${timezone})::date` : sql`${applications.appliedOn}`;
