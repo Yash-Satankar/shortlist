@@ -113,6 +113,13 @@
       "when": 1791302680900,
       "tag": "0015_prep_packs",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791306751694,
+      "tag": "0016_app_errors",
+      "breakpoints": true
     }
   ]
 }

@@ -136,6 +136,7 @@ function publicUser(user: typeof users.$inferSelect) {
     id: user.id,
     email: user.email,
     name: user.name,
+    role: user.role,
     settings: resolveSettings(user.settings),
   };
 }

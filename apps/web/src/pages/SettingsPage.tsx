@@ -24,6 +24,7 @@ import { ExtensionSection } from './settings/ExtensionSection';
 import { AiSection } from './settings/AiSection';
 import { EmailSection } from './settings/EmailSection';
 import { FeaturesSection } from './settings/FeaturesSection';
+import { ErrorsSection } from './settings/ErrorsSection';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
   const logout = useLogout();
@@ -50,6 +51,8 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
       <EmailSection />
 
       <FeaturesSection />
+
+      {user.role === 'admin' && <ErrorsSection />}
 
       <SectionLabel className="pt-[22px]">Appearance</SectionLabel>
       <div className="px-4">

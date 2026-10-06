@@ -20,6 +20,8 @@ import { aiRouter } from './llm/routes';
 import { askRouter } from './ask/routes';
 import { prepRouter } from './prep/routes';
 import { draftsRouter } from './drafts/routes';
+import { adminRouter } from './admin/routes';
+import { recordError, routePattern } from './lib/error-log';
 import { portalRouter } from './portal/routes';
 import { privacyPage } from './privacy';
 import { emailsRouter, inboundWebhook } from './email/routes';
@@ -98,6 +100,7 @@ export function createApp({ db }: { db: Db }) {
   api.use('/ask', requireAuth, askRouter(db));
   api.use('/prep', requireAuth, prepRouter(db));
   api.use('/drafts', requireAuth, draftsRouter(db));
+  api.use('/admin', requireAuth, adminRouter(db));
   api.use('/portal-sync', requireAuth, portalRouter(db));
   api.use('/emails', requireAuth, emailsRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));
@@ -116,7 +119,7 @@ export function createApp({ db }: { db: Db }) {
 
   if (e.SERVE_WEB) serveWeb(app, e.WEB_DIST_DIR);
 
-  app.use(errorHandler);
+  app.use(errorHandler(db));
   return app;
 }
 
@@ -146,7 +149,7 @@ function serveWeb(app: express.Express, configuredDir?: string) {
   });
 }
 
-const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+export const errorHandler = (db: Db): ErrorRequestHandler => (err, req, res, _next) => {
   if (err instanceof HttpError) {
     res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });
     return;
@@ -157,5 +160,6 @@ const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     return;
   }
   (req.log ?? logger).error({ err }, 'Unhandled error');
+  void recordError(db, { kind: 'request', where: routePattern(req.method, req.baseUrl, req.route?.path, req.originalUrl), status: 500, error: err, requestId: req.id ? String(req.id) : null, userId: req.auth?.userId ?? null });
   res.status(500).json({ error: { code: 'internal', message: 'Something went wrong' } });
 };

@@ -4,6 +4,7 @@ import { env } from '../config/env';
 import { instanceFeatures } from '../config/features';
 import type { Db } from '../db/client';
 import { logger } from '../logger';
+import { recordError } from '../lib/error-log';
 
 /**
  * Background jobs (pg-boss: a queue kept in Postgres, schema "pgboss"), run inside the API
@@ -58,6 +59,7 @@ export async function startJobs(db: Db, jobs: JobDef[]): Promise<PgBoss | null> 
         logger.info({ job: job.name, ms: Date.now() - started, result }, 'Job done');
       } catch (err) {
         logger.error({ err, job: job.name }, 'Job failed');
+        await recordError(db, { kind: 'job', where: job.name, error: err });
         throw err; // pg-boss records the failure (and retries per queue policy)
       }
     });

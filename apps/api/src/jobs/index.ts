@@ -4,6 +4,7 @@ import type { DbOrTx } from '../db/client';
 import { llmCache } from '../db/schema';
 import { pollImap, purgeExpiredEmails } from '../email/poll';
 import { purgeExpiredSnapshots } from '../portal/service';
+import { purgeOldErrors } from '../lib/error-log';
 import type { JobDef } from './runner';
 
 /** Expired AI cache entries (each entry has its own expiry). */
@@ -18,7 +19,7 @@ export function jobDefinitions(): JobDef[] {
     {
       name: 'maintenance-purge',
       cron: e.JOB_PURGE_CRON,
-      run: async ({ db }) => ({ portalSnapshots: await purgeExpiredSnapshots(db), llmCache: await purgeExpiredLlmCache(db), emails: await purgeExpiredEmails(db) }),
+      run: async ({ db }) => ({ portalSnapshots: await purgeExpiredSnapshots(db), llmCache: await purgeExpiredLlmCache(db), emails: await purgeExpiredEmails(db), errors: await purgeOldErrors(db) }),
     },
     {
       name: 'email-poll',

@@ -575,6 +575,32 @@ export const prepPacks = pgTable(
 );
 
 /**
+ * Server errors (unexpected 5xx and failed background jobs) for the admin's "Recent errors" view.
+ * No request bodies, no secrets: route pattern, status and a sanitized message only. Purged after
+ * ERROR_LOG_RETENTION_DAYS.
+ */
+export const appErrors = pgTable(
+  'app_errors',
+  {
+    id: id(),
+    /** 'request' or 'job'. */
+    kind: text('kind').notNull(),
+    /** "POST /api/applications/:id/status", or the job name. */
+    where: text('where').notNull(),
+    status: integer('status'),
+    errorName: text('error_name'),
+    /** Sanitized: emails, long tokens and keys masked; at most 500 characters. */
+    message: text('message').notNull(),
+    /** First stack frame in our code ("src/ask/search.ts:120"), when known. */
+    location: text('location'),
+    requestId: text('request_id'),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('app_errors_created_idx').on(t.createdAt)],
+);
+
+/**
  * Data migrations (TypeScript steps that need app code, e.g. the encryption key or shared
  * parsers) applied by scripts/migrate.ts after the SQL migrations. One row per applied step.
  */
