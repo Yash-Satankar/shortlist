@@ -59,15 +59,39 @@ export function extractLinks(text: string, html?: string | null): string[] {
   return [...found].filter((u) => /^https?:\/\//i.test(u)).slice(0, 200);
 }
 
+/**
+ * A manual forward ("Fwd: …" from your own address, with Gmail's / Outlook's "Forwarded message"
+ * block) is read as the original email: its sender, subject and body. Otherwise the forwarder
+ * (you) would look like the sender. Automatic filter-forwarding keeps the original sender anyway.
+ */
+export function unforward(email: RawEmail): RawEmail {
+  const m = /^[ \t>]*-{3,}\s*(?:Forwarded message|Original Message)\s*-{3,}[ \t]*\n((?:[ \t>]*[A-Za-z][\w -]{0,20}:[^\n]*\n){1,8})/im.exec(email.text);
+  if (!m) return email;
+  const header = (name: string) => new RegExp(`^[ \\t>]*${name}:[ \\t]*(.*)$`, 'im').exec(m[1]!)?.[1]?.trim() ?? null;
+  const fromLine = header('From');
+  const addr = fromLine ? /<?([^\s<>@]+@[^\s<>]+?)>?\s*$/.exec(fromLine)?.[1] : null;
+  if (!fromLine || !addr) return email;
+  const name = fromLine.replace(/<[^>]*>/, '').replace(/["']/g, '').trim();
+  const body = email.text.slice(m.index + m[0].length).replace(/^\s+/, '');
+  return {
+    ...email,
+    from: { address: addr.toLowerCase(), name: name && name.toLowerCase() !== addr.toLowerCase() ? name : null },
+    subject: header('Subject') ?? email.subject.replace(/^(?:\s*(?:fwd?|fw)\s*:\s*)+/i, ''),
+    text: body,
+  };
+}
+
 /** A raw RFC 822 message (from IMAP) → RawEmail. */
 export async function parseRawMessage(source: Buffer | string): Promise<RawEmail | null> {
   const m = await simpleParser(source, { skipImageLinks: true, skipTextToHtml: true });
   const from = firstAddress(m.from);
   if (!from.address) return null;
   const html = typeof m.html === 'string' ? m.html : null;
-  const text = unwrap((m.text ?? '').trim() || (html ? htmlToPlain(html) : ''));
+  const text = (m.text ?? '').trim() || (html ? htmlToPlain(html) : '');
   const messageId = (m.messageId ?? '').trim() || `<sha256:${createHash('sha256').update(typeof source === 'string' ? source : source.toString('binary')).digest('hex').slice(0, 32)}>`;
-  return { messageId, from, subject: (m.subject ?? '').trim(), date: m.date ?? new Date(), text, links: extractLinks(text, html) };
+  // Read a manual forward as the original first (its header block is line-based), then rejoin wrapped lines.
+  const email = unforward({ messageId, from, subject: (m.subject ?? '').trim(), date: m.date ?? new Date(), text, links: extractLinks(text, html) });
+  return { ...email, text: unwrap(email.text) };
 }
 
 // ---------------------------------------------------------------- IMAP (self-hosting)
@@ -169,14 +193,14 @@ export function postmarkAdapter(opts: { domain: string; basicUser: string; basic
       const text = d.TextBody.trim() || htmlToPlain(d.HtmlBody);
       return {
         recipientLocalPart: recipient.split('@')[0]!.toLowerCase(),
-        email: {
+        email: unforward({
           messageId: (headerId ?? d.MessageID ?? '').trim() || `<postmark:${createHash('sha256').update(JSON.stringify(body)).digest('hex').slice(0, 32)}>`,
           from: { address: d.FromFull.Email.toLowerCase(), name: d.FromFull.Name || null },
           subject: d.Subject.trim(),
           date: d.Date ? new Date(d.Date) : new Date(),
           text,
           links: extractLinks(text, d.HtmlBody),
-        },
+        }),
       };
     },
   };

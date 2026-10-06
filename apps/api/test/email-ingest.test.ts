@@ -41,6 +41,21 @@ describe('parsing', () => {
   });
 });
 
+describe('forwarded emails', () => {
+  it('a manual forward is read as the original email (sender, subject, body)', async () => {
+    const m = await fixture('forwarded-greenhouse.eml');
+    expect(m).toMatchObject({ messageId: '<fwd-006@mail.gmail.com>', from: { address: 'no-reply@us.greenhouse-mail.io', name: 'Vandelay Industries' }, subject: 'Thank you for applying to Vandelay Industries' });
+    expect(m.text).toContain('We have received your application for the Site Reliability Engineer position');
+    expect(m.text).not.toContain('Forwarded message');
+  });
+
+  it('…so it classifies and matches like the original', async () => {
+    const { id } = await save({ companyName: 'Vandelay Industries', roleTitle: 'Site Reliability Engineer', status: 'saved' });
+    const r = await ingestEmail(db, userId, 'imap', await fixture('forwarded-greenhouse.eml'));
+    expect(r).toMatchObject({ category: 'received', applicationId: id });
+  });
+});
+
 describe('unwrap', () => {
   it('rejoins hard-wrapped lines, keeps paragraphs and list items', () => {
     expect(unwrap('We have received your application\nfor Backend Engineer.\n\nNext steps:\n- a test\n- an interview')).toBe(
