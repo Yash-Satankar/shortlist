@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, phase-2]
+    branches: [main, 'phase-*']
   pull_request:
 
 concurrency:
@@ -42,7 +42,19 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
+      - run: pnpm build
+
+  secrets:
+    name: Secret scan (full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Known false positives are listed in .gitleaksignore.
+      - run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0 git /repo --redact --no-banner
 
   extension:
     name: Extension release zip

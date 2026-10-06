@@ -504,7 +504,7 @@ describe('follow-ups and ghost suggestions', () => {
     const fresh = await create({ companyName: 'Fresh', status: 'applied' });
     const quiet = await create({ companyName: 'Quiet', status: 'applied' });
     const ghosty = await create({ companyName: 'Ghosty', status: 'interview' });
-    const due = await create({ companyName: 'Due', status: 'interview', followUpOn: '2020-01-01' });
+    await create({ companyName: 'Due', status: 'interview', followUpOn: '2020-01-01' });
     await db.update(applications).set({ lastActivityAt: daysAgo(12) }).where(eq(applications.id, quiet.id));
     await db.update(applications).set({ lastActivityAt: daysAgo(25) }).where(eq(applications.id, ghosty.id));
 

@@ -32,12 +32,6 @@ function roundRect(x, y, x0, y0, x1, y1, r) {
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
 }
 
-function segment(x, y, ax, ay, bx, by, w) {
-  const dx = bx - ax, dy = by - ay;
-  const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
-  return (x - ax - t * dx) ** 2 + (y - ay - t * dy) ** 2 <= w * w;
-}
-
 /** size px; `inset` shrinks the glyph (maskable icons need a ~20% safe zone); `rounded` clips corners. */
 function render(size, { inset = 0, rounded = true } = {}) {
   const px = Buffer.alloc(size * size * 4);

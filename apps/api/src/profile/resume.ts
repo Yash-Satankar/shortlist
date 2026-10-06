@@ -24,6 +24,7 @@ export function cleanFileName(header: string | undefined): string | null {
   } catch {
     // keep the raw header
   }
+  // eslint-disable-next-line no-control-regex -- strip control characters from an uploaded file name
   name = name.split(/[\\/]/).pop()!.replace(/[\u0000-\u001f]/g, '').trim();
   return name ? name.slice(0, 255) : null;
 }

@@ -12,6 +12,7 @@
     "build": "pnpm --filter @jt/web build && pnpm --filter @jt/api build",
     "start": "pnpm --filter @jt/api start",
     "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
     "test": "pnpm -r test",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
@@ -26,8 +27,14 @@
     "dev:extension": "pnpm --filter @jt/extension dev"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^26.6.4",
-    "typescript": "^7.0.2",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.71.1",
     "vitest": "^5.0.3"
   }
 }
