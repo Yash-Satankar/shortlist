@@ -19,6 +19,7 @@ import { featuresRouter } from './features/routes';
 import { aiRouter } from './llm/routes';
 import { portalRouter } from './portal/routes';
 import { privacyPage } from './privacy';
+import { emailsRouter, inboundWebhook } from './email/routes';
 import type { Db } from './db/client';
 import { HttpError, notFound } from './lib/http';
 import { logger } from './logger';
@@ -92,6 +93,7 @@ export function createApp({ db }: { db: Db }) {
   api.use('/features', requireAuth, featuresRouter(db));
   api.use('/ai', requireAuth, aiRouter(db));
   api.use('/portal-sync', requireAuth, portalRouter(db));
+  api.use('/emails', requireAuth, emailsRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));
   api.use('/contacts', requireAuth, requireUserIntent, contactsRouter(db));
   api.use('/answer-library', requireAuth, requireUserIntent, answerLibraryRouter(db));
@@ -100,6 +102,8 @@ export function createApp({ db }: { db: Db }) {
   api.use(trackerRouter(db)); // /follow-ups, /stats, /reviews, /companies (each requires auth)
 
   api.use((_req, _res, next) => next(notFound('Unknown API route')));
+  // Inbound email webhook (Postmark): its own Basic auth; mounted before the CSRF guard.
+  app.post('/api/email/inbound/postmark', ...inboundWebhook(db));
   app.use('/api', api);
   // Public privacy policy (Chrome Web Store listing link), rendered from PRIVACY.md.
   app.get('/privacy', privacyPage);

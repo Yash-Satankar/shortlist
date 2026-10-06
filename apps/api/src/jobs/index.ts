@@ -2,6 +2,7 @@ import { lt } from 'drizzle-orm';
 import { env } from '../config/env';
 import type { DbOrTx } from '../db/client';
 import { llmCache } from '../db/schema';
+import { pollImap, purgeExpiredEmails } from '../email/poll';
 import { purgeExpiredSnapshots } from '../portal/service';
 import type { JobDef } from './runner';
 
@@ -17,7 +18,13 @@ export function jobDefinitions(): JobDef[] {
     {
       name: 'maintenance-purge',
       cron: e.JOB_PURGE_CRON,
-      run: async ({ db }) => ({ portalSnapshots: await purgeExpiredSnapshots(db), llmCache: await purgeExpiredLlmCache(db) }),
+      run: async ({ db }) => ({ portalSnapshots: await purgeExpiredSnapshots(db), llmCache: await purgeExpiredLlmCache(db), emails: await purgeExpiredEmails(db) }),
+    },
+    {
+      name: 'email-poll',
+      cron: e.EMAIL_POLL_CRON,
+      feature: 'email_intake',
+      run: ({ db }) => pollImap(db),
     },
   ];
 }
