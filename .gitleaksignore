@@ -1,0 +1,2 @@
+# Empty placeholder (GROQ_API_KEY=  TOGETHER_API_KEY=) in the first .env.example, not a key
+201f6384dee174c09301bcb7d4deb0b7b8705b3d:.env.example:generic-api-key:48

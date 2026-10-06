@@ -403,7 +403,7 @@ describe('list, filters and search', () => {
     expect((await list('q=kafka')).items[0].companyName).toBe('Lumen Browser'); // JD
     expect((await list('q=US hours')).items[0].companyName).toBe('Northwind Data'); // Q&A
     expect((await list('q=logging')).items[0].companyName).toBe('Infosys'); // notes
-    expect((await list('q=upst')).items[0].companyName).toBe('Northwind Data'); // company substring
+    expect((await list('q=northw')).items[0].companyName).toBe('Northwind Data'); // company substring
   });
 
   it('rejects unknown filter values', async () => {

@@ -175,24 +175,19 @@ describe('parseTrackerWorkbook (synthetic file)', () => {
 });
 
 describe.runIf(existsSync(REAL_FILE))('my real tracker file', () => {
-  it('reads the known dates exactly: #1 Contoso 2026-09-30, #25 Tessera 2026-10-02, #39 Brightwave 2026-09-30', async () => {
+  // Your own file stays on your machine; these checks name rows by number only (no real data in the repo).
+  it('reads the known dates exactly: rows #1, #25 and #39', async () => {
     const parsed = await parseTrackerWorkbook(await readFile(REAL_FILE));
     const byRef = (ref: string) => parsed.applications.find((a) => a.ref === ref)!;
-    expect(byRef('1')).toMatchObject({ companyName: 'Contoso India', appliedOn: '2026-09-30' });
-    expect(byRef('25')).toMatchObject({ companyName: 'Tessera', appliedOn: '2026-10-02' });
-    expect(byRef('39')).toMatchObject({ companyName: 'Brightwave', appliedOn: '2026-09-30', sourceDetail: 'LinkedIn Easy Apply' });
+    expect(byRef('1')).toMatchObject({ appliedOn: '2026-09-30' });
+    expect(byRef('25')).toMatchObject({ appliedOn: '2026-10-02' });
+    expect(byRef('39')).toMatchObject({ appliedOn: '2026-09-30', sourceDetail: 'LinkedIn Easy Apply' });
   });
 
   it('classifies sources by "Applied Via": 34 LinkedIn, 4 Greenhouse, 2 Lever', async () => {
     const parsed = await parseTrackerWorkbook(await readFile(REAL_FILE));
     const count = (s: string) => parsed.applications.filter((a) => a.source === s).length;
     expect({ linkedin: count('linkedin'), greenhouse: count('greenhouse'), lever: count('lever') }).toEqual({ linkedin: 34, greenhouse: 4, lever: 2 });
-    expect(parsed.applications.filter((a) => a.source === 'greenhouse').map((a) => a.companyName)).toEqual([
-      'Tessera',
-      'Adatum',
-      'Fabrikam',
-      'W-G (Worldwide Group)',
-    ]);
   });
 
   it('parses all 40 rows with real links and no errors', async () => {
