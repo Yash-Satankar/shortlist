@@ -1,3 +1,4 @@
+export * from './assist';
 export * from './brand';
 export * from './duplicates';
 export * from './enums';
