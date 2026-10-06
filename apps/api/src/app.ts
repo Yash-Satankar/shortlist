@@ -17,6 +17,7 @@ import { env } from './config/env';
 import { assertFeature } from './config/features';
 import { featuresRouter } from './features/routes';
 import { aiRouter } from './llm/routes';
+import { askRouter } from './ask/routes';
 import { portalRouter } from './portal/routes';
 import { privacyPage } from './privacy';
 import { emailsRouter, inboundWebhook } from './email/routes';
@@ -92,6 +93,7 @@ export function createApp({ db }: { db: Db }) {
   api.use('/auth', authRouter(db));
   api.use('/features', requireAuth, featuresRouter(db));
   api.use('/ai', requireAuth, aiRouter(db));
+  api.use('/ask', requireAuth, askRouter(db));
   api.use('/portal-sync', requireAuth, portalRouter(db));
   api.use('/emails', requireAuth, emailsRouter(db));
   api.use('/applications', requireAuth, applicationsRouter(db));
