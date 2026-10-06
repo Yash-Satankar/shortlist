@@ -2,7 +2,8 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { featureSummary } from './config/features';
 import { instanceKeys } from './llm/keys';
-import { purgeExpiredSnapshots } from './portal/service';
+import { jobDefinitions } from './jobs';
+import { startJobs, stopJobs } from './jobs/runner';
 import { closeDb, getDb } from './db/client';
 import { logger } from './logger';
 
@@ -30,13 +31,8 @@ async function main() {
   // Which optional features this instance offers, and why the others are off.
   logger.info(`Features:\n  ${featureSummary(e).join('\n  ')}`);
 
-  // Portal snapshots expire after PORTAL_SNAPSHOT_RETENTION_DAYS: purge at start and daily.
-  const purge = () =>
-    purgeExpiredSnapshots(getDb())
-      .then((n) => n && logger.info({ deleted: n }, 'Expired portal snapshots deleted'))
-      .catch((err: unknown) => logger.warn({ err }, 'Portal snapshot purge failed'));
-  void purge();
-  setInterval(() => void purge(), 24 * 60 * 60 * 1000).unref();
+  // Background jobs (daily purge of expired snapshots/cache; email intake when offered).
+  await startJobs(getDb(), jobDefinitions()).catch((err: unknown) => logger.error({ err }, 'Background jobs failed to start'));
 
   const server = app.listen(e.PORT, () =>
     logger.info(
@@ -47,7 +43,7 @@ async function main() {
 
   const shutdown = (signal: string) => {
     logger.info(`${signal} received, shutting down`);
-    server.close(() => void closeDb().finally(() => process.exit(0)));
+    server.close(() => void stopJobs().finally(() => void closeDb().finally(() => process.exit(0))));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));

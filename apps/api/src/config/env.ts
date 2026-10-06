@@ -67,6 +67,11 @@ const envSchema = z
     PORTAL_SNAPSHOT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
     /** Score of a portal change you accepted in review (at/above the threshold → it applies). */
     PORTAL_CONFIRMED_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.9),
+
+    /** Background jobs (pg-boss, schema "pgboss" in the same database). Off in tests. */
+    JOBS_ENABLED: bool.default(true),
+    /** Daily clean-up: expired portal snapshots, AI cache (and stored emails, with email intake). */
+    JOB_PURGE_CRON: z.string().default('17 3 * * *'),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
 
     /**
