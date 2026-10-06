@@ -49,6 +49,30 @@ third-party servers, and no ads. This page says exactly what it can read, when, 
 - **Nothing is sent in your name.** It never submits applications, sends messages or emails, or
   clicks anything on job sites.
 
+## The tracker's AI features (web app)
+
+These run on your tracker, not in the extension. Each one is optional, has its own switch in
+Settings → Features, and only runs when you use it, with the AI provider and key **you** added
+in Settings → AI. Nothing is ever sent to anyone else, and nothing is sent in your name.
+
+- **Ask my job search**: your question goes to your provider.
+  - **Counting questions** ("how many…", "which…"): only the question is sent. The provider turns
+    it into a filter, and the numbers come from your own database.
+  - **Other questions**: short excerpts of the matching applications, notes, job descriptions and
+    screening answers are sent along with the question.
+  - **Job emails**: stored email excerpts are only included if you switch on **Include job emails
+    in Ask**. This is off unless your server's owner changed the default. The excerpts stay
+    encrypted on the server. They are decrypted in memory for that one question and never written
+    anywhere decrypted, including the AI cache.
+- **Interview prep packs**: the job description, your resume text, profile basics (headline,
+  experience, location, notice period, relocation) and your saved answers are sent. Your CTC is
+  never sent. The pack is stored encrypted, and the app shows the estimated cost before every
+  generation.
+- **Follow-up drafts**: the company, role, status, relevant dates, your name, your note (if any)
+  and the recruiter's first name are sent. The recruiter's email address is never sent; it only
+  fills the "To" field when you open the draft in your own mail app. Drafts are never sent from
+  the tracker.
+
 ## Disconnecting
 
 **Disconnect** in the popup revokes the pairing token on your tracker and deletes it from the
