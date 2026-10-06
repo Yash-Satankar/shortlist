@@ -1,9 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
+import { Suspense, useEffect, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router';
 import { useStats } from '../api/hooks';
 import { AskHost } from './AskSheet';
 import { AppMark, Icon, type IconName } from './Icon';
-import { StatusGlyph } from './ui';
+import { Spinner, StatusGlyph } from './ui';
 
 const NAV: Array<{ to: string; label: string; icon: IconName; attention?: boolean }> = [
   { to: '/', label: 'Applications', icon: 'list' },
@@ -55,7 +55,9 @@ export function Layout() {
       {onBoard ? <Rail attention={attention.total} /> : <Sidebar attention={attention} pathname={location.pathname} />}
 
       <div className={`min-w-0 flex-1 ${hideBottomNav ? 'pb-safe' : 'pb-[calc(76px+env(safe-area-inset-bottom))]'} md:pb-0`}>
-        <Outlet />
+        <Suspense fallback={<Spinner />}>
+          <Outlet />
+        </Suspense>
       </div>
 
       <AskHost />

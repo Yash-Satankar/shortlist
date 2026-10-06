@@ -1,11 +1,11 @@
 import { APPLICATION_SOURCES, WORK_MODE_LABELS, type ApplicationSource, type ApplicationStatus } from '@jt/shared';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Outlet, useMatch, useSearchParams } from 'react-router';
 import { useApplications, useFeature, useFollowUps } from '../api/hooks';
 import type { ApplicationListItem } from '../api/types';
 import { Icon } from '../components/Icon';
 import { openAsk } from '../components/AskSheet';
-import { Button, EmptyState, ErrorNote, IconButton, Segmented, Sheet, SkeletonRows, StatusGlyph, StatusPill } from '../components/ui';
+import { Button, EmptyState, ErrorNote, IconButton, Segmented, Sheet, SkeletonRows, Spinner, StatusGlyph, StatusPill } from '../components/ui';
 import { daysAgo, formatDate, isThisWeek, shortAge } from '../lib/format';
 import { useVisibleGhosts } from '../lib/ghost';
 import { ACTIVE_STATUSES, CLOSED_STATUSES, sourceShort, STATUS_GROUPS, STATUS_SHORT } from '../lib/status';
@@ -80,7 +80,9 @@ export function ApplicationsSplit() {
         <ApplicationsList selectedId={detail?.params.id} />
       </div>
       <div className={`${detail ? 'block' : 'hidden'} min-w-0 md:block md:flex-1 md:overflow-y-auto md:bg-surface`}>
-        <Outlet />
+        <Suspense fallback={<Spinner />}>
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   );
