@@ -94,6 +94,7 @@ describe('/api/emails', () => {
     const one = await save(admin, { companyName: 'Hooli', roleTitle: 'Data Engineer II' });
     await save(admin, { companyName: 'Hooli', roleTitle: 'ML Engineer' });
     await ingestEmail(db, adminId, 'imap', await fixture('hooli-unmatched.eml'));
+    expect((await admin.get('/api/stats')).body.needsYou).toMatchObject({ emails: 1 });
     const [item] = (await admin.get('/api/emails/unmatched').expect(200)).body.items;
     expect(item).toMatchObject({ subject: 'Next step: online assessment', from: 'Hooli Careers <careers@hooli.example>', category: 'assessment' });
     const res = await admin.post(`/api/emails/${item.id}/assign`).set('Origin', ORIGIN).send({ applicationId: one.id });
