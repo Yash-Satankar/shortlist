@@ -7,13 +7,13 @@ import { resolveSource, USER_ONLY } from '../auth/intent';
 import { env } from '../config/env';
 import { assertFeature, instanceFeatures } from '../config/features';
 import type { Db } from '../db/client';
-import { applications, emailCursors, emailInboundAddresses, emails } from '../db/schema';
-import { runNow } from '../jobs/runner';
+import { applications, emailInboundAddresses, emails } from '../db/schema';
+import { jobsRunning, runNow } from '../jobs/runner';
 import { forbidden, HttpError, notFound, parse } from '../lib/http';
 import { logger } from '../logger';
 import { ingestEmail, proposeFromEmail } from './ingest';
-import { imapConfig, imapOwnerId, pollImap } from './poll';
-import { mailboxKey, postmarkAdapter } from './sources';
+import { imapConfig, imapOwnerId, mailboxHealth, pollImap } from './poll';
+import { postmarkAdapter } from './sources';
 
 const newLocalPart = () => `u-${randomBytes(9).toString('base64url').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
@@ -31,11 +31,19 @@ export function emailsRouter(db: Db) {
     let mailbox: Record<string, unknown> | null = null;
     if (e.EMAIL_INTAKE_MODE === 'imap' && offered.offered) {
       const cfg = imapConfig()!;
-      const owner = await imapOwnerId(db);
-      if (owner === req.auth!.userId) {
-        const [cur] = await db.select().from(emailCursors).where(and(eq(emailCursors.userId, owner), eq(emailCursors.mailboxKey, mailboxKey(cfg))));
+      const health = await mailboxHealth(db, req.auth!.userId);
+      if ((await imapOwnerId(db)) === req.auth!.userId) {
         const masked = cfg.user.replace(/^(.{2}).*(@.*)$/, '$1•••$2');
-        mailbox = { address: masked, folder: cfg.mailbox, lastRunAt: cur?.lastRunAt ?? null, lastError: cur?.lastError ?? null };
+        mailbox = {
+          address: masked,
+          folder: cfg.mailbox,
+          lastRunAt: health?.lastRunAt ?? null,
+          lastSuccessAt: health?.lastSuccessAt ?? null,
+          lastError: health?.lastError ?? null,
+          failureCount: health?.failureCount ?? 0,
+          needsAttention: health?.needsAttention ?? false,
+          reason: health?.reason ?? null,
+        };
       }
     }
     const [counts] = await db
@@ -51,9 +59,12 @@ export function emailsRouter(db: Db) {
 
   router.post('/check', requireSession, requireIntake, async (req, res) => {
     if ((await imapOwnerId(db)) !== req.auth!.userId) throw forbidden('This server’s mailbox belongs to another account');
-    const queued = await runNow('email-poll');
-    // Without the job runner (tests, JOBS_ENABLED=false) check right away.
-    res.json(queued ? { queued: true } : { queued: false, result: await pollImap(db) });
+    // Through the job queue when it runs (one run at a time; a run already waiting is enough),
+    // otherwise (tests, JOBS_ENABLED=false) right here. Either way the mailbox lease prevents overlap.
+    if (jobsRunning()) {
+      await runNow('email-poll');
+      res.json({ queued: true });
+    } else res.json({ queued: false, result: await pollImap(db) });
   });
 
   router.get('/unmatched', async (req, res) => {

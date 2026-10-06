@@ -72,6 +72,60 @@ describe('IMAP polling (fake mailbox)', () => {
     expect(cur!.lastError).toBe('AUTHENTICATIONFAILED for [mailbox] with [redacted]');
   });
 
+  it('runs never overlap: a second run while one is reading is skipped', async () => {
+    setEnv(IMAP_ENV);
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    let calls = 0;
+    const slow = async (_c: ImapConfig, cursor: { uidValidity: string | null; lastUid: number }) => (calls++, await gate, { emails: [], cursor });
+    const first = pollImap(db, slow);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await pollImap(db, slow)).toEqual({ skipped: 'already running' });
+    release();
+    expect(await first).toEqual({ read: 0, outcomes: {} });
+    expect(calls).toBe(1);
+    // …and once it's done, the next run goes ahead.
+    expect(await pollImap(db, async (_c, cursor) => ({ emails: [], cursor }))).toEqual({ read: 0, outcomes: {} });
+  });
+
+  it('a lease left by a crashed run expires', async () => {
+    setEnv(IMAP_ENV);
+    await pollImap(db, async (_c, cursor) => ({ emails: [], cursor }));
+    await db.update(emailCursors).set({ lockedUntil: new Date(Date.now() + 60_000) });
+    expect(await pollImap(db, async (_c, cursor) => ({ emails: [], cursor }))).toEqual({ skipped: 'already running' });
+    await db.update(emailCursors).set({ lockedUntil: new Date(Date.now() - 1000) });
+    expect(await pollImap(db, async (_c, cursor) => ({ emails: [], cursor }))).toEqual({ read: 0, outcomes: {} });
+  });
+
+  it('repeated failures show in Settings, in Follow-ups (needs-you count) and clear on success', async () => {
+    setEnv(IMAP_ENV);
+    const fail = async () => Promise.reject(new Error('Command failed'));
+    for (let i = 0; i < 2; i++) await expect(pollImap(db, fail)).rejects.toThrow();
+    let s = (await admin.get('/api/emails/status')).body.mailbox;
+    expect(s).toMatchObject({ failureCount: 2, needsAttention: false, lastError: 'Command failed' });
+    await expect(pollImap(db, fail)).rejects.toThrow();
+    s = (await admin.get('/api/emails/status')).body.mailbox;
+    expect(s).toMatchObject({ failureCount: 3, needsAttention: true, reason: 'failing' });
+    const needsYou = (await admin.get('/api/stats')).body.needsYou;
+    expect(needsYou).toMatchObject({ mailbox: 1 });
+    expect(needsYou.total).toBe(1);
+    expect((await b.get('/api/stats')).body.needsYou).toMatchObject({ mailbox: 0, total: 0 }); // not their mailbox
+    await pollImap(db, async (_c, cursor) => ({ emails: [], cursor }));
+    s = (await admin.get('/api/emails/status')).body.mailbox;
+    expect(s).toMatchObject({ failureCount: 0, needsAttention: false, lastError: null, lastSuccessAt: expect.any(String) });
+    expect((await admin.get('/api/stats')).body.needsYou.mailbox).toBe(0);
+  });
+
+  it('no successful check for too long (scheduler stopped) also needs attention', async () => {
+    setEnv({ ...IMAP_ENV, EMAIL_POLL_STALE_MINUTES: '30' });
+    expect((await admin.get('/api/emails/status')).body.mailbox).toMatchObject({ needsAttention: false }); // never checked: not "broken" yet
+    await pollImap(db, async (_c, cursor) => ({ emails: [], cursor }));
+    const old = new Date(Date.now() - 31 * 60_000);
+    await db.update(emailCursors).set({ lastRunAt: old, lastSuccessAt: old });
+    expect((await admin.get('/api/emails/status')).body.mailbox).toMatchObject({ needsAttention: true, reason: 'stale' });
+    delete process.env.EMAIL_POLL_STALE_MINUTES;
+  });
+
   it('skips when the owner switched email updates off', async () => {
     setEnv(IMAP_ENV);
     await admin.patch('/api/features').set('Origin', ORIGIN).send({ email_intake: false }).expect(200);

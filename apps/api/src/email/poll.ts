@@ -1,5 +1,5 @@
 import { featureState } from '@jt/shared';
-import { and, asc, eq, lt } from 'drizzle-orm';
+import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { env } from '../config/env';
 import { featureContext, instanceFeatures } from '../config/features';
 import type { Db, DbOrTx } from '../db/client';
@@ -28,6 +28,21 @@ const safeError = (err: unknown, cfg: ImapConfig) =>
 
 export type PollResult = { skipped: string } | { read: number; outcomes: Partial<Record<IngestOutcome, number>> };
 
+/**
+ * Takes the mailbox's lease (creating its cursor row on first use). Returns false when another
+ * run holds it, so runs never overlap: scheduled ones, "Check now", or a second server.
+ */
+async function acquireLease(db: Db, userId: string, key: string): Promise<boolean> {
+  const until = sql`now() + make_interval(mins => ${env().EMAIL_POLL_LOCK_MINUTES})`;
+  await db.insert(emailCursors).values({ userId, mailboxKey: key }).onConflictDoNothing();
+  const got = await db
+    .update(emailCursors)
+    .set({ lockedUntil: until })
+    .where(and(eq(emailCursors.userId, userId), eq(emailCursors.mailboxKey, key), or(isNull(emailCursors.lockedUntil), lt(emailCursors.lockedUntil, sql`now()`))))
+    .returning({ id: emailCursors.id });
+  return got.length > 0;
+}
+
 /** One IMAP run for the instance mailbox (read-only, from the stored cursor). */
 export async function pollImap(db: Db, fetcher = fetchImap): Promise<PollResult> {
   const e = env();
@@ -38,7 +53,9 @@ export async function pollImap(db: Db, fetcher = fetchImap): Promise<PollResult>
   if (!featureState('email_intake', await featureContext(db, userId)).enabled) return { skipped: 'switched off by the owner' };
 
   const key = mailboxKey(cfg);
-  const [cur] = await db.select().from(emailCursors).where(and(eq(emailCursors.userId, userId), eq(emailCursors.mailboxKey, key)));
+  if (!(await acquireLease(db, userId, key))) return { skipped: 'already running' };
+  const where = and(eq(emailCursors.userId, userId), eq(emailCursors.mailboxKey, key));
+  const [cur] = await db.select().from(emailCursors).where(where);
   try {
     const { emails: batch, cursor } = await fetcher(cfg, { uidValidity: cur?.uidValidity ?? null, lastUid: cur?.lastUid ?? 0 });
     const outcomes: Partial<Record<IngestOutcome, number>> = {};
@@ -46,20 +63,51 @@ export async function pollImap(db: Db, fetcher = fetchImap): Promise<PollResult>
       const r = await ingestEmail(db, userId, 'imap', raw);
       outcomes[r.outcome] = (outcomes[r.outcome] ?? 0) + 1;
     }
-    const values = { uidValidity: cursor.uidValidity, lastUid: cursor.lastUid, lastRunAt: new Date(), lastError: null };
+    const now = new Date();
     await db
-      .insert(emailCursors)
-      .values({ userId, mailboxKey: key, ...values })
-      .onConflictDoUpdate({ target: [emailCursors.userId, emailCursors.mailboxKey], set: values });
+      .update(emailCursors)
+      .set({ uidValidity: cursor.uidValidity, lastUid: cursor.lastUid, lastRunAt: now, lastSuccessAt: now, lastError: null, failureCount: 0, lockedUntil: null })
+      .where(where);
     return { read: batch.length, outcomes };
   } catch (err) {
-    const values = { lastRunAt: new Date(), lastError: safeError(err, cfg) };
     await db
-      .insert(emailCursors)
-      .values({ userId, mailboxKey: key, ...values })
-      .onConflictDoUpdate({ target: [emailCursors.userId, emailCursors.mailboxKey], set: values });
+      .update(emailCursors)
+      .set({ lastRunAt: new Date(), lastError: safeError(err, cfg), failureCount: sql`${emailCursors.failureCount} + 1`, lockedUntil: null })
+      .where(where);
     throw err;
   }
+}
+
+export interface MailboxHealth {
+  lastRunAt: Date | null;
+  lastSuccessAt: Date | null;
+  lastError: string | null;
+  failureCount: number;
+  /** Repeated failures, or no successful check for EMAIL_POLL_STALE_MINUTES: shown in Settings and Follow-ups. */
+  needsAttention: boolean;
+  reason: 'failing' | 'stale' | null;
+}
+
+/** The instance mailbox's health for its owner (null for everyone else, or when IMAP isn't offered). */
+export async function mailboxHealth(db: DbOrTx, userId: string): Promise<MailboxHealth | null> {
+  const e = env();
+  if (e.EMAIL_INTAKE_MODE !== 'imap' || !instanceFeatures().email_intake.offered) return null;
+  if ((await imapOwnerId(db)) !== userId) return null;
+  if (!featureState('email_intake', await featureContext(db, userId)).enabled) return null;
+  const [cur] = await db.select().from(emailCursors).where(and(eq(emailCursors.userId, userId), eq(emailCursors.mailboxKey, mailboxKey(imapConfig()!))));
+  const failing = (cur?.failureCount ?? 0) >= e.EMAIL_POLL_ALERT_FAILURES;
+  // Stale only once it has worked before, or has been trying for a while (a fresh setup isn't "broken").
+  const since = cur?.lastSuccessAt ?? cur?.lastRunAt ?? null;
+  const stale = since !== null && Date.now() - since.getTime() > e.EMAIL_POLL_STALE_MINUTES * 60_000;
+  const reason = failing ? 'failing' : stale ? 'stale' : null;
+  return {
+    lastRunAt: cur?.lastRunAt ?? null,
+    lastSuccessAt: cur?.lastSuccessAt ?? null,
+    lastError: cur?.lastError ?? null,
+    failureCount: cur?.failureCount ?? 0,
+    needsAttention: reason !== null,
+    reason,
+  };
 }
 
 export async function purgeExpiredEmails(db: DbOrTx): Promise<number> {

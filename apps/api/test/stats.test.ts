@@ -170,10 +170,10 @@ describe('needsYou (nav badge and sidebar counts)', () => {
     await db.update(applications).set({ lastActivityAt: new Date('2026-09-01T06:00:00Z') }).where(eq(applications.id, quiet));
 
     const s = await getStats(db, userId, NOW);
-    expect(s.needsYou).toEqual({ reviews: 1, followUps: 1, ghosts: 1, portalSync: 0, emails: 0, total: 3 });
+    expect(s.needsYou).toEqual({ reviews: 1, followUps: 1, ghosts: 1, portalSync: 0, emails: 0, mailbox: 0, total: 3 });
 
     // Dismissing the ghost suggestion ("Not yet") drops it from the count on every device.
     await db.update(applications).set({ ghostDismissedAt: NOW }).where(eq(applications.id, quiet));
-    expect((await getStats(db, userId, NOW)).needsYou).toEqual({ reviews: 1, followUps: 1, ghosts: 0, portalSync: 0, emails: 0, total: 2 });
+    expect((await getStats(db, userId, NOW)).needsYou).toEqual({ reviews: 1, followUps: 1, ghosts: 0, portalSync: 0, emails: 0, mailbox: 0, total: 2 });
   });
 });

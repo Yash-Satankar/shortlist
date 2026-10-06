@@ -449,7 +449,18 @@ export interface EmailStatus {
   offered: boolean;
   why: string | null;
   /** The instance mailbox, shown to its owner only. */
-  mailbox: { address: string; folder: string; lastRunAt: string | null; lastError: string | null } | null;
+  mailbox: {
+    address: string;
+    folder: string;
+    lastRunAt: string | null;
+    lastSuccessAt: string | null;
+    lastError: string | null;
+    /** Failed checks in a row. */
+    failureCount: number;
+    /** Repeated failures ('failing') or no successful check for a while ('stale'). */
+    needsAttention: boolean;
+    reason: 'failing' | 'stale' | null;
+  } | null;
   counts: { applied: number; review: number; unmatched: number };
 }
 

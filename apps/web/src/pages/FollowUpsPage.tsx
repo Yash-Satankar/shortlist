@@ -1,13 +1,14 @@
 import { PORTAL_SITE_LABELS, type ApplicationStatus, type FollowUpReason } from '@jt/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useApplications, useAssignEmail, useDismissEmail, useFeature, useFollowUps, usePortalPending, usePortalReview, useQuickUpdate, useReviewAny, useReviews, useStats, useUnmatchedEmails, type PortalProposal, type UnmatchedEmail } from '../api/hooks';
+import { useApplications, useAssignEmail, useCheckEmail, useDismissEmail, useEmailStatus, useFeature, useFollowUps, usePortalPending, usePortalReview, useQuickUpdate, useReviewAny, useReviews, useStats, useUnmatchedEmails, type PortalProposal, type UnmatchedEmail } from '../api/hooks';
 import type { FollowUpItem, FollowUps } from '../api/types';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
-import { Button, Confidence, ErrorNote, EventSourceBadge, SectionLabel, Sheet, SkeletonRows, StatusPill, useToast } from '../components/ui';
+import { Button, buttonClass, Confidence, ErrorNote, EventSourceBadge, SectionLabel, Sheet, SkeletonRows, StatusPill, useToast } from '../components/ui';
 import { formatDate, formatDay, formatEventTime, isoDateFromToday, REASON_LABELS, shortAge } from '../lib/format';
 import { dismissGhost, useVisibleGhosts } from '../lib/ghost';
+import { mailboxProblem } from './settings/EmailSection';
 
 const REASON: Record<FollowUpReason, { icon: IconName; label: (s: FollowUps['settings']) => string }> = {
   due: { icon: 'calendar', label: () => 'Follow-up date due' },
@@ -24,6 +25,8 @@ export function FollowUpsPage() {
   const portal = usePortalPending();
   const emailOn = useFeature('email_intake');
   const unmatched = useUnmatchedEmails(emailOn === true);
+  const mailbox = useEmailStatus(emailOn === true).data?.mailbox;
+  const mailboxAlert = mailbox?.needsAttention ? mailbox : null;
   const quick = useQuickUpdate();
   const toast = useToast();
   const [menuFor, setMenuFor] = useState<FollowUpItem | null>(null);
@@ -37,7 +40,7 @@ export function FollowUpsPage() {
       { onSuccess: () => toast({ message: `${item.companyName}: next follow-up ${formatDay(isoDateFromToday(days))}`, tone: 'info' }), onError },
     );
 
-  const total = (reviews.data?.length ?? 0) + (portal.data?.length ?? 0) + (unmatched.data?.length ?? 0) + (data?.followUps.length ?? 0) + ghosts.length;
+  const total = (reviews.data?.length ?? 0) + (portal.data?.length ?? 0) + (unmatched.data?.length ?? 0) + (data?.followUps.length ?? 0) + ghosts.length + (mailboxAlert ? 1 : 0);
   const today = data ? formatDay(data.settings.today) : '';
 
   return (
@@ -71,6 +74,7 @@ export function FollowUpsPage() {
           <AllClear settings={data.settings} />
         ) : (
           <>
+            {mailboxAlert && <MailboxAlert mailbox={mailboxAlert} onError={onError} />}
             {!!reviews.data?.length && (
               <section>
                 <SectionLabel count={reviews.data.length} action="Automatic changes">
@@ -298,6 +302,40 @@ function AllClear(_props: { settings: FollowUps['settings'] }) {
         </dl>
       )}
     </div>
+  );
+}
+
+/** The job mailbox keeps failing, or hasn't been read for a while: say so here, not only in Settings. */
+function MailboxAlert({ mailbox, onError }: { mailbox: NonNullable<NonNullable<ReturnType<typeof useEmailStatus>['data']>['mailbox']>; onError: (err: unknown) => void }) {
+  const check = useCheckEmail();
+  const toast = useToast();
+  return (
+    <section>
+      <SectionLabel action="From your email">Email updates</SectionLabel>
+      <div className="px-4">
+        <article className="card pt-3.5 pb-3">
+          <div className="flex items-center gap-2 text-[15px] leading-5 font-semibold">
+            <Icon name="inbox" className="text-danger" />
+            Your job mailbox isn’t being read
+          </div>
+          <div className="ev-time mt-1 text-danger">{mailboxProblem(mailbox)}</div>
+          <p className="hint m-0 mt-2">{mailbox.address} · new job emails won’t update your applications until this is fixed.</p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              variant="ink"
+              className="flex-1"
+              disabled={check.isPending}
+              onClick={() => check.mutate(undefined, { onSuccess: () => toast({ message: 'Checking your mailbox…', tone: 'info' }), onError })}
+            >
+              Check now
+            </Button>
+            <Link to="/settings" className={`${buttonClass('secondary', 'md')} flex-1`}>
+              Settings
+            </Link>
+          </div>
+        </article>
+      </div>
+    </section>
   );
 }
 

@@ -3,6 +3,7 @@ import type { ApplicationStatus } from '@jt/shared';
 import { and, count, countDistinct, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
 import { applications, emails, statusEvents } from '../db/schema';
+import { mailboxHealth } from '../email/poll';
 import { getFollowUps, getNextFollowUp } from '../applications/follow-ups';
 import { todayIn } from '../lib/dates';
 import { getUserSettings } from '../users/service';
@@ -30,7 +31,7 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
   const week = await weekStart(db, timezone, now);
   const mine = and(eq(applications.userId, userId), isNull(applications.archivedAt));
 
-  const [[applied], [active], [interviews], [replies], nextFollowUp, followUps, [reviews], portalSync, [unmatchedEmails]] = await Promise.all([
+  const [[applied], [active], [interviews], [replies], nextFollowUp, followUps, [reviews], portalSync, [unmatchedEmails], mailbox] = await Promise.all([
     db
       .select({ n: count() })
       .from(applications)
@@ -61,7 +62,9 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
       .where(and(eq(statusEvents.userId, userId), eq(statusEvents.disposition, 'pending_review'))),
     pendingCount(db, userId),
     db.select({ n: count() }).from(emails).where(and(eq(emails.userId, userId), eq(emails.outcome, 'unmatched'))),
+    mailboxHealth(db, userId),
   ]);
+  const mailboxAlert = mailbox?.needsAttention ? 1 : 0;
 
   return {
     week: { start: week.start.toISOString(), startDate: week.startDate, timezone },
@@ -80,7 +83,9 @@ export async function getStats(db: DbOrTx, userId: string, now = new Date()) {
       portalSync,
       /** Job emails waiting for you to say which application they're about. */
       emails: unmatchedEmails!.n,
-      total: reviews!.n + followUps.followUps.length + followUps.ghostSuggestions.length + portalSync + unmatchedEmails!.n,
+      /** 1 when your job mailbox keeps failing or hasn't been read for a while. */
+      mailbox: mailboxAlert,
+      total: reviews!.n + followUps.followUps.length + followUps.ghostSuggestions.length + portalSync + unmatchedEmails!.n + mailboxAlert,
     },
   };
 }

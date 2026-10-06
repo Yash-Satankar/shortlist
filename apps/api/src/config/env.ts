@@ -87,7 +87,16 @@ const envSchema = z
     /** First run reads this many days back; later runs continue from where they stopped. */
     IMAP_SINCE_DAYS: z.coerce.number().int().positive().default(30),
     IMAP_MAX_PER_RUN: z.coerce.number().int().positive().default(200),
-    EMAIL_POLL_CRON: z.string().default('*/10 * * * *'),
+    EMAIL_POLL_CRON: z.string().default('*/5 * * * *'),
+    /**
+     * A run holds a lease on its mailbox so runs never overlap (scheduled, "Check now", a second
+     * server). A crashed run's lease expires after this many minutes.
+     */
+    EMAIL_POLL_LOCK_MINUTES: z.coerce.number().int().positive().default(15),
+    /** After this many failed runs in a row, Settings and Follow-ups say the mailbox needs attention. */
+    EMAIL_POLL_ALERT_FAILURES: z.coerce.number().int().positive().default(3),
+    /** No successful check for this long (e.g. the scheduler stopped) also counts as needing attention. */
+    EMAIL_POLL_STALE_MINUTES: z.coerce.number().int().positive().default(60),
     /** inbound: per-user forwarding addresses at this domain, delivered by Postmark's webhook. */
     INBOUND_EMAIL_DOMAIN: z.string().min(3).optional(),
     INBOUND_WEBHOOK_USER: z.string().min(1).optional(),
@@ -97,6 +106,28 @@ const envSchema = z
     EMAIL_EXCERPT_CHARS: z.coerce.number().int().positive().default(4000),
     /** Highest confidence an email gets when matched by company alone (below the threshold → review). */
     EMAIL_COMPANY_MATCH_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.6),
+    /**
+     * Score of an email that the rules classified, sent by a known job portal / ATS, and matched
+     * by the job's own link (at/above the threshold → forward moves apply, undoable).
+     */
+    EMAIL_ATS_LINK_MATCH_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.92),
+    /** Highest score the AI fallback can give an email. */
+    EMAIL_AI_MAX_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.85),
+    /** Override the rules' scores per category: {"viewed": 0.75, "rejected": 0.92, …} */
+    EMAIL_RULE_CONFIDENCE_JSON: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        if (!v) return {} as Partial<Record<'received' | 'viewed' | 'assessment' | 'interview' | 'rejected' | 'offer', number>>;
+        try {
+          const ok = z.partialRecord(z.enum(['received', 'viewed', 'assessment', 'interview', 'rejected', 'offer']), z.number().min(0).max(1)).safeParse(JSON.parse(v));
+          if (ok.success) return ok.data;
+        } catch {
+          // fall through
+        }
+        ctx.addIssue({ code: 'custom', message: 'EMAIL_RULE_CONFIDENCE_JSON must be {"category": 0-1}' });
+        return z.NEVER;
+      }),
     DEFAULT_TIMEZONE: z.string().default('Asia/Kolkata'),
 
     /**
@@ -136,6 +167,63 @@ const envSchema = z
      * LAN). Self-hosting only: on a shared instance this lets users reach your private network.
      */
     LLM_ALLOW_PRIVATE_BASE_URLS: bool.default(false),
+    /**
+     * Default model per provider and task (when the user hasn't picked one), over the built-in
+     * defaults: {"groq": {"extraction": "openai/gpt-oss-20b"}, "together": {"prep": "…"}}
+     */
+    LLM_DEFAULT_MODELS_JSON: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        if (!v) return {} as Partial<Record<'anthropic' | 'groq' | 'together', Partial<Record<'extraction' | 'classification' | 'prep' | 'chat', string>>>>;
+        try {
+          const task = z.partialRecord(z.enum(['extraction', 'classification', 'prep', 'chat']), z.string().min(1));
+          const ok = z.partialRecord(z.enum(['anthropic', 'groq', 'together']), task).safeParse(JSON.parse(v));
+          if (ok.success) return ok.data;
+        } catch {
+          // fall through
+        }
+        ctx.addIssue({ code: 'custom', message: 'LLM_DEFAULT_MODELS_JSON must be {"provider": {"task": "model"}}' });
+        return z.NEVER;
+      }),
+    /**
+     * Which provider runs a task when the user has keys for several and hasn't chosen, over the
+     * built-in order: {"prep": ["together", "anthropic", "groq"]}. Providers left out come after.
+     */
+    LLM_TASK_PROVIDERS_JSON: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        if (!v) return {} as Partial<Record<'extraction' | 'classification' | 'prep' | 'chat', ('anthropic' | 'groq' | 'together' | 'openai_compatible')[]>>;
+        try {
+          const ok = z
+            .partialRecord(z.enum(['extraction', 'classification', 'prep', 'chat']), z.array(z.enum(['anthropic', 'groq', 'together', 'openai_compatible'])))
+            .safeParse(JSON.parse(v));
+          if (ok.success) return ok.data;
+        } catch {
+          // fall through
+        }
+        ctx.addIssue({ code: 'custom', message: 'LLM_TASK_PROVIDERS_JSON must be {"task": ["provider", …]}' });
+        return z.NEVER;
+      }),
+    /**
+     * Reasoning models on OpenAI-compatible providers (regex on the model id): they get
+     * LLM_REASONING_EFFORT, and LLM_REASONING_HEADROOM_TOKENS on top of the answer's token
+     * budget, since their thinking counts toward the limit.
+     */
+    LLM_REASONING_MODELS: z
+      .string()
+      .default('^openai/gpt-oss')
+      .transform((v, ctx) => {
+        try {
+          return new RegExp(v, 'i');
+        } catch {
+          ctx.addIssue({ code: 'custom', message: 'LLM_REASONING_MODELS must be a valid regular expression' });
+          return z.NEVER;
+        }
+      }),
+    LLM_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
+    LLM_REASONING_HEADROOM_TOKENS: z.coerce.number().int().min(0).default(1024),
     /** Extra/override prices, USD per 1M tokens: {"model-id": [input, output]} */
     LLM_PRICES_JSON: z
       .string()

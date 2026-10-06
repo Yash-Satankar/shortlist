@@ -1,4 +1,4 @@
-import { useCheckEmail, useEmailStatus, useFeatures, useInboundAddress, useRegenerateInbound } from '../../api/hooks';
+import { useCheckEmail, useEmailStatus, type EmailStatus, useFeatures, useInboundAddress, useRegenerateInbound } from '../../api/hooks';
 import { Icon } from '../../components/Icon';
 import { Button, ErrorNote, Field, IconButton, SectionLabel, useToast } from '../../components/ui';
 import { relativeDays } from '../../lib/format';
@@ -10,6 +10,16 @@ const ago = (iso: string) => {
   if (mins < 60 * 24) return `${Math.round(mins / 60)} h ago`;
   return relativeDays(iso);
 };
+
+/** What's wrong with the job mailbox, in one line (null when it's fine). Also shown in Follow-ups. */
+export function mailboxProblem(m: NonNullable<EmailStatus['mailbox']>): string | null {
+  if (m.reason === 'failing') return `The last ${m.failureCount} checks failed${m.lastError ? `: ${m.lastError}` : ''}`;
+  if (m.reason === 'stale') {
+    const since = m.lastSuccessAt ?? m.lastRunAt;
+    return `${since ? `Last read ${ago(since)}` : 'Not read yet'}. Automatic checks may have stopped`;
+  }
+  return null;
+}
 
 /**
  * Settings → Email updates: job emails (acknowledgements, assessments, interviews, rejections)
@@ -41,8 +51,8 @@ export function EmailSection() {
               <Icon name="inbox" className="text-ink-2" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm leading-5 font-semibold">{s.mailbox.address}</div>
-                <div className={`ev-time truncate leading-4 ${s.mailbox.lastError ? 'text-danger' : ''}`}>
-                  {s.mailbox.lastError ? `Last check failed: ${s.mailbox.lastError}` : s.mailbox.lastRunAt ? `${s.mailbox.folder} · checked ${ago(s.mailbox.lastRunAt)}` : `${s.mailbox.folder} · not checked yet`}
+                <div className={`ev-time leading-4 ${s.mailbox.needsAttention ? 'mt-0.5 text-danger' : `truncate ${s.mailbox.lastError ? 'text-danger' : ''}`}`} title={s.mailbox.lastError ?? undefined}>
+                  {mailboxProblem(s.mailbox) ?? (s.mailbox.lastError ? `Last check failed: ${s.mailbox.lastError}` : s.mailbox.lastRunAt ? `${s.mailbox.folder} · checked ${ago(s.mailbox.lastRunAt)}` : `${s.mailbox.folder} · not checked yet`)}
                 </div>
               </div>
               <Button

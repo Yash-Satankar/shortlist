@@ -431,6 +431,12 @@ export const emailCursors = pgTable(
     lastUid: integer('last_uid').notNull().default(0),
     lastRunAt: timestamp('last_run_at', { withTimezone: true }),
     lastError: text('last_error'),
+    /** Last run that read the mailbox without an error. */
+    lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
+    /** Failed runs in a row (reset by a successful one). */
+    failureCount: integer('failure_count').notNull().default(0),
+    /** A run in progress holds the mailbox until this time (runs never overlap). */
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
     updatedAt: updatedAt(),
   },
   (t) => [uniqueIndex('email_cursors_user_mailbox_uq').on(t.userId, t.mailboxKey)],

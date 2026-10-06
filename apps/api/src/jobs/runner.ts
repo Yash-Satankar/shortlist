@@ -1,4 +1,4 @@
-import { PgBoss } from 'pg-boss';
+import { PgBoss, type QueuePolicy } from 'pg-boss';
 import type { Feature } from '@jt/shared';
 import { env } from '../config/env';
 import { instanceFeatures } from '../config/features';
@@ -21,6 +21,13 @@ export interface JobDef {
   /** The instance must offer this feature for the job to be scheduled at all. */
   feature?: Feature;
   run: (ctx: JobContext) => Promise<unknown>;
+  /**
+   * Queue policy (pg-boss): 'stately' = at most one running and one waiting, so a slow run
+   * never piles up more. Default 'standard'.
+   */
+  policy?: QueuePolicy;
+  /** Retries of a failed run (default pg-boss's 2). A scheduled job may prefer 0: the next run retries. */
+  retryLimit?: number;
 }
 
 let boss: PgBoss | null = null;
@@ -37,7 +44,7 @@ export async function startJobs(db: Db, jobs: JobDef[]): Promise<PgBoss | null> 
 
   const offered = instanceFeatures();
   for (const job of jobs) {
-    await boss.createQueue(job.name);
+    await ensureQueue(boss, job);
     if (job.feature && !offered[job.feature].offered) {
       await boss.unschedule(job.name).catch(() => undefined);
       logger.info({ job: job.name, feature: job.feature }, 'Job not scheduled: feature not offered on this instance');
@@ -58,6 +65,24 @@ export async function startJobs(db: Db, jobs: JobDef[]): Promise<PgBoss | null> 
   logger.info({ jobs: jobs.map((j) => `${j.name} @ ${j.cron}`) }, 'Background jobs started');
   return boss;
 }
+
+/** Creates the queue, or brings an existing one to the job's policy / retry settings. */
+async function ensureQueue(b: PgBoss, job: JobDef) {
+  const policy = job.policy ?? 'standard';
+  const options = job.retryLimit === undefined ? {} : { retryLimit: job.retryLimit };
+  const existing = await b.getQueue(job.name);
+  if (existing && existing.policy !== policy) {
+    // A queue's policy can't be changed in place; its jobs are only scheduled runs, so recreate it.
+    logger.info({ job: job.name, from: existing.policy, to: policy }, 'Recreating job queue with a new policy');
+    await b.deleteQueue(job.name);
+  } else if (existing) {
+    if (Object.keys(options).length) await b.updateQueue(job.name, options);
+    return;
+  }
+  await b.createQueue(job.name, { policy, ...options });
+}
+
+export const jobsRunning = () => boss !== null;
 
 /** Run a job now (e.g. "Check now" in Settings); returns the queued job id. */
 export async function runNow(name: string, data: object | null = null): Promise<string | null> {

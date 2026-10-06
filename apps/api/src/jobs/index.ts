@@ -24,6 +24,10 @@ export function jobDefinitions(): JobDef[] {
       name: 'email-poll',
       cron: e.EMAIL_POLL_CRON,
       feature: 'email_intake',
+      // One run at a time (plus at most one waiting); a failed run isn't retried, the next scheduled one is the retry.
+      // The mailbox lease in pollImap also prevents overlap with "Check now" or a second server.
+      policy: 'stately',
+      retryLimit: 0,
       run: ({ db }) => pollImap(db),
     },
   ];

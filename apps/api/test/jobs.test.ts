@@ -41,6 +41,18 @@ describe('job runner (pg-boss on the test database)', () => {
     resetEnvCache();
   }, 40_000);
 
+  it('email polling runs one at a time (stately queue, no retries); an existing queue is brought to that policy', async () => {
+    await stopJobs();
+    await db.execute(sql`delete from pgboss.queue where name = 'test-poll'`).catch(() => undefined);
+    const boss = (await startJobs(db, [{ name: 'test-poll', cron: '0 0 1 1 *', run: async () => undefined }]))!;
+    expect(await boss.getQueue('test-poll')).toMatchObject({ policy: 'standard' });
+    await stopJobs();
+    const again = (await startJobs(db, [{ name: 'test-poll', cron: '0 0 1 1 *', policy: 'stately', retryLimit: 0, run: async () => undefined }]))!;
+    expect(await again.getQueue('test-poll')).toMatchObject({ policy: 'stately', retryLimit: 0 });
+    const poll = jobDefinitions().find((j) => j.name === 'email-poll')!;
+    expect(poll).toMatchObject({ policy: 'stately', retryLimit: 0, cron: '*/5 * * * *' });
+  }, 40_000);
+
   it('every defined job has a cron from env', () => {
     for (const j of jobDefinitions()) expect(j.cron.split(' ').length, j.name).toBe(5);
   });
