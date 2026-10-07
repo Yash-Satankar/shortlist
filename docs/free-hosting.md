@@ -66,7 +66,7 @@ The same setup as the public demo, without `DEMO_MODE`: follow [the demo guide](
 
 - `SIGNUP_MODE=closed` (you create your account on the first-run screen) and leave `DEMO_MODE` unset;
 - your own `ENCRYPTION_KEYS`, and keep a copy;
-- the Docker command without the demo seed: `sh -c "node apps/api/dist/scripts/migrate.js && exec node apps/api/dist/server.js"`.
+- the same Docker command, `node apps/api/dist/scripts/start.js` (without `DEMO_MODE` it only migrates, then starts).
 
 Because the free web service sleeps, background jobs (email polling, the nightly clean-up) only run while someone is using it. Neon keeps your data when the app sleeps.
 

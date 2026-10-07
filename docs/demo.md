@@ -20,9 +20,9 @@ That's all on Neon. The app creates its tables on first start, and Neon suspends
    - **Instance type:** Free
 3. **Advanced → Docker Command:**
    ```
-   sh -c "node apps/api/dist/scripts/migrate.js && node apps/api/dist/scripts/demo-seed.js && exec node apps/api/dist/server.js"
+   node apps/api/dist/scripts/start.js
    ```
-   Free instances have no pre-deploy step, so this migrates and re-seeds the fictional data on every start (which also keeps its dates current).
+   Exactly that, with no `sh -c` or quotes (Render runs the field as a plain command). Free instances have no pre-deploy step, so `start.js` migrates, rebuilds the fictional data (because `DEMO_MODE=true`) and then starts the server, on every start; this also keeps the demo's dates current.
 4. **Advanced → Health Check Path:** `/api/health`
 5. **Environment variables:**
 

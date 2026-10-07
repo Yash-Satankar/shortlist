@@ -8,9 +8,9 @@ services:
     region: singapore
     branch: main
     dockerfilePath: ./Dockerfile
-    # Free instances have no pre-deploy step: migrate and (re)seed the fictional data on every
-    # start, which also refreshes the demo's dates each time it wakes up.
-    dockerCommand: sh -c "node apps/api/dist/scripts/migrate.js && node apps/api/dist/scripts/demo-seed.js && exec node apps/api/dist/server.js"
+    # Free instances have no pre-deploy step: start.js migrates, rebuilds the fictional data
+    # (DEMO_MODE), then starts the server; this also refreshes the demo's dates on every wake-up.
+    dockerCommand: node apps/api/dist/scripts/start.js
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:

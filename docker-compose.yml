@@ -36,7 +36,7 @@ services:
       # Behind your own reverse proxy (Caddy, nginx, Traefik) set TRUST_PROXY=1 in .env.
       TRUST_PROXY: ${TRUST_PROXY:-0}
     # Migrations run automatically before every start (back up first when upgrading).
-    command: ["sh", "-c", "node apps/api/dist/scripts/migrate.js && exec node apps/api/dist/server.js"]
+    command: ["node", "apps/api/dist/scripts/start.js"]
     ports:
       - "${APP_PORT:-3000}:3000"
     healthcheck:

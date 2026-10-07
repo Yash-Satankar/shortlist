@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   // Every CLI lives in src/scripts/ as its own entry (no entry-point detection inside shared modules).
-  entry: ['src/server.ts', 'src/scripts/migrate.ts', 'src/scripts/seed.ts', 'src/scripts/create-user.ts', 'src/scripts/set-password.ts', 'src/scripts/set-role.ts', 'src/scripts/demo-seed.ts', 'src/scripts/import-xlsx.ts'],
+  entry: ['src/server.ts', 'src/scripts/migrate.ts', 'src/scripts/seed.ts', 'src/scripts/create-user.ts', 'src/scripts/set-password.ts', 'src/scripts/set-role.ts', 'src/scripts/demo-seed.ts', 'src/scripts/start.ts', 'src/scripts/import-xlsx.ts'],
   format: 'esm',
   platform: 'node',
   target: 'node22',
