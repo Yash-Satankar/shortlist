@@ -1,6 +1,7 @@
 {
   "name": "@jt/e2e",
   "private": true,
+  "version": "1.0.0",
   "type": "module",
   "description": "End-to-end tests of the critical paths, against the production build (API serving the web app) on the test database.",
   "scripts": {
