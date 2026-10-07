@@ -1,6 +1,6 @@
 # Development
 
-For working on Job Tracker itself. To run your own copy, see [self-hosting](self-hosting.md).
+For working on ShortList itself. To run your own copy, see [self-hosting](self-hosting.md).
 
 ## Stack
 

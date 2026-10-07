@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExtractedJob } from '../src/adapters/types';
 
-const store: Record<string, unknown> = { token: 'jt_' + 'a'.repeat(43) };
+const store: Record<string, unknown> = { token: 'jt_' + 'a'.repeat(43), apiOrigin: 'https://tracker.example.com' };
 (globalThis as unknown as { chrome: unknown }).chrome = {
   storage: {
     local: {

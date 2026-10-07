@@ -65,7 +65,7 @@ export function Popup() {
       </main>
 
       <footer className="flex items-center gap-2 px-4 pt-1 pb-3">
-        <span className="ev-time truncate">{host}</span>
+        <span className="ev-time truncate">{host || 'No server set'}</span>
         <span className="sp" />
         {connected ? (
           <Button variant="quiet" className="-mr-2 px-2.5 text-[13px]" onClick={() => void onDisconnect()}>
@@ -157,18 +157,20 @@ function PairCard({
           Open Settings
           <Icon name="external" size="sm" />
         </Button>
-        {editingServer ? (
+        {editingServer || !origin ? (
           <div className="flex flex-col gap-2 pt-1 shadow-[inset_0_1px_0_var(--line)]">
-            <Field label="Your tracker’s address" error={serverError ?? undefined} hint="Self-hosting? Chrome will ask to allow this one address.">
+            <Field label={`Your ${PRODUCT_NAME} address`} error={serverError ?? undefined} hint="Chrome will ask to allow this one address.">
               <input className={`inp ${serverError ? 'err' : ''}`} value={server} onChange={(e) => setServer(e.target.value)} placeholder="https://tracker.example.com" autoComplete="url" spellCheck={false} />
             </Field>
             <div className="flex gap-2">
               <Button className="flex-1" disabled={!server.trim() || checking} busy={checking} onClick={() => void saveServer()}>
                 Use this server
               </Button>
-              <Button variant="quiet" onClick={() => (setEditingServer(false), setServerError(null))}>
-                Cancel
-              </Button>
+              {origin && (
+                <Button variant="quiet" onClick={() => (setEditingServer(false), setServerError(null))}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </div>
         ) : (

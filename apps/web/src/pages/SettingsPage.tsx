@@ -13,7 +13,8 @@ import {
 } from '../api/hooks';
 import type { LibraryItem, Profile } from '../api/types';
 import type { CurrentUser } from '../auth/useAuth';
-import { useLogout } from '../auth/useAuth';
+import { useLogout, usePublicConfig } from '../auth/useAuth';
+import { PRODUCT_NAME } from '@jt/shared';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
 import { Button, ErrorNote, Field, IconButton, SectionLabel, Segmented, Spinner, useToast } from '../components/ui';
@@ -29,6 +30,7 @@ import { AccountSection, InvitesSection } from './settings/AccountSection';
 
 export function SettingsPage({ user }: { user: CurrentUser }) {
   const logout = useLogout();
+  const config = usePublicConfig();
   const profile = useProfile();
   const [theme, setTheme] = useThemePref();
   const extensionOn = useFeature('extension');
@@ -89,6 +91,15 @@ export function SettingsPage({ user }: { user: CurrentUser }) {
           </Button>
           <span className="ev-time truncate">{user.email}</span>
         </div>
+        {config.sourceUrl && (
+          <p className="hint m-0 px-0.5 pt-2">
+            {PRODUCT_NAME} {config.version} ·{' '}
+            <a href={config.sourceUrl} target="_blank" rel="noreferrer" className="underline decoration-line-strong underline-offset-[3px]">
+              Source code
+            </a>{' '}
+            (AGPL-3.0)
+          </p>
+        )}
       </div>
     </div>
   );

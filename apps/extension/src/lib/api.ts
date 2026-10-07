@@ -28,6 +28,7 @@ export interface ApiOptions {
 
 export async function apiFetch<T>(path: string, opts: ApiOptions): Promise<T> {
   const [origin, state] = await Promise.all([apiOrigin(), readState()]);
+  if (!origin) throw new ApiError(0, 'no_server', 'Enter your ShortList address first.');
   const token = opts.token ?? state.token;
   if (!token) throw new ApiError(401, 'not_paired', 'This browser is not paired yet');
 

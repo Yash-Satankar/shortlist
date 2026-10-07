@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Opening the demo · ShortList</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wake">
+    <div class="box">
+      <img src="favicon.svg" class="mark" alt="" style="width: 48px; height: 48px" />
+      <h1 id="title" style="font-size: 24px; margin: 16px 0 0">Waking up the demo…</h1>
+      <div class="spin" id="spin" aria-hidden="true"></div>
+      <p id="msg">The demo runs on free hosting and sleeps when nobody's using it. Waking it takes up to a minute. It opens by itself when it's ready.</p>
+      <p class="muted" id="elapsed" aria-live="polite"></p>
+      <p class="muted">Fictional data, read-only. <a href="./">Back to ShortList</a></p>
+    </div>
+  </main>
+  <script>
+    // The demo's address is filled in by the site build (site/config.json → DEMO_URL).
+    const DEMO_URL = '%DEMO_URL%';
+    const started = Date.now();
+    const GIVE_UP_MS = 3 * 60_000;
+    const $ = (id) => document.getElementById(id);
+    const tick = setInterval(() => ($('elapsed').textContent = `${Math.round((Date.now() - started) / 1000)} s`), 1000);
+
+    async function ready() {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 20_000);
+        const res = await fetch(`${DEMO_URL}/api/health`, { signal: ctrl.signal, cache: 'no-store' });
+        clearTimeout(t);
+        return res.ok && (await res.json()).ok === true;
+      } catch {
+        return false;
+      }
+    }
+
+    (async function wait() {
+      if (!DEMO_URL.startsWith('http')) {
+        $('title').textContent = 'The demo isn’t set up yet';
+        $('msg').textContent = 'Its address hasn’t been configured on this site.';
+        $('spin').hidden = true;
+        clearInterval(tick);
+        return;
+      }
+      while (Date.now() - started < GIVE_UP_MS) {
+        if (await ready()) {
+          $('title').textContent = 'Opening the demo…';
+          location.replace(`${DEMO_URL}/`);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+      clearInterval(tick);
+      $('spin').hidden = true;
+      $('title').textContent = 'The demo is taking longer than usual';
+      $('msg').innerHTML = `Free hosting can be slow to wake. <a href="${DEMO_URL}/">Try opening it directly</a>, or come back in a few minutes.`;
+    })();
+  </script>
+</body>
+</html>

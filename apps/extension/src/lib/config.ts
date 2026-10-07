@@ -1,5 +1,9 @@
-/** Where the extension talks to. Production by default; dev builds point at localhost. */
-export const DEFAULT_API_ORIGIN: string = import.meta.env.VITE_API_ORIGIN ?? 'https://your-shortlist.example.com';
+/**
+ * Where the extension talks to. Public builds have no default: you enter your ShortList's address
+ * in the popup (Chrome asks to allow it). A build can bake one in with VITE_API_ORIGIN; dev builds
+ * point at localhost.
+ */
+export const DEFAULT_API_ORIGIN: string = import.meta.env.VITE_API_ORIGIN || '';
 export const EXTENSION_VERSION: string = import.meta.env.VITE_EXTENSION_VERSION ?? '0.0.0';
 
 /** True only inside a real extension page (the popup can also be previewed as a plain page). */

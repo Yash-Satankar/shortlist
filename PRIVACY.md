@@ -1,6 +1,6 @@
-# Privacy: Job Status Tracker (Chrome extension)
+# Privacy: ShortList
 
-The extension connects your browser to **your own** Job Tracker instance. It has no analytics, no
+The extension connects your browser to **your own** ShortList instance. It has no analytics, no
 third-party servers, and no ads. This page says exactly what it can read, when, and where it goes.
 
 ## What it can access

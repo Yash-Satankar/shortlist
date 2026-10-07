@@ -9,10 +9,10 @@ The first public release. Everything below is optional and can be switched off p
 - Job description snapshots, screening answers per application, a standard answer library, and a profile (resume text, experience, notice period, relocation; CTC encrypted).
 - Follow-ups inbox: changes to review, follow-ups due, post-interview check-ins and ghosting suggestions.
 - Kanban board, search across roles, notes, JDs and answers, and spreadsheet import with a dry run.
-- Installable PWA with an Android share target ("Share → Job Tracker" opens quick-add, prefilled).
+- Installable PWA with an Android share target ("Share → ShortList" opens quick-add, prefilled).
 
 ### Automatic updates
-- **Chrome extension "Job Status Tracker"**: saves job pages (LinkedIn, Naukri, Greenhouse, Lever, Workday, and a generic reader); detects submitted applications with an in-page Undo; syncs your applications list from job portals as proposals you review. Every site is off by default. It can also point at a self-hosted server.
+- **Chrome extension "ShortList"**: saves job pages (LinkedIn, Naukri, Greenhouse, Lever, Workday, and a generic reader); detects submitted applications with an in-page Undo; syncs your applications list from job portals as proposals you review. Every site is off by default. It can also point at a self-hosted server.
 - **Email updates**: reads a dedicated mailbox (IMAP, read-only, every 5 minutes) or a per-user forwarding address (Postmark inbound). It classifies job emails (received, viewed, assessment, interview, rejected, offer), matches them to applications, and proposes status changes through the shared rules. A failing mailbox shows in Settings and Follow-ups.
 - **Applications from confirmation emails**: a job portal's "application sent / received" email (LinkedIn, Naukri, Greenhouse, Lever, Workday, SmartRecruiters, Ashby, SuccessFactors) for a job you don't track creates it as Applied (undoable), after the duplicate check; the job's link is stored, so later saves find it. Other unmatched emails can be turned into a new application, pre-filled from the email.
 

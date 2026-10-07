@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import { Suspense, useEffect, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router';
 import { useStats } from '../api/hooks';
@@ -95,7 +96,7 @@ function Sidebar({ attention, pathname }: { attention: ReturnType<typeof useAtte
     <nav className="side sticky top-0 hidden h-dvh md:flex" aria-label="Primary">
       <div className="brand">
         <AppMark size={28} />
-        Job Tracker
+        {PRODUCT_NAME}
       </div>
       <Link to="/add" className="btn btn-primary mb-3 h-10 w-full text-sm">
         <Icon name="plus" />

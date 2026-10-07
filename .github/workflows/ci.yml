@@ -82,7 +82,7 @@ jobs:
       - run: pnpm --filter @jt/extension release
       - uses: actions/upload-artifact@v4
         with:
-          name: job-status-tracker-extension
+          name: shortlist-extension
           path: apps/extension/release/*.zip
           if-no-files-found: error
           retention-days: 30

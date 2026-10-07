@@ -2,37 +2,60 @@
 
 A separate deployment with fictional data that anyone can open with **Try the demo**. It never touches real data: it has its own database and secrets, it's read-only, and its AI features never call a provider (see [ADR 0010](adr/0010-read-only-demo.md)).
 
-## Create it on Railway (one time)
+It runs for free: the app on a **Render** free web service, the database on **Neon**'s free Postgres. A free Render service sleeps after about 15 minutes without visits, and waking it takes up to a minute. The website's [demo link](https://yash-satankar.github.io/shortlist/demo.html) shows "Waking up the demo…" and opens it when it's ready, and the app itself keeps retrying with a "Waking up the server" message instead of an error.
 
-1. **New environment.** In the project, open Environments → **New environment**, name it `demo`, and choose **Empty environment**. Don't duplicate production: that would copy its variables, including the encryption key.
-2. **Services.** In `demo`, add **GitHub repo** (this repo, branch `main`) and **Database → PostgreSQL**.
-3. **App variables** (app service → Variables):
+## 1. Neon: the database
 
-   | Variable | Value |
+1. Sign up at [neon.tech](https://neon.tech) (free plan) and create a project: name `shortlist-demo`, Postgres 17, region **AWS Asia Pacific (Singapore)** (next to the Render region below).
+2. On the project dashboard, open **Connect**. Choose the default branch and database, turn **Connection pooling off** (the app's job queue needs a direct connection), and copy the connection string. It looks like `postgresql://neondb_owner:…@ep-….ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
+
+That's all on Neon. The app creates its tables on first start, and Neon suspends the database when idle (the first request after a while takes a second or two longer).
+
+## 2. Render: the app
+
+1. Sign up at [render.com](https://render.com) with GitHub, and allow it access to the `shortlist` repository.
+2. **New → Web Service** → pick the `shortlist` repo. Then:
+   - **Name:** `shortlist-demo` (this gives `https://shortlist-demo.onrender.com`; if the name is taken, use the address Render shows you everywhere below)
+   - **Region:** Singapore · **Branch:** `main` · **Language/Runtime:** Docker (detected from the Dockerfile)
+   - **Instance type:** Free
+3. **Advanced → Docker Command:**
+   ```
+   sh -c "node apps/api/dist/scripts/migrate.js && node apps/api/dist/scripts/demo-seed.js && exec node apps/api/dist/server.js"
+   ```
+   Free instances have no pre-deploy step, so this migrates and re-seeds the fictional data on every start (which also keeps its dates current).
+4. **Advanced → Health Check Path:** `/api/health`
+5. **Environment variables:**
+
+   | Key | Value |
    | --- | --- |
    | `NODE_ENV` | `production` |
    | `SERVE_WEB` | `true` |
-   | `TRUST_PROXY` | `2` |
-   | `APP_ORIGIN` | `https://<the domain from step 5>` |
-   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
-   | `ENCRYPTION_KEYS` | `demo:<a new key>` (generate one locally with `pnpm keygen`; never reuse production's) |
-   | `ENCRYPTION_ACTIVE_KEY_ID` | `demo` |
    | `DEMO_MODE` | `true` |
    | `SIGNUP_MODE` | `closed` |
+   | `TRUST_PROXY` | `1` |
+   | `FEATURE_EMAIL_INTAKE` | `false` |
+   | `DATABASE_POOL_MAX` | `5` |
+   | `APP_ORIGIN` | `https://shortlist-demo.onrender.com` |
+   | `DATABASE_URL` | the Neon connection string from step 1 |
+   | `ENCRYPTION_KEYS` | `demo:<a new key>`; generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Never reuse another instance's key. |
+   | `ENCRYPTION_ACTIVE_KEY_ID` | `demo` |
 
    Set nothing else: no AI keys, no IMAP, no SMTP.
-4. **Deploy settings** (app service → Settings → Deploy):
-   - Pre-deploy command: `node apps/api/dist/scripts/migrate.js && node apps/api/dist/scripts/demo-seed.js`
-   - Healthcheck path: `/api/health`
-5. **Domain.** Settings → Networking → **Generate domain** (or add a custom one), then put it in `APP_ORIGIN` and redeploy.
+6. **Create Web Service.** The first build takes a few minutes.
 
-The seed refuses to run on a database holding any non-demo account, so pointing it at production by mistake fails safely. The fictional data is rebuilt every night (`DEMO_REFRESH_CRON`) so its dates stay current.
+The repo also has a `render.yaml` Blueprint with the same settings (**New → Blueprint**), if you prefer that to clicking through.
 
-## Check it
+The seed refuses to run on a database holding any non-demo account, so pointing the demo at a real database by mistake fails safely.
 
-- `https://<demo>/api/config` → `"demo": true`
+## 3. Check it
+
+- `https://shortlist-demo.onrender.com/api/config` → `"demo": true`
+- `https://shortlist-demo.onrender.com/api/health/request` → `"protocol": "https"`, and `ip` is your own public IP (if it isn't, adjust `TRUST_PROXY`)
 - The page shows **Try the demo**, and inside, a "Demo · fictional data, read-only" bar.
 - Changing a status shows "This is a read-only demo…".
+- After 15+ minutes without visits, the website's demo link shows "Waking up the demo…" and then opens it.
+
+If you use a different address, set it in `site/config.json` (`demoUrl`) so the website's demo link points at it.
 
 ## Run it locally
 

@@ -1,4 +1,4 @@
-import { lazy, useEffect } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { useCurrentUser } from './auth/useAuth';
 import { Layout } from './components/Layout';
@@ -25,6 +25,16 @@ const SharePage = lazy(() => loaders.share().then((m) => ({ default: m.SharePage
 const BoardPage = lazy(() => loaders.board().then((m) => ({ default: m.BoardPage })));
 const SettingsPage = lazy(() => loaders.settings().then((m) => ({ default: m.SettingsPage })));
 
+/** First load: after a few seconds, say why it's slow (a free-hosted server waking up). */
+function WakingSpinner() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSlow(true), 3000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return <Spinner label={slow ? 'Waking up the server… On free hosting this can take up to a minute.' : 'Loading…'} />;
+}
+
 function usePrefetchRoutes(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
@@ -39,7 +49,7 @@ export function App() {
   const { data: user, isPending, error, refetch } = useCurrentUser();
   usePrefetchRoutes(Boolean(user));
 
-  if (isPending) return <Spinner />;
+  if (isPending) return <WakingSpinner />;
   if (error)
     return (
       <div className="pt-safe mx-auto max-w-md p-6">

@@ -20,7 +20,7 @@ export function usePublicConfig() {
     queryFn: () => api<PublicConfig>('/config'),
     staleTime: Infinity,
   });
-  return { sessionTtlDays: data?.sessionTtlDays ?? 30, signupMode: data?.signupMode ?? 'closed', needsSetup: data?.needsSetup ?? false, emailEnabled: data?.emailEnabled ?? false, demo: data?.demo ?? false, loaded: Boolean(data) };
+  return { sessionTtlDays: data?.sessionTtlDays ?? 30, signupMode: data?.signupMode ?? 'closed', needsSetup: data?.needsSetup ?? false, emailEnabled: data?.emailEnabled ?? false, demo: data?.demo ?? false, version: data?.version ?? '', sourceUrl: data?.sourceUrl ?? '', loaded: Boolean(data) };
 }
 
 export interface PublicConfig {
@@ -32,6 +32,9 @@ export interface PublicConfig {
   emailEnabled: boolean;
   /** The public demo (fictional data, read-only). */
   demo?: boolean;
+  version?: string;
+  /** Where this server's source code is (AGPL-3.0). */
+  sourceUrl?: string;
 }
 
 /**
@@ -66,6 +69,10 @@ export function useCurrentUser() {
       }
     },
     staleTime: 5 * 60_000,
+    // A server that's asleep (free hosting) or restarting: keep trying for about a minute and a
+    // half instead of showing an error. A real answer (401 = signed out, 4xx) stops at once.
+    retry: (count, err) => count < 18 && !(err instanceof ApiError && err.status > 0 && err.status < 500),
+    retryDelay: 5000,
   });
 }
 

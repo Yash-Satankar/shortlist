@@ -98,6 +98,11 @@ const envSchema = z
     DEMO_MODE: bool.default(false),
     DEMO_USER_EMAIL: z.string().email().default('demo@example.com'),
     DEMO_REFRESH_CRON: z.string().default('41 2 * * *'),
+    /**
+     * Where this server's source code is (AGPL-3.0 section 13: users of a network-hosted copy must
+     * be offered its source). Running a modified version? Point this at your fork.
+     */
+    SOURCE_CODE_URL: z.url().default('https://github.com/Yash-Satankar/shortlist'),
     /** Server errors kept for the admin's "Recent errors" view (Settings), in days. */
     ERROR_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
     /** Background jobs (pg-boss, schema "pgboss" in the same database). Off in tests. */

@@ -1,4 +1,4 @@
-# Chrome extension (Job Status Tracker)
+# Chrome extension (ShortList)
 
 
 `apps/extension` is an MV3 extension, named in one place (`packages/shared/src/brand.ts`).
@@ -49,21 +49,25 @@ the web app under Settings → Browser extension → Pair a browser, then paste 
   dominated by cookie/privacy text, and with job-description signals when it was found by page
   shape alone. Late-rendered pages are re-checked for up to `VITE_JD_SETTLE_MAX_MS` (default 4 s).
 
-### Distribution (unlisted Chrome Web Store listing)
+### Install (GitHub Releases, Load unpacked)
 
-- **Release zip:** `pnpm --filter @jt/extension release` builds production and writes
-  `apps/extension/release/job-status-tracker-<version>.zip`. It refuses to pack a dev build.
-  CI builds the same zip on every push and uploads it as the `job-status-tracker-extension`
-  artifact, after `check:prod` proves no dev-only switch or code is in the build.
-- **Listing:** texts, permission justifications and data-use answers are in
-  `apps/extension/store/listing.md`; screenshots (1280×800) and the promo tile (440×280) are in
-  `apps/extension/store/`.
-- **Privacy policy:** served from the app at `/privacy`, rendered from `PRIVACY.md`.
-- **Publishing, once:**
-  1. In the Developer Dashboard, create the item and upload the zip.
-  2. Paste the listing texts and set visibility to **Unlisted**.
-  3. Give reviewers a test account in "Test instructions", then submit.
-- **Updates:** bump `apps/extension/package.json` `version`, then upload the new zip.
+Until it's on the Chrome Web Store, the extension is a zip attached to each [GitHub release](https://github.com/Yash-Satankar/shortlist/releases/latest):
+
+1. Download `shortlist-extension-<version>.zip` from the latest release and unzip it into a folder you'll keep (Chrome loads it from there).
+2. Open `chrome://extensions`, switch on **Developer mode** (top right), click **Load unpacked** and choose that folder.
+3. Pin ShortList from the puzzle-piece menu. Open it, enter your ShortList's address (Chrome asks to allow that one site), then pair it from Settings → Browser extension in the web app.
+
+To update: download the new zip, replace the folder's contents, and click the reload arrow on the extension's card in `chrome://extensions`. Your pairing and site switches are kept.
+
+### Building the release zip
+
+- `pnpm --filter @jt/extension release` builds production and writes `apps/extension/release/shortlist-extension-<version>.zip`. It refuses to pack a dev build.
+- Public builds have no server built in. For your own copy you can bake one in: `VITE_API_ORIGIN=https://your.server pnpm --filter @jt/extension release`.
+- CI builds the same zip on every push and uploads it as the `shortlist-extension` artifact, after `check:prod` proves no dev-only switch or code is in the build.
+
+### Chrome Web Store (later)
+
+The listing texts, permission justifications and data-use answers are ready in `apps/extension/store/listing.md`, with screenshots (1280×800) and the promo tile (440×280) in `apps/extension/store/`. Publishing needs a developer account (one-time fee): create the item, upload the same zip, paste the listing, and submit. The privacy policy is on the website at `/privacy.html`.
 
 ### "Application submitted" detection
 

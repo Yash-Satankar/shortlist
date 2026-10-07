@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useAuthAction, useLogin, usePublicConfig } from '../auth/useAuth';
 import { AppMark } from '../components/Icon';
@@ -32,7 +33,7 @@ function Shell({ subtitle, children, footer }: { subtitle: string; children: Rea
     <main className="pt-safe pb-safe mx-auto flex min-h-dvh max-w-[400px] flex-col px-6 pt-24 md:justify-center md:pt-0">
       <div className="md:pb-16">
         <AppMark size={56} />
-        <h1 className="h1 mt-5">Job Tracker</h1>
+        <h1 className="h1 mt-5">{PRODUCT_NAME}</h1>
         <p className="mt-1 text-[15px] leading-[22px] text-ink-3">{subtitle}</p>
         {children}
       </div>

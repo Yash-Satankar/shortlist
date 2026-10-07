@@ -24,7 +24,7 @@ const setEnv = (patch: Record<string, string | undefined>) => {
   resetEnvCache();
   app = createApp({ db });
 };
-const MAIL = { SMTP_HOST: 'smtp.example.com', MAIL_FROM: 'Job Tracker <no-reply@example.com>' };
+const MAIL = { SMTP_HOST: 'smtp.example.com', MAIL_FROM: 'ShortList <no-reply@example.com>' };
 const post = (path: string, body: unknown, agent: ReturnType<typeof request.agent> | null = null) => (agent ?? request(app)).post(path).set('Origin', ORIGIN).send(body as object);
 const linkToken = (m: OutgoingMail) => /token=([A-Za-z0-9_-]+)/.exec(m.text)![1]!;
 
@@ -41,7 +41,7 @@ afterAll(closeDb);
 
 describe('first-run setup', () => {
   it('an empty server asks for setup; setup creates the admin and signs in; then it is gone', async () => {
-    expect((await request(app).get('/api/config')).body).toEqual({ sessionTtlDays: expect.any(Number), signupMode: 'closed', needsSetup: true, emailEnabled: false });
+    expect((await request(app).get('/api/config')).body).toMatchObject({ sessionTtlDays: expect.any(Number), signupMode: 'closed', needsSetup: true, emailEnabled: false });
     const agent = request.agent(app);
     const res = await post('/api/auth/setup', { email: 'Owner@Example.com', password: PASSWORD, name: 'Owner' }, agent).expect(201);
     expect(res.body.user).toMatchObject({ email: 'owner@example.com', role: 'admin' });

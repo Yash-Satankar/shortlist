@@ -1,4 +1,4 @@
-# Chrome Web Store listing: Job Status Tracker
+# Chrome Web Store listing: ShortList
 
 Copy these into the Developer Dashboard (https://chrome.google.com/webstore/devconsole).
 The upload is `apps/extension/release/job-status-tracker-<version>.zip` (CI artifact
@@ -6,7 +6,7 @@ The upload is `apps/extension/release/job-status-tracker-<version>.zip` (CI arti
 
 ## Store listing
 
-- **Name:** Job Status Tracker
+- **Name:** ShortList
 - **Summary (≤ 132 chars):** Save jobs with their description, catch "application submitted" pages and sync portal statuses into your own tracker.
 - **Category:** Workflow & Planning
 - **Language:** English
@@ -17,7 +17,7 @@ The upload is `apps/extension/release/job-status-tracker-<version>.zip` (CI arti
 
 ### Description
 
-Job Status Tracker is the browser companion to your own Job Tracker. It works only with a tracker you
+ShortList is the browser companion to your own ShortList. It works only with a tracker you
 run or sign in to, and the extension has no servers of its own.
 
 - **Save a job in one click.** It reads the job you're viewing (title, company, location and the
@@ -39,7 +39,7 @@ run or sign in to, and the extension has no servers of its own.
 ## Privacy practices tab
 
 - **Single purpose:** Save job postings and track the status of your job applications in your own
-  Job Tracker.
+  ShortList.
 - **Permission justifications:**
   - `storage`: keeps the pairing token and your account email in this browser profile.
   - `activeTab`: "Sync this page" reads the current tab once, only when you click the button.
@@ -56,7 +56,7 @@ run or sign in to, and the extension has no servers of its own.
   - Authentication information: the pairing token.
   - The extension doesn't sell data, use it for anything unrelated to its single purpose, or use it
     to determine creditworthiness.
-- **Privacy policy URL:** `https://your-shortlist.example.com/privacy`
+- **Privacy policy URL:** `https://yash-satankar.github.io/shortlist/privacy.html`
 
 ## Test instructions for reviewers
 

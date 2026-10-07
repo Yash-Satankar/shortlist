@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,7 +65,7 @@ export function markdownToHtml(md: string): string {
 
 const PAGE = (body: string) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy · Job Status Tracker</title>
+<title>Privacy · ${PRODUCT_NAME}</title>
 <style>
 :root { color-scheme: light dark; --bg: #F5F5F1; --ink: #171716; --ink-2: #4A4A45; --line: #E2E2DC; --code: #ECECE6; }
 @media (prefers-color-scheme: dark) { :root { --bg: #121211; --ink: #ECECE6; --ink-2: #A9A9A2; --line: #2A2A28; --code: #1F1F1D; } }

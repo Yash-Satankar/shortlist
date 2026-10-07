@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '../../packages/shared/src/brand';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
@@ -16,7 +17,8 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
  */
 export default defineConfig(({ mode }) => {
   const dev = mode === 'development';
-  const apiOrigin = process.env.VITE_API_ORIGIN ?? (dev ? 'http://localhost:5173' : 'https://your-shortlist.example.com');
+  // Public builds have no server baked in (you enter yours in the popup); set VITE_API_ORIGIN for your own build.
+  const apiOrigin = process.env.VITE_API_ORIGIN ?? (dev ? 'http://localhost:5173' : '');
 
   const manifest: Plugin = {
     name: 'jst-manifest',
@@ -70,7 +72,7 @@ export default defineConfig(({ mode }) => {
   return {
     root: path.resolve(import.meta.dirname, 'src'),
     publicDir: path.resolve(import.meta.dirname, 'public'),
-    plugins: [react(), tailwindcss(), manifest, contentScripts],
+    plugins: [react(), tailwindcss(), { name: 'product-name', transformIndexHtml: (html: string) => html.replaceAll('%PRODUCT_NAME%', PRODUCT_NAME) }, manifest, contentScripts],
     define: {
       'import.meta.env.VITE_API_ORIGIN': JSON.stringify(apiOrigin),
       'import.meta.env.VITE_EXTENSION_VERSION': JSON.stringify(pkg.version),

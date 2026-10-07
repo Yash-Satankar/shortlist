@@ -28,3 +28,6 @@ apps/extension/release/
 # Playwright
 apps/e2e/test-results/
 apps/e2e/playwright-report/
+
+# GitHub Pages build output
+_site/

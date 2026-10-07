@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ShortList: the job tracker that updates itself</title>
+  <meta name="description" content="A free, open-source, self-hostable job tracker that updates itself from your email and job portals. Built for Indian job seekers (Naukri, LPA, notice period), works everywhere." />
+  <meta property="og:title" content="ShortList: the job tracker that updates itself" />
+  <meta property="og:description" content="Free, open source and self-hostable. Statuses update from your email and job portals; prep packs and Ask with your own AI key." />
+  <meta property="og:image" content="images/desktop.png" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="wrap nav">
+    <a class="brand" href="./"><img src="favicon.svg" class="mark" alt="" />ShortList</a>
+    <span class="sp"></span>
+    <a class="link" href="docs/self-hosting.html">Self-host</a>
+    <a class="link" href="docs/">Docs</a>
+    <a class="link" href="%REPO_URL%">GitHub</a>
+  </header>
+
+  <main>
+    <div class="wrap hero">
+      <div>
+        <div class="kicker">Free · open source · self-hostable</div>
+        <h1>The job tracker that updates itself.</h1>
+        <p class="lead">Save jobs from your phone or browser. Statuses update from your email and job portals, under rules you can always see and undo. Built for Indian job seekers (Naukri, LPA, notice period), and works everywhere.</p>
+        <div class="cta">
+          <a class="btn primary" href="demo.html">Try the live demo</a>
+          <a class="btn" href="docs/self-hosting.html">Self-host it</a>
+          <a class="btn" href="%REPO_URL%/releases/latest">Get the Chrome extension</a>
+        </div>
+        <p class="muted" style="margin-top: 10px">The demo uses fictional data, is read-only, and may take a minute to wake up.</p>
+      </div>
+      <img class="shot" src="images/desktop.png" alt="ShortList on desktop: applications, and a timeline updated from email and the browser extension" />
+      <div class="phones">
+        <img src="images/phone-list.png" alt="Applications on a phone" />
+        <img src="images/phone-followups.png" alt="Follow-ups inbox" />
+        <img src="images/phone-prep.png" alt="Interview prep pack" />
+        <img src="images/phone-ask.png" alt="Ask my job search" />
+      </div>
+    </div>
+
+    <section class="wrap">
+      <h2>Forty applications, forty places things change</h2>
+      <div class="grid">
+        <div class="card"><h3>Statuses change where you can't see them</h3><p>A portal says "viewed", an email says "not selected", and your spreadsheet never knows.</p></div>
+        <div class="card"><h3>Job descriptions disappear</h3><p>The posting comes down the week of your interview.</p></div>
+        <div class="card"><h3>Answers get forgotten</h3><p>What notice period did you give this company? Which CTC did you quote?</p></div>
+        <div class="card"><h3>Follow-ups slip</h3><p>Nobody remembers to nudge a recruiter after ten quiet days.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <h2>What ShortList does</h2>
+      <div class="grid">
+        <div class="card"><h3>Capture in one tap</h3><p>Share a job from LinkedIn or Naukri on Android, or save it with the Chrome extension, description included. Spreadsheet import too.</p></div>
+        <div class="card"><h3>Updates itself</h3><p>Job emails and your applications list on job portals move statuses forward. Confirmation emails even create the application. Offers always wait for you; everything is undoable.</p></div>
+        <div class="card"><h3>Follow up on time</h3><p>One inbox for changes to review, follow-ups due and possible ghosting, with email and LinkedIn drafts you send yourself.</p></div>
+        <div class="card"><h3>Prepare</h3><p>A prep pack for each interview from the JD, your resume and your saved answers.</p></div>
+        <div class="card"><h3>Ask your search</h3><p>"How many rejections this month?" is answered exactly by the database. Other questions are answered with links to the records.</p></div>
+        <div class="card"><h3>Yours</h3><p>Self-host it free, bring your own AI key (or none), export everything, delete anytime. Salaries, contacts and emails are encrypted at rest.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <h2>Run your own</h2>
+      <div class="grid">
+        <div class="card"><h3>One command</h3><p><code>docker compose --profile app up -d</code>, then the first-run screen creates your account. <a href="docs/self-hosting.html">Self-hosting guide</a></p></div>
+        <div class="card"><h3>Free hosting</h3><p>Always-on on an Oracle Cloud Always Free VM, or Render + Neon for light use. <a href="docs/free-hosting.html">Free hosting guide</a></p></div>
+        <div class="card"><h3>Open source</h3><p>AGPL-3.0. Read the code, the <a href="docs/adr/">design decisions</a> and the <a href="privacy.html">privacy notes</a>.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>ShortList · AGPL-3.0</span>
+      <a href="%REPO_URL%">Source</a>
+      <a href="docs/">Docs</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="%REPO_URL%/blob/main/SECURITY.md">Security</a>
+    </div>
+  </footer>
+</body>
+</html>

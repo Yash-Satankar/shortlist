@@ -1,4 +1,4 @@
-import { STATUS_LABELS, type ApplicationSource, type ApplicationStatus, type DraftChannel, type DraftPurpose } from '@jt/shared';
+import { PRODUCT_NAME, STATUS_LABELS, type ApplicationSource, type ApplicationStatus, type DraftChannel, type DraftPurpose } from '@jt/shared';
 import type { RequestHandler } from 'express';
 import { env } from '../config/env';
 import { HttpError } from '../lib/http';
@@ -16,7 +16,7 @@ const ALLOWED_WRITES = [/^\/auth\/(login|demo|logout)$/, /^\/ask\/?$/, /^\/draft
 export const demoWriteGuard: RequestHandler = (req, _res, next) => {
   if (!isDemo() || req.method === 'GET' || req.method === 'HEAD') return next();
   if (ALLOWED_WRITES.some((r) => r.test(req.path))) return next();
-  next(new HttpError(403, 'This is a read-only demo with fictional data. Self-host Job Tracker to try everything.', 'demo_read_only'));
+  next(new HttpError(403, `This is a read-only demo with fictional data. Self-host ${PRODUCT_NAME} to try everything.`, 'demo_read_only'));
 };
 
 const STATUS_WORDS: [RegExp, ApplicationStatus][] = [

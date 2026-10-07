@@ -1,6 +1,7 @@
 /**
- * Packs the production build (dist/) into release/job-status-tracker-<version>.zip for the
- * Chrome Web Store. Refuses to pack a dev build.
+ * Packs the production build (dist/) into release/shortlist-extension-<version>.zip, the file
+ * attached to GitHub releases (Load unpacked) and accepted by the Chrome Web Store. Refuses to
+ * pack a dev build.
  *
  *   pnpm --filter @jt/extension release   (production build + this)
  */
@@ -28,6 +29,6 @@ walk(DIST);
 
 const outDir = path.join(ROOT, 'release');
 mkdirSync(outDir, { recursive: true });
-const out = path.join(outDir, `job-status-tracker-${manifest.version}.zip`);
+const out = path.join(outDir, `shortlist-extension-${manifest.version}.zip`);
 writeFileSync(out, zipSync(files, { level: 9, mtime: new Date('2026-01-01T00:00:00Z') }));
 console.log(`${path.relative(process.cwd(), out)}: ${Object.keys(files).length} files, ${(statSync(out).size / 1024).toFixed(0)} KB`);

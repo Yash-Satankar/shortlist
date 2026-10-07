@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { env } from '../config/env';
 import type { Db, DbOrTx } from '../db/client';
@@ -114,7 +115,7 @@ export async function sendVerification(db: DbOrTx, userId: string, email: string
   const token = await issueToken(db, userId, 'verify', e.EMAIL_VERIFY_TTL_HOURS * 3_600_000);
   await sendMail({
     to: email,
-    subject: 'Confirm your email for Job Tracker',
+    subject: `Confirm your email for ${PRODUCT_NAME}`,
     text: `Confirm your email to finish creating your account:\n\n${e.APP_ORIGIN}/verify?token=${token}\n\nThe link works once and expires in ${e.EMAIL_VERIFY_TTL_HOURS} hours. If you didn't sign up, ignore this email.`,
   });
 }
@@ -141,7 +142,7 @@ export async function requestPasswordReset(db: DbOrTx, email: string): Promise<v
   const token = await issueToken(db, u.id, 'reset', e.PASSWORD_RESET_TTL_MINUTES * 60_000);
   await sendMail({
     to: u.email,
-    subject: 'Reset your Job Tracker password',
+    subject: `Reset your ${PRODUCT_NAME} password`,
     text: `Someone (hopefully you) asked to reset your password. Choose a new one here:\n\n${e.APP_ORIGIN}/reset?token=${token}\n\nThe link works once and expires in ${e.PASSWORD_RESET_TTL_MINUTES} minutes. If it wasn't you, ignore this email: your password stays the same.`,
   });
 }

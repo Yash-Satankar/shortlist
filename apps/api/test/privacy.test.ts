@@ -12,7 +12,7 @@ describe('/privacy', () => {
     const res = await request(app).get('/privacy');
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/text\/html/);
-    expect(res.text).toContain('<h1>Privacy: Job Status Tracker (Chrome extension)</h1>');
+    expect(res.text).toContain('<h1>Privacy: ShortList</h1>');
     expect(res.text).toContain('No passwords.');
     expect(res.text).toContain('<table>');
   });

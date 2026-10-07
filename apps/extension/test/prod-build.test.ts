@@ -33,10 +33,11 @@ afterAll(() => {
 });
 
 describe('production build (dev switches set while building)', () => {
-  it('grants only the tracker’s own host; job sites stay optional', () => {
+  it('requires no host at all (your server is asked for when you enter it); job sites stay optional', () => {
     const manifest = JSON.parse(readFileSync(path.join(out, 'manifest.json'), 'utf8')) as { name: string; permissions: string[]; host_permissions: string[]; optional_host_permissions: string[] };
     expect(manifest.permissions).toEqual(['storage', 'activeTab', 'scripting']); // no dev-only 'downloads'
-    expect(manifest.host_permissions).toEqual(['https://your-shortlist.example.com/*']);
+    expect(manifest.host_permissions).toEqual([]);
+    expect(manifest.optional_host_permissions).toEqual(expect.arrayContaining(['https://*/*']));
     expect(manifest.optional_host_permissions).toEqual(expect.arrayContaining(['https://*.linkedin.com/*', 'https://*.greenhouse.io/*']));
     expect(manifest.name).not.toMatch(/\(dev\)/);
   });

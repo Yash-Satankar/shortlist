@@ -1,8 +1,9 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import { DEFAULT_API_ORIGIN, hasChrome, writeState } from './config';
 
 /**
- * Self-hosted trackers: the extension talks to the hosted default unless you point it at your
- * own server. Chrome asks you to allow that one origin (an optional permission), and the
+ * Which ShortList server the extension talks to: you enter its address in the popup (public builds
+ * have none built in). Chrome asks you to allow that one origin (an optional permission), and the
  * server must answer /api/health before it's saved. Change it only while not paired.
  */
 
@@ -23,7 +24,7 @@ export function normalizeServerUrl(input: string): string {
   return url.origin;
 }
 
-export const isDefaultServer = (origin: string) => origin === new URL(DEFAULT_API_ORIGIN).origin;
+export const isDefaultServer = (origin: string) => Boolean(DEFAULT_API_ORIGIN) && origin === new URL(DEFAULT_API_ORIGIN).origin;
 
 /** Asks Chrome for the origin (must run from a click), checks the server, then saves it. */
 export async function switchServer(input: string, fetcher: typeof fetch = fetch): Promise<string> {
@@ -39,7 +40,7 @@ export async function switchServer(input: string, fetcher: typeof fetch = fetch)
   } catch {
     ok = false;
   }
-  if (!ok) throw new Error('No Job Tracker answered at that address');
+  if (!ok) throw new Error(`No ${PRODUCT_NAME} server answered at that address`);
   await writeState({ apiOrigin: isDefaultServer(origin) ? undefined : origin });
   if (hasChrome() && isDefaultServer(origin)) await chrome.storage.local.remove('apiOrigin');
   return origin;

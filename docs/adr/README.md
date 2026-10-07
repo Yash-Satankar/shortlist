@@ -1,6 +1,6 @@
 # Architecture decision records
 
-Short records of the decisions that shape Job Tracker, and why.
+Short records of the decisions that shape ShortList, and why.
 
 - [0001: Append-only status timeline with undo](0001-append-only-timeline.md)
 - [0002: One set of rules for every automatic source](0002-automatic-source-rules.md)

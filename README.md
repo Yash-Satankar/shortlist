@@ -1,12 +1,15 @@
-# Job Tracker
+# ShortList
 
 [![CI](https://github.com/Yash-Satankar/shortlist/actions/workflows/ci.yml/badge.svg)](https://github.com/Yash-Satankar/shortlist/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-**A job-application tracker that keeps itself up to date.** Save a job from your phone's share sheet or a browser extension. Your applications then update from job emails and job portals, under rules you can always see and undo. Before each interview you get a prep pack, and you can ask questions about your whole search. Open source and self-hostable; AI is optional and uses your own key.
+**A free, open-source, self-hostable job tracker that updates itself from your email and job portals.** Built for Indian job seekers (Naukri, LPA, notice period), and works everywhere.
 
-**[Try the live demo](#)** (fictional data, read-only) · **[Chrome extension](https://github.com/Yash-Satankar/shortlist/releases/latest)** · **[Self-host it](docs/self-hosting.md)**
+Save a job from your phone's share sheet or a browser extension. Your applications then update from job emails and job portals, under rules you can always see and undo. Before each interview you get a prep pack, and you can ask questions about your whole search. Open source and self-hostable; AI is optional and uses your own key.
 
-![Job Tracker on desktop: the application list and a timeline updated from email and the browser extension](docs/images/desktop.png)
+**[Try the live demo](https://yash-satankar.github.io/shortlist/demo.html)** (fictional data, read-only; it may take a minute to wake up) · **[Website and docs](https://yash-satankar.github.io/shortlist/)** · **[Chrome extension](https://github.com/Yash-Satankar/shortlist/releases/latest)** · **[Self-host it](docs/self-hosting.md)** · **[Free hosting](docs/free-hosting.md)**
+
+![ShortList on desktop: the application list and a timeline updated from email and the browser extension](docs/images/desktop.png)
 
 <p>
   <img src="docs/images/phone-list.png" width="24%" alt="Applications list on a phone" />
@@ -118,7 +121,7 @@ CI ([workflow](.github/workflows/ci.yml)) runs all of it on every push, builds t
 
 ## Documentation
 
-- [Self-hosting](docs/self-hosting.md) · [Upgrading](docs/UPGRADING.md) · [Deploying on Railway](docs/deployment.md) · [Public demo](docs/demo.md)
+- [Self-hosting](docs/self-hosting.md) · [Free hosting](docs/free-hosting.md) · [Upgrading](docs/UPGRADING.md) · [Deploying on Railway](docs/deployment.md) · [Public demo](docs/demo.md)
 - [Development and API](docs/development.md) · [Optional features](docs/features.md) · [Chrome extension](docs/extension.md)
 - [Architecture decisions](docs/adr/README.md) · [Privacy](PRIVACY.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
@@ -132,4 +135,4 @@ CI ([workflow](.github/workflows/ci.yml)) runs all of it on every push, builds t
 
 ## License
 
-To be decided before the first public release.
+ShortList is free software under the [GNU Affero General Public License v3.0 only](LICENSE) (AGPL-3.0-only). You may use, study, change and share it. If you run a modified version for other people over a network, you must offer them its source code; Settings links to the source of the running version, set by `SOURCE_CODE_URL`.

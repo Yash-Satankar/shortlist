@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import { WORK_MODE_LABELS, type ApplicationStatus, type FeatureState } from '@jt/shared';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Icon } from '../../../web/src/components/Icon';
@@ -125,14 +126,14 @@ export function SaveJob({ job, tabId, pageTitle, origin }: { job: ExtractedJob; 
         <div className="banner dup" role="status">
           <Icon name="check" />
           <div className="min-w-0 flex-1">
-            <b>Saved to Job Tracker</b>
+            <b>Saved to {PRODUCT_NAME}</b>
             <div className="mt-0.5 text-ink-2">
               {draft.roleTitle} · {draft.companyName} · {draft.status === 'applied' ? 'Applied' : 'Saved'}
             </div>
           </div>
         </div>
         <Button size="block" onClick={() => open(`/applications/${saved.id}`)}>
-          Open in Job Tracker
+          Open in {PRODUCT_NAME}
           <Icon name="external" size="sm" />
         </Button>
       </div>
@@ -188,7 +189,7 @@ export function SaveJob({ job, tabId, pageTitle, origin }: { job: ExtractedJob; 
           <p className="m-0 mt-1.5 line-clamp-2 text-[13px] leading-[19px] text-ink-3">{draft.jd}</p>
         </div>
       ) : (
-        <p className="hint m-0">No description found on this page. You can paste it later in Job Tracker.</p>
+        <p className="hint m-0">No description found on this page. You can paste it later in {PRODUCT_NAME}.</p>
       )}
 
       {missingRequired.length > 0 && ai?.enabled && (
@@ -243,7 +244,7 @@ export function SaveJob({ job, tabId, pageTitle, origin }: { job: ExtractedJob; 
   );
 }
 
-/** Same look as the web Add form's match row (a button here: it opens Job Tracker in a tab). */
+/** Same look as the web Add form's match row (a button here: it opens ShortList in a tab). */
 function MatchLink({ match, onOpen }: { match: DuplicateMatch; onOpen: (path: string) => void }) {
   return (
     <button type="button" onClick={() => onOpen(`/applications/${match.id}`)} className="mt-2.5 -ml-1 flex w-full items-center gap-2.5 rounded-[10px] bg-surface-2 px-2.5 py-2 text-left">

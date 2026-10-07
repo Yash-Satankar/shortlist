@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import type { SubmittedMessage, SubmittedReply } from '../content/types';
 import type { PageRead } from '../content/types';
 import { ApiError, apiFetch } from './api';
@@ -93,7 +94,7 @@ export async function undoSubmitted(m: { applicationId: string; eventId: string;
     else await apiFetch(`/applications/${m.applicationId}/events/${m.eventId}/undo`, { intent: 'user', method: 'POST', json: {} });
     return { ok: true };
   } catch (err) {
-    return { ok: false, message: err instanceof ApiError ? err.message : 'Couldn’t reach Job Tracker' };
+    return { ok: false, message: err instanceof ApiError ? err.message : `Couldn’t reach ${PRODUCT_NAME}` };
   }
 }
 

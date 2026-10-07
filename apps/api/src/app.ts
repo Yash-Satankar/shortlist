@@ -1,3 +1,4 @@
+import pkg from '../package.json' with { type: 'json' };
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -60,6 +61,9 @@ export function createApp({ db }: { db: Db }) {
 
   api.get('/health', async (_req, res) => {
     await db.execute(sql`select 1`);
+    // Readable from any origin (it says only "ok"): the docs site's "Try the demo" page waits on it
+    // while a free-hosted demo wakes up.
+    res.set('Access-Control-Allow-Origin', '*');
     res.json({ ok: true });
   });
 
@@ -67,7 +71,7 @@ export function createApp({ db }: { db: Db }) {
   api.get('/config', (_req, res) => {
     // Public: what the signed-out screens need (sign-up, first-run setup, password reset).
     void userCount(db).then(
-      (n) => res.json({ sessionTtlDays: e.SESSION_TTL_DAYS, signupMode: signupMode(), needsSetup: n === 0 && !e.DEMO_MODE, emailEnabled: mailEnabled(), ...(e.DEMO_MODE ? { demo: true } : {}) }),
+      (n) => res.json({ sessionTtlDays: e.SESSION_TTL_DAYS, signupMode: signupMode(), needsSetup: n === 0 && !e.DEMO_MODE, emailEnabled: mailEnabled(), version: pkg.version, sourceUrl: e.SOURCE_CODE_URL, ...(e.DEMO_MODE ? { demo: true } : {}) }),
       () => res.status(500).json({ error: { code: 'internal', message: 'Something went wrong' } }),
     );
   });

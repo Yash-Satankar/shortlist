@@ -1,6 +1,6 @@
 # Self-hosting
 
-Run your own Job Tracker: your data stays on your server, and you bring your own AI keys (or none).
+Run your own ShortList: your data stays on your server, and you bring your own AI keys (or none).
 
 ## What you need
 
@@ -11,7 +11,7 @@ Run your own Job Tracker: your data stays on your server, and you bring your own
 
 ```bash
 git clone https://github.com/Yash-Satankar/shortlist.git
-cd job-tracker
+cd shortlist
 cp .env.example .env
 ```
 

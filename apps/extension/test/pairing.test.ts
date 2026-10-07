@@ -20,6 +20,7 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
   for (const k of Object.keys(store)) delete store[k];
+  store.apiOrigin = 'https://tracker.example.com'; // the address you entered in the popup
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -30,10 +31,11 @@ const json = (status: number, body: unknown) => new Response(status === 204 ? nu
 describe('apiFetch', () => {
   it('sends the bearer token and the declared intent on every request', async () => {
     store.token = TOKEN;
+    store.apiOrigin = 'https://tracker.example.com';
     fetchMock.mockResolvedValue(json(200, { ok: true }));
     await apiFetch('/applications', { intent: 'auto', method: 'POST', json: { a: 1 } });
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe('https://your-shortlist.example.com/api/applications');
+    expect(url).toBe('https://tracker.example.com/api/applications');
     expect(init.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}`, 'X-JT-Intent': 'auto', 'Content-Type': 'application/json' });
   });
 

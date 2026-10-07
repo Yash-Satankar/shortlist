@@ -307,6 +307,6 @@ describe('public config', () => {
   it('exposes only what signed-out screens need (no secrets, no user data), without signing in', async () => {
     const res = await request(app).get('/api/config');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ sessionTtlDays: 30, signupMode: 'closed', needsSetup: false, emailEnabled: false });
+    expect(res.body).toEqual({ sessionTtlDays: 30, signupMode: 'closed', needsSetup: false, emailEnabled: false, version: expect.stringMatching(/^\d+\.\d+\.\d+$/), sourceUrl: 'https://github.com/Yash-Satankar/shortlist' });
   });
 });

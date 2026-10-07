@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '@jt/shared';
 import { elementToText } from '../adapters/dom';
 import { extractJob } from '../adapters/extract';
 import { readApplicationsList } from '../adapters/lists';
@@ -146,22 +147,22 @@ function notify(reply: SubmittedReply) {
     label: 'Undo',
     run: async () => {
       const r = await send({ type: 'undo-submitted', applicationId: reply.applicationId!, eventId: reply.eventId!, created });
-      if (!r?.ok) throw new Error(r?.message ?? 'Couldn’t undo. Open Job Tracker to change it.');
-      return created ? 'Removed from Job Tracker' : 'Undone';
+      if (!r?.ok) throw new Error(r?.message ?? `Couldn’t undo. Open ${PRODUCT_NAME} to change it.`);
+      return created ? `Removed from ${PRODUCT_NAME}` : 'Undone';
     },
   });
   switch (reply.outcome) {
     case 'applied':
-      return showToast({ message: 'Marked Applied in Job Tracker', action: undo(false) });
+      return showToast({ message: `Marked Applied in ${PRODUCT_NAME}`, action: undo(false) });
     case 'created':
-      return showToast({ message: 'Saved to Job Tracker as Applied', action: undo(true) });
+      return showToast({ message: `Saved to ${PRODUCT_NAME} as Applied`, action: undo(true) });
     case 'review':
       return showToast({
-        message: 'Submission noticed. Confirm it in Job Tracker’s Follow-ups.',
+        message: `Submission noticed. Confirm it in ${PRODUCT_NAME}’s Follow-ups.`,
         action: { label: 'Open', run: async () => (await send({ type: 'open-app', path: '/follow-ups' }), 'Opened Follow-ups') },
       });
     case 'needs_details':
-      return showToast({ message: 'Applied here? Open Job Status Tracker from the toolbar to save this job.' });
+      return showToast({ message: `Applied here? Open ${PRODUCT_NAME} from the toolbar to save this job.` });
     default:
       return; // already recorded, nothing changed, extension off, or an error: stay quiet
   }

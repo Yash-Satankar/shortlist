@@ -2,20 +2,23 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { PRODUCT_DESCRIPTION, PRODUCT_NAME } from '../../packages/shared/src/brand';
 
 // In dev, Vite proxies /api to Express so the browser sees one origin, the same as production.
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    // The product name comes from one constant (packages/shared/src/brand.ts).
+    { name: 'product-name', transformIndexHtml: (html: string) => html.replaceAll('%PRODUCT_NAME%', PRODUCT_NAME) },
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null, // registered from main.tsx
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Job Tracker',
-        short_name: 'Jobs',
-        description: 'Track job applications, follow-ups and screening answers',
+        name: PRODUCT_NAME,
+        short_name: PRODUCT_NAME,
+        description: PRODUCT_DESCRIPTION,
         start_url: '/',
         scope: '/',
         display: 'standalone',

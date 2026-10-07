@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Job Tracker design tokens (source: the "Job Tracker Redesign" canvas).
+   ShortList design tokens (source: the original "Job Tracker Redesign" canvas).
    Light lives on :root. Dark applies via [data-theme="dark"] on <html>, which
    public/theme-init.js sets from the saved preference (System follows the OS).
    ========================================================================== */
