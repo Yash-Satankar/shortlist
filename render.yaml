@@ -2,7 +2,7 @@
 # See docs/demo.md. Secrets (DATABASE_URL, ENCRYPTION_KEYS) are entered in the dashboard.
 services:
   - type: web
-    name: shortlist-demo
+    name: shortlist-app-demo
     runtime: docker
     plan: free
     region: singapore
@@ -23,7 +23,8 @@ services:
       - key: SIGNUP_MODE
         value: closed
       - key: TRUST_PROXY
-        value: "1"
+        # Cloudflare in front of Render's own balancer: client → Cloudflare → Render → app.
+        value: "3"
       - key: FEATURE_EMAIL_INTAKE
         value: "false"
       - key: DATABASE_POOL_MAX

@@ -15,7 +15,7 @@ That's all on Neon. The app creates its tables on first start, and Neon suspends
 
 1. Sign up at [render.com](https://render.com) with GitHub, and allow it access to the `shortlist` repository.
 2. **New → Web Service** → pick the `shortlist` repo. Then:
-   - **Name:** `shortlist-demo` (this gives `https://shortlist-demo.onrender.com`; if the name is taken, use the address Render shows you everywhere below)
+   - **Name:** `shortlist-app-demo` (the public demo runs at `https://shortlist-app-demo.onrender.com`; with another name, use the address Render shows you everywhere below)
    - **Region:** Singapore · **Branch:** `main` · **Language/Runtime:** Docker (detected from the Dockerfile)
    - **Instance type:** Free
 3. **Advanced → Docker Command:**
@@ -32,10 +32,10 @@ That's all on Neon. The app creates its tables on first start, and Neon suspends
    | `SERVE_WEB` | `true` |
    | `DEMO_MODE` | `true` |
    | `SIGNUP_MODE` | `closed` |
-   | `TRUST_PROXY` | `1` |
+   | `TRUST_PROXY` | `3` (requests pass Cloudflare, then Render's balancer) |
    | `FEATURE_EMAIL_INTAKE` | `false` |
    | `DATABASE_POOL_MAX` | `5` |
-   | `APP_ORIGIN` | `https://shortlist-demo.onrender.com` |
+   | `APP_ORIGIN` | `https://shortlist-app-demo.onrender.com` |
    | `DATABASE_URL` | the Neon connection string from step 1 |
    | `ENCRYPTION_KEYS` | `demo:<a new key>`; generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Never reuse another instance's key. |
    | `ENCRYPTION_ACTIVE_KEY_ID` | `demo` |
@@ -49,8 +49,8 @@ The seed refuses to run on a database holding any non-demo account, so pointing 
 
 ## 3. Check it
 
-- `https://shortlist-demo.onrender.com/api/config` → `"demo": true`
-- `https://shortlist-demo.onrender.com/api/health/request` → `"protocol": "https"`, and `ip` is your own public IP (if it isn't, adjust `TRUST_PROXY`)
+- `https://shortlist-app-demo.onrender.com/api/config` → `"demo": true`
+- `https://shortlist-app-demo.onrender.com/api/health/request` → `"protocol": "https"`, and `ip` is your own public IP (if it shows a `10.x` or Cloudflare address, adjust `TRUST_PROXY`)
 - The page shows **Try the demo**, and inside, a "Demo · fictional data, read-only" bar.
 - Changing a status shows "This is a read-only demo…".
 - After 15+ minutes without visits, the website's demo link shows "Waking up the demo…" and then opens it.
