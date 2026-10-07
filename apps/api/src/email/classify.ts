@@ -29,7 +29,7 @@ export interface Classification {
 /** Applicant-tracking systems and job portals that send on behalf of employers. */
 const ATS_DOMAINS = [
   'greenhouse.io', 'greenhouse-mail.io', 'lever.co', 'hire.lever.co', 'myworkday.com', 'workday.com', 'myworkdayjobs.com',
-  'ashbyhq.com', 'smartrecruiters.com', 'icims.com', 'successfactors.com', 'jobvite.com', 'workablemail.com', 'workable.com',
+  'ashbyhq.com', 'smartrecruiters.com', 'icims.com', 'successfactors.com', 'successfactors.eu', 'sapsf.com', 'sapsf.eu', 'jobvite.com', 'workablemail.com', 'workable.com',
   'linkedin.com', 'naukri.com', 'instahyre.com', 'wellfound.com', 'hirist.tech', 'iimjobs.com', 'zohorecruit.com', 'zoho.com',
 ];
 
@@ -94,6 +94,7 @@ const RULES: Rule[] = [
         /\bapplication (?:has been )?received\b/i,
         /\byour application (?:was|has been) (?:sent|submitted)\b/i,
         /\bapplication confirmation\b/i,
+        /\b(?:you have )?successfully applied\b/i,
       ]),
   },
 ];

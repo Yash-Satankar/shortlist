@@ -11,6 +11,7 @@ import { LlmError } from '../llm/providers';
 import { runLlm } from '../llm/service';
 import { CATEGORY_STATUS, classifyEmail, isAtsDomain, type Classification, type EmailCategory } from './classify';
 import { domainOf, type RawEmail } from './sources';
+import { createFromConfirmation } from './unmatched';
 
 export const EMAIL_EVIDENCE = 'email';
 
@@ -98,7 +99,7 @@ export function emailConfidence(c: Classification, by: 'rules' | 'ai', matchedBy
 
 type Match = { applicationId: string; status: ApplicationStatus; by: 'url' | 'company_role' | 'company' };
 
-async function matchApplication(db: Db, userId: string, raw: RawEmail): Promise<Match | null> {
+export async function matchApplication(db: Db, userId: string, raw: RawEmail): Promise<Match | null> {
   // 1) A job link in the email (most reliable).
   for (const link of raw.links) {
     const canonical = canonicalJobUrl(link);
@@ -201,7 +202,13 @@ export async function ingestEmail(db: Db, userId: string, source: 'imap' | 'inbo
     .onConflictDoNothing()
     .returning({ id: emails.id });
   if (!row) return { outcome: 'duplicate', emailId: null, category: c.category, applicationId: null };
-  if (!match) return { outcome: 'unmatched', emailId: row.id, category: c.category, applicationId: null };
+  if (!match || (match.by === 'company' && c.category === 'received')) {
+    // A portal's confirmation for a job you don't track yet: create it (or find it by its link).
+    // Matched by company alone, a confirmation is more likely a new role there than the one you have.
+    const created = await createFromConfirmation(db, userId, row.id, raw, c, by, fromDomain);
+    if (created) return { outcome: created.outcome, emailId: created.emailId, category: created.category, applicationId: created.applicationId };
+    if (!match) return { outcome: 'unmatched', emailId: row.id, category: c.category, applicationId: null };
+  }
 
   return proposeFromEmail(db, userId, row.id, match.applicationId, c, emailConfidence(c, by, match.by), raw.date, fromDomain);
 }

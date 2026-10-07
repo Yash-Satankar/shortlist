@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { Router, type RequestHandler } from 'express';
 import { env } from '../config/env';
 import type { Db } from '../db/client';
-import { users } from '../db/schema';
+import { dataMigrations, users } from '../db/schema';
 import { forbidden } from '../lib/http';
 import { recentErrors } from '../lib/error-log';
 import { parse } from '../lib/http';
@@ -25,6 +25,11 @@ export function adminRouter(db: Db) {
   /** Recent server errors (sanitized), newest first. */
   router.get('/errors', async (_req, res) => {
     res.set('Cache-Control', 'no-store').json({ items: await recentErrors(db), retentionDays: env().ERROR_LOG_RETENTION_DAYS });
+  });
+
+  /** Data migrations that ran on deploy, with their summaries (counts only, never values). */
+  router.get('/data-migrations', async (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({ items: await db.select().from(dataMigrations).orderBy(desc(dataMigrations.appliedAt)) });
   });
 
   /** Invite links (SIGNUP_MODE=invite). The code is shown once, when created. */

@@ -142,6 +142,14 @@ const envSchema = z
      * Score of an email that the rules classified, sent by a known job portal / ATS, and matched
      * by the job's own link (at/above the threshold → forward moves apply, undoable).
      */
+    /**
+     * A job portal's "application received/sent" email for a job you don't track creates the
+     * application (Saved → Applied through the rules, undoable) when its company and role were read
+     * with at least this extraction confidence (0.9 one phrase, 0.85 company from the subject,
+     * 0.75 company only from the sender's name).
+     */
+    EMAIL_AUTOCREATE_FROM_CONFIRMATIONS: bool.default(true),
+    EMAIL_AUTOCREATE_MIN_EXTRACTION: z.coerce.number().min(0).max(1).default(0.8),
     EMAIL_ATS_LINK_MATCH_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.92),
     /** Highest score the AI fallback can give an email. */
     EMAIL_AI_MAX_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.85),

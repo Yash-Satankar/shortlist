@@ -1,6 +1,7 @@
 import { formatLpa, parseLpa, parseRelocation } from '@jt/shared';
 import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { Db, Tx } from './client';
+import { reprocessUnmatched } from '../email/unmatched';
 import { applications, dataMigrations, profiles } from './schema';
 
 /**
@@ -72,7 +73,21 @@ const expectedCtcToLpa: DataMigration = {
   },
 };
 
-export const DATA_MIGRATIONS: DataMigration[] = [relocationSplit, expectedCtcToLpa];
+/**
+ * 0018: emails left in "Emails to match" before applications could be created from portal
+ * confirmations: match them again, or create the application from a confident confirmation.
+ * Counts only in the log and summary.
+ */
+const reprocessUnmatchedEmails: DataMigration = {
+  id: '0018-reprocess-unmatched-emails',
+  async run(tx, log) {
+    const r = await reprocessUnmatched(tx as unknown as Db);
+    log(`  ${r.checked} unmatched email(s): ${r.created} created an application, ${r.matched} matched one, ${r.stillUnmatched} still to match`);
+    return `${r.checked} checked, ${r.created} created, ${r.matched} matched, ${r.stillUnmatched} still unmatched`;
+  },
+};
+
+export const DATA_MIGRATIONS: DataMigration[] = [relocationSplit, expectedCtcToLpa, reprocessUnmatchedEmails];
 
 export async function runDataMigrations(db: Db, log: (line: string) => void, migrations = DATA_MIGRATIONS): Promise<number> {
   let applied = 0;

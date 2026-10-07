@@ -23,4 +23,4 @@ pnpm build && pnpm e2e                     # end-to-end, against the production 
 - Automatic status changes go through the shared rules (`packages/shared/src/status.ts`); never set a status directly from a new source.
 - Test data is fictional. Never commit real applications, emails, names, salaries or captures of real pages without sanitizing them.
 
-By contributing you agree your work is released under the [MIT license](LICENSE).
+The license will be set before the first public release.

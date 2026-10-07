@@ -409,7 +409,8 @@ export const emails = pgTable(
     /** applied | review | unmatched | ignored | other */
     outcome: text('outcome').notNull(),
     applicationId: uuid('application_id').references(() => applications.id, { onDelete: 'set null' }),
-    matchedBy: text('matched_by').$type<'url' | 'company_role' | 'company' | null>(),
+    /** How it found its application; 'created' = the application was created from this email. */
+    matchedBy: text('matched_by').$type<'url' | 'company_role' | 'company' | 'created' | null>(),
     eventId: uuid('event_id'),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdAt: createdAt(),

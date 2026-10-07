@@ -12,6 +12,7 @@ import { jobsRunning, runNow } from '../jobs/runner';
 import { forbidden, HttpError, notFound, parse } from '../lib/http';
 import { logger } from '../logger';
 import { ingestEmail, proposeFromEmail } from './ingest';
+import { createFromUnmatched, suggestionFor } from './unmatched';
 import { imapConfig, imapOwnerId, mailboxHealth, pollImap } from './poll';
 import { postmarkAdapter } from './sources';
 
@@ -69,12 +70,30 @@ export function emailsRouter(db: Db) {
 
   router.get('/unmatched', async (req, res) => {
     const rows = await db
-      .select({ id: emails.id, from: emails.fromEnc, subject: emails.subjectEnc, receivedAt: emails.receivedAt, category: emails.category, confidence: emails.confidence })
+      .select()
       .from(emails)
       .where(and(eq(emails.userId, req.auth!.userId), eq(emails.outcome, 'unmatched')))
       .orderBy(desc(emails.receivedAt))
       .limit(100);
-    res.set('Cache-Control', 'no-store').json({ items: rows });
+    // Each card can create a new application, pre-filled from what the email says.
+    const items = rows.map((r) => ({ id: r.id, from: r.fromEnc, subject: r.subjectEnc, receivedAt: r.receivedAt, category: r.category, confidence: r.confidence, suggestion: suggestionFor(r) }));
+    res.set('Cache-Control', 'no-store').json({ items });
+  });
+
+  router.post('/:id/create', async (req, res) => {
+    resolveSource(req, USER_ONLY);
+    const id = parse(z.uuid(), req.params.id);
+    const input = parse(
+      z.object({
+        companyName: z.string().trim().min(1).max(200),
+        roleTitle: z.string().trim().min(1).max(300),
+        location: z.string().trim().max(200).nullish(),
+        jobUrl: z.url({ protocol: /^https?$/ }).max(2000).nullish().or(z.literal('').transform(() => null)),
+        confirmDuplicate: z.boolean().optional(),
+      }),
+      req.body,
+    );
+    res.status(201).json(await createFromUnmatched(db, req.auth!.userId, id, input));
   });
 
   router.post('/:id/assign', async (req, res) => {

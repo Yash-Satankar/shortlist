@@ -11,6 +11,10 @@ import { applications, companies } from '../db/schema';
 import { previewEmail } from '../email/ingest';
 import { imapConfig, imapOwnerId } from '../email/poll';
 import { fetchImap } from '../email/sources';
+import { env } from '../config/env';
+import { findDuplicateMatches } from '../applications/service';
+import { isAtsDomain } from '../email/classify';
+import { extractJob } from '../email/extract';
 
 const days = Number(process.argv[process.argv.indexOf('--days') + 1]) || undefined;
 const cfg = imapConfig();
@@ -51,7 +55,24 @@ try {
     const verb = p.proposal!.disposition === 'applied' ? 'WOULD CHANGE' : p.proposal!.disposition === 'pending_review' ? 'would ask (review)' : 'no change';
     console.log(`  ${verb.padEnd(18)} ${label(p.match!.applicationId)}: ${p.match!.current} → ${p.proposal!.to} (${p.category}, ${p.proposal!.confidence.toFixed(2)}, matched by ${p.match!.by}, from ${p.fromDomain}; ${p.proposal!.reason})`);
   }
-  for (const p of job.filter((x) => !x.match)) console.log(`  unmatched          ${p.category} from ${p.fromDomain} (would wait in Emails to match)`);
+  // Unmatched (or matched only by company, for a confirmation): what the new-application logic would do.
+  const e = env();
+  for (const [i, p] of previews.entries()) {
+    if (p.category === 'other' || (p.match && !(p.match.by === 'company' && p.category === 'received'))) continue;
+    const x = extractJob(emails[i]!);
+    const what = x.companyName || x.roleTitle ? `${x.companyName ?? '?'} · ${x.roleTitle ?? '?'}` : 'nothing readable';
+    const eligible = e.EMAIL_AUTOCREATE_FROM_CONFIRMATIONS && p.category === 'received' && isAtsDomain(p.fromDomain) && x.portal && x.companyName && x.roleTitle && x.confidence >= e.EMAIL_AUTOCREATE_MIN_EXTRACTION;
+    if (!eligible) {
+      console.log(`  would wait          ${p.category} from ${p.fromDomain}: "Create new" pre-filled with ${what} (extraction ${x.confidence.toFixed(2)})`);
+      continue;
+    }
+    const dups = await findDuplicateMatches(db, owner, { companyName: x.companyName!, roleTitle: x.roleTitle!, jobUrl: x.jobUrl });
+    const exact = dups.find((d) => d.level === 'exact');
+    const likely = dups.find((d) => d.level === 'likely');
+    if (exact) console.log(`  would match (link)  ${what} → ${label(exact.id)}`);
+    else if (likely) console.log(`  would wait          ${what}: might be ${likely.companyName} · ${likely.roleTitle} (you decide)`);
+    else console.log(`  WOULD CREATE        ${what} as Applied on ${emails[i]!.date.toISOString().slice(0, 10)}${x.location ? `, ${x.location}` : ''}, job link ${x.jobUrl ? 'saved' : 'not in the email'} (from ${p.fromDomain}, extraction ${x.confidence.toFixed(2)})`);
+  }
 } catch (err) {
   const msg = (err instanceof Error ? err.message : String(err)).split(cfg.password).join('[redacted]');
   console.error(`Error: ${msg}`);

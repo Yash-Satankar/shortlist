@@ -1,7 +1,7 @@
 import { PORTAL_SITE_LABELS, type ApplicationStatus, type FollowUpReason } from '@jt/shared';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { useApplications, useAssignEmail, useCheckEmail, useDismissEmail, useEmailStatus, useFeature, useFollowUps, usePortalPending, usePortalReview, useQuickUpdate, useReviewAny, useReviews, useStats, useUnmatchedEmails, type PortalProposal, type UnmatchedEmail } from '../api/hooks';
+import { useApplications, useAssignEmail, useCheckEmail, useCreateFromEmail, useDismissEmail, useEmailStatus, useFeature, useFollowUps, usePortalPending, usePortalReview, useQuickUpdate, useReviewAny, useReviews, useStats, useUnmatchedEmails, type NewFromEmail, type PortalProposal, type UnmatchedEmail } from '../api/hooks';
 import type { FollowUpItem, FollowUps } from '../api/types';
 import { Icon, type IconName } from '../components/Icon';
 import { ScreenHeader } from '../components/Layout';
@@ -447,16 +447,25 @@ const EMAIL_STATUS: Record<UnmatchedEmail['category'], ApplicationStatus> = {
  * Job emails the tracker couldn't tie to one application (e.g. two roles at the same company).
  * Picking the application proposes the change through the normal rules; nothing changes before.
  */
+const NEW = '__new';
+
 function EmailsToMatch({ items, onError }: { items: UnmatchedEmail[]; onError: (err: unknown) => void }) {
   const apps = useApplications(useMemo(() => new URLSearchParams({ archived: 'false' }), []));
   const assign = useAssignEmail();
+  const createNew = useCreateFromEmail();
   const dismiss = useDismissEmail();
   const toast = useToast();
   const [choice, setChoice] = useState<Record<string, string>>({});
+  // "Create new application": pre-filled from the email, edited here.
+  const [drafts, setDrafts] = useState<Record<string, NewFromEmail>>({});
   const options = useMemo(
     () => [...(apps.data?.items ?? [])].sort((a, b) => a.companyName.localeCompare(b.companyName) || a.roleTitle.localeCompare(b.roleTitle)),
     [apps.data],
   );
+  const draftFor = (m: UnmatchedEmail): NewFromEmail =>
+    drafts[m.id] ?? { companyName: m.suggestion.companyName ?? '', roleTitle: m.suggestion.roleTitle ?? '', location: m.suggestion.location ?? '', jobUrl: m.suggestion.jobUrl ?? '' };
+  const edit = (m: UnmatchedEmail, patch: Partial<NewFromEmail>) => setDrafts((d) => ({ ...d, [m.id]: { ...draftFor(m), ...patch } }));
+  const done = (r: { outcome: string }) => toast({ message: r.outcome === 'applied' ? 'Status updated' : r.outcome === 'review' ? 'Sent to review' : 'Matched', tone: 'info' });
 
   return (
     <section className="pt-1">
@@ -464,49 +473,79 @@ function EmailsToMatch({ items, onError }: { items: UnmatchedEmail[]; onError: (
         Emails to match
       </SectionLabel>
       <div className="flex flex-col gap-2.5 px-4">
-        {items.map((m) => (
-          <article key={m.id} className="card pt-3.5 pb-3">
-            <div className="truncate text-[15px] leading-5 font-semibold">{m.subject}</div>
-            <div className="ev-time mt-1 truncate">
-              {m.from} · {formatEventTime(m.receivedAt)}
-            </div>
-            <div className="mt-2.5 flex items-center gap-2">
-              <span className="src">email says</span>
-              <Icon name="arrowRight" size="sm" className="text-ink-3" />
-              <StatusPill status={EMAIL_STATUS[m.category]} />
-            </div>
-            <label className="field mt-3">
-              <span className="lbl">Which application is this about?</span>
-              <select className="inp" value={choice[m.id] ?? ''} onChange={(e) => setChoice((c) => ({ ...c, [m.id]: e.target.value }))}>
-                <option value="">Choose…</option>
-                {options.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.companyName} · {a.roleTitle}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="mt-3 flex gap-2">
-              <Button
-                variant="ink"
-                className="flex-1"
-                disabled={!choice[m.id] || assign.isPending}
-                onClick={() =>
-                  assign.mutate(
-                    { emailId: m.id, applicationId: choice[m.id]! },
-                    { onSuccess: (r) => toast({ message: r.outcome === 'applied' ? 'Status updated' : r.outcome === 'review' ? 'Sent to review' : 'Matched', tone: 'info' }), onError },
-                  )
-                }
-              >
-                <Icon name="check" />
-                Assign
-              </Button>
-              <Button className="flex-1" disabled={dismiss.isPending} onClick={() => dismiss.mutate(m.id, { onError })}>
-                Dismiss
-              </Button>
-            </div>
-          </article>
-        ))}
+        {items.map((m) => {
+          const isNew = choice[m.id] === NEW;
+          const d = draftFor(m);
+          const canCreate = Boolean(d.companyName.trim() && d.roleTitle.trim());
+          return (
+            <article key={m.id} className="card pt-3.5 pb-3">
+              <div className="truncate text-[15px] leading-5 font-semibold">{m.subject}</div>
+              <div className="ev-time mt-1 truncate">
+                {m.from} · {formatEventTime(m.receivedAt)}
+              </div>
+              <div className="mt-2.5 flex items-center gap-2">
+                <span className="src">email says</span>
+                <Icon name="arrowRight" size="sm" className="text-ink-3" />
+                <StatusPill status={EMAIL_STATUS[m.category]} />
+              </div>
+              <label className="field mt-3">
+                <span className="lbl">Which application is this about?</span>
+                <select className="inp" value={choice[m.id] ?? ''} onChange={(e) => setChoice((c) => ({ ...c, [m.id]: e.target.value }))}>
+                  <option value="">Choose…</option>
+                  <option value={NEW}>＋ Create new application</option>
+                  {options.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.companyName} · {a.roleTitle}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {isNew && (
+                <div className="mt-3 flex flex-col gap-3">
+                  <label className="field">
+                    <span className="lbl">Company</span>
+                    <input className="inp" value={d.companyName} onChange={(e) => edit(m, { companyName: e.target.value })} />
+                  </label>
+                  <label className="field">
+                    <span className="lbl">Role</span>
+                    <input className="inp" value={d.roleTitle} onChange={(e) => edit(m, { roleTitle: e.target.value })} />
+                  </label>
+                  <label className="field">
+                    <span className="lbl">
+                      Location<span className="opt">optional</span>
+                    </span>
+                    <input className="inp" value={d.location ?? ''} onChange={(e) => edit(m, { location: e.target.value })} />
+                  </label>
+                  <label className="field">
+                    <span className="lbl">
+                      Job link<span className="opt">optional</span>
+                    </span>
+                    <input className="inp" type="url" value={d.jobUrl ?? ''} onChange={(e) => edit(m, { jobUrl: e.target.value })} placeholder="https://…" />
+                  </label>
+                  <p className="hint m-0">
+                    {m.suggestion.portal ? `Read from the ${m.suggestion.portal} email. ` : ''}Check it before creating. The job description isn’t in the email, so it won’t be saved.
+                  </p>
+                </div>
+              )}
+              <div className="mt-3 flex gap-2">
+                {isNew ? (
+                  <Button variant="ink" className="flex-1" disabled={!canCreate || createNew.isPending} onClick={() => createNew.mutate({ emailId: m.id, ...d }, { onSuccess: done, onError })}>
+                    <Icon name="plus" />
+                    Create
+                  </Button>
+                ) : (
+                  <Button variant="ink" className="flex-1" disabled={!choice[m.id] || assign.isPending} onClick={() => assign.mutate({ emailId: m.id, applicationId: choice[m.id]! }, { onSuccess: done, onError })}>
+                    <Icon name="check" />
+                    Assign
+                  </Button>
+                )}
+                <Button className="flex-1" disabled={dismiss.isPending} onClick={() => dismiss.mutate(m.id, { onError })}>
+                  Dismiss
+                </Button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

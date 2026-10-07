@@ -471,6 +471,15 @@ export interface UnmatchedEmail {
   receivedAt: string;
   category: 'received' | 'viewed' | 'assessment' | 'interview' | 'rejected' | 'offer';
   confidence: number;
+  /** What the email says about the job, to pre-fill "Create new application" (any field may be missing). */
+  suggestion: { companyName: string | null; roleTitle: string | null; location: string | null; jobUrl: string | null; appliedOn: string; portal: string | null };
+}
+
+export interface NewFromEmail {
+  companyName: string;
+  roleTitle: string;
+  location?: string | null;
+  jobUrl?: string | null;
 }
 
 export const useEmailStatus = (enabled = true) => useQuery({ queryKey: ['email-status'], queryFn: () => api<EmailStatus>('/emails/status'), enabled, refetchInterval: 60_000 });
@@ -494,6 +503,8 @@ function useEmailMutation<V, R>(fn: (v: V) => Promise<R>) {
 export const useCheckEmail = () => useEmailMutation(() => api<{ queued: boolean }>('/emails/check', { method: 'POST' }));
 export const useAssignEmail = () =>
   useEmailMutation((v: { emailId: string; applicationId: string }) => api<{ outcome: string }>(`/emails/${v.emailId}/assign`, { method: 'POST', json: { applicationId: v.applicationId } }));
+export const useCreateFromEmail = () =>
+  useEmailMutation((v: { emailId: string } & NewFromEmail) => api<{ outcome: string; applicationId: string }>(`/emails/${v.emailId}/create`, { method: 'POST', json: { companyName: v.companyName, roleTitle: v.roleTitle, location: v.location || null, jobUrl: v.jobUrl || null } }));
 export const useDismissEmail = () => useEmailMutation((emailId: string) => api<void>(`/emails/${emailId}/dismiss`, { method: 'POST' }));
 export const useRegenerateInbound = () => useEmailMutation(() => api<{ address: string }>('/emails/inbound-address/regenerate', { method: 'POST' }));
 

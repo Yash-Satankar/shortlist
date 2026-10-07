@@ -98,6 +98,27 @@ export function canonicalJobUrl(input: string | null | undefined): CanonicalJobU
     if (id) return { canonical: `https://www.naukri.com${path}`, externalId: id, source: 'naukri' };
   }
 
+  // SmartRecruiters: jobs.smartrecruiters.com/<Company>/<id>[-slug]
+  if (host === 'jobs.smartrecruiters.com' || host === 'careers.smartrecruiters.com') {
+    const m = /^\/([^/]+)\/(\d{6,})/.exec(path);
+    if (m) return { canonical: `https://jobs.smartrecruiters.com/${m[1]}/${m[2]}`, externalId: m[2]!, source: 'company_portal' };
+  }
+
+  // Ashby: jobs.ashbyhq.com/<company>/<uuid>[/application]
+  if (host === 'jobs.ashbyhq.com') {
+    const m = /^\/([^/]+)\/([0-9a-f-]{36})/i.exec(path);
+    if (m) return { canonical: `https://jobs.ashbyhq.com/${m[1]!.toLowerCase()}/${m[2]!.toLowerCase()}`, externalId: m[2]!.toLowerCase(), source: 'company_portal' };
+  }
+
+  // SAP SuccessFactors: career<N>.successfactors.com/...?career_job_req_id=<id>&company=<co> (also .eu / sapsf.com)
+  if (/(^|\.)successfactors\.(com|eu)$|(^|\.)sapsf\.(com|eu)$/.test(host)) {
+    const id = url.searchParams.get('career_job_req_id') ?? url.searchParams.get('jobId');
+    const company = url.searchParams.get('company');
+    if (id && /^\d+$/.test(id)) {
+      return { canonical: `https://${host}/career?${company ? `company=${encodeURIComponent(company)}&` : ''}career_job_req_id=${id}`, externalId: id, source: 'company_portal' };
+    }
+  }
+
   // Company career sites embedding Greenhouse (?gh_jid=) keep that id as the identity.
   const ghJid = url.searchParams.get('gh_jid');
 

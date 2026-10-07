@@ -2,7 +2,6 @@
   "name": "job-tracker",
   "private": true,
   "version": "1.0.0",
-  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.34.6",
   "engines": {

@@ -1,7 +1,6 @@
 # Job Tracker
 
 [![CI](https://github.com/Yash-Satankar/shortlist/actions/workflows/ci.yml/badge.svg)](https://github.com/Yash-Satankar/shortlist/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **A job-application tracker that keeps itself up to date.** Save a job from your phone's share sheet or a browser extension. Your applications then update from job emails and job portals, under rules you can always see and undo. Before each interview you get a prep pack, and you can ask questions about your whole search. Open source and self-hostable; AI is optional and uses your own key.
 
@@ -133,4 +132,4 @@ CI ([workflow](.github/workflows/ci.yml)) runs all of it on every push, builds t
 
 ## License
 
-[MIT](LICENSE)
+To be decided before the first public release.
