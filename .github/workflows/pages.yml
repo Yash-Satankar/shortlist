@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   build:
+    # Only the public repository publishes the website (a private copy or fork skips it).
+    if: github.repository == 'Yash-Satankar/shortlist'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
