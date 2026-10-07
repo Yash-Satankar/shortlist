@@ -1,0 +1,9 @@
+# gitleaks: the default rules, plus one known false positive (kept here, not by commit hash,
+# so it survives history rewrites).
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Empty key placeholders on one line in an early .env.example (no key value)"
+paths = ['''^\.env\.example$''']
+regexes = ['''GROQ_API_KEY=\s+TOGETHER_API_KEY=''']
