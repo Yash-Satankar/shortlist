@@ -55,7 +55,8 @@ async function hasUsableAiKey(db: DbOrTx, userId: string): Promise<boolean> {
 
 export async function featureContext(db: DbOrTx, userId: string): Promise<FeatureContext> {
   const [row] = await db.select({ settings: users.settings }).from(users).where(eq(users.id, userId));
-  return { instance: offeredMap(), user: row?.settings?.features ?? {}, hasAiKey: await hasUsableAiKey(db, userId) };
+  // The demo shows its AI features without a key (they're served from pre-generated content).
+  return { instance: offeredMap(), user: row?.settings?.features ?? {}, hasAiKey: env().DEMO_MODE || (await hasUsableAiKey(db, userId)) };
 }
 
 export async function userFeatureStates(db: DbOrTx, userId: string): Promise<Record<Feature, FeatureState>> {

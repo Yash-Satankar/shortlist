@@ -90,6 +90,14 @@ const envSchema = z
     /** Score of a portal change you accepted in review (at/above the threshold → it applies). */
     PORTAL_CONFIRMED_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.9),
 
+    /**
+     * Public demo instance: fictional data (pnpm demo:seed, refreshed nightly), entered with "Try
+     * the demo", read-only, and AI features served from pre-generated content (no provider calls).
+     * Run it on its own database: the seed refuses a database holding any other account.
+     */
+    DEMO_MODE: bool.default(false),
+    DEMO_USER_EMAIL: z.string().email().default('demo@example.com'),
+    DEMO_REFRESH_CRON: z.string().default('41 2 * * *'),
     /** Server errors kept for the admin's "Recent errors" view (Settings), in days. */
     ERROR_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
     /** Background jobs (pg-boss, schema "pgboss" in the same database). Off in tests. */

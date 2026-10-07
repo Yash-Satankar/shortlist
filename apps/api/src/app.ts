@@ -25,6 +25,7 @@ import { accountRouter } from './accounts/routes';
 import { signupMode, userCount } from './accounts/service';
 import { mailEnabled } from './lib/mailer';
 import { expensiveLimiter } from './lib/rate-limits';
+import { demoWriteGuard } from './demo/runtime';
 import { recordError, routePattern } from './lib/error-log';
 import { portalRouter } from './portal/routes';
 import { privacyPage } from './privacy';
@@ -66,7 +67,7 @@ export function createApp({ db }: { db: Db }) {
   api.get('/config', (_req, res) => {
     // Public: what the signed-out screens need (sign-up, first-run setup, password reset).
     void userCount(db).then(
-      (n) => res.json({ sessionTtlDays: e.SESSION_TTL_DAYS, signupMode: signupMode(), needsSetup: n === 0, emailEnabled: mailEnabled() }),
+      (n) => res.json({ sessionTtlDays: e.SESSION_TTL_DAYS, signupMode: signupMode(), needsSetup: n === 0 && !e.DEMO_MODE, emailEnabled: mailEnabled(), ...(e.DEMO_MODE ? { demo: true } : {}) }),
       () => res.status(500).json({ error: { code: 'internal', message: 'Something went wrong' } }),
     );
   });
@@ -102,6 +103,8 @@ export function createApp({ db }: { db: Db }) {
     if (req.auth?.via !== 'token' || (req.method === 'POST' && req.path === '/auth/tokens/self/revoke')) return next();
     assertFeature(db, req.auth.userId, 'extension').then(() => next(), next);
   });
+  // The public demo is read-only (sign-in, Ask and drafts excepted).
+  api.use(demoWriteGuard);
   // Per-user limits on the expensive endpoints (writes only), before their routes.
   const expensive = expensiveLimiter();
   for (const p of ['/ask', '/prep', '/drafts', '/import', '/profile/resume', '/emails/check', '/ai/extract-job']) api.use(p, expensive);

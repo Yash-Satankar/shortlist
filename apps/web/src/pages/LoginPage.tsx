@@ -18,6 +18,7 @@ export function LoginPage() {
   const [screen, setScreen] = useState<'login' | 'signup' | 'forgot'>(params.get('invite') ? 'signup' : 'login');
 
   // Until the config arrives, the sign-in form shows (the common case): no blank flash.
+  if (config.demo) return <DemoScreen />;
   if (config.needsSetup) return <SetupScreen />;
   if (path === '/verify' && params.get('token')) return <VerifyScreen token={params.get('token')!} />;
   if (path === '/reset' && params.get('token')) return <ResetScreen token={params.get('token')!} />;
@@ -122,6 +123,24 @@ function AccountForm({ submitLabel, busy, error, onSubmit, children }: { submitL
       </Button>
       {children}
     </form>
+  );
+}
+
+/** The public demo: one button, no account. */
+function DemoScreen() {
+  const enter = useAuthAction<Record<string, never>>('/auth/demo');
+  return (
+    <Shell subtitle="A live demo with fictional applications." footer={<p className="hint mt-auto pt-8 pb-6 text-center md:mt-0">Read-only. Nothing here is real, and the data resets every night.</p>}>
+      <div className="mt-8 flex flex-col gap-3.5">
+        <p className="m-0 text-[15px] leading-[22px]">
+          Browse a job search in progress: statuses updated from emails and job portals, the follow-ups inbox, prep packs, drafts and Ask my job search.
+        </p>
+        {enter.error && <ErrorNote error={enter.error} />}
+        <Button variant="primary" size="block" disabled={enter.isPending} busy={enter.isPending} onClick={() => enter.mutate({})}>
+          Try the demo
+        </Button>
+      </div>
+    </Shell>
   );
 }
 

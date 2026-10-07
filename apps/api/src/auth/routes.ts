@@ -70,6 +70,14 @@ export function authRouter(db: Db): Router {
     res.status(status).json({ user: publicUser(user!) });
   };
 
+  /** Public demo: "Try the demo" signs you in as the fictional demo account (DEMO_MODE only). */
+  router.post('/demo', loginLimiter, async (req, res) => {
+    if (!env().DEMO_MODE) throw notFound('Not a demo server');
+    const demo = await db.query.users.findFirst({ where: eq(users.email, env().DEMO_USER_EMAIL.toLowerCase()) });
+    if (!demo) throw notFound('The demo isn’t seeded yet');
+    await startSession(req, res, demo.id);
+  });
+
   /** First-run setup: creates the admin while the server has no accounts (then it's gone). */
   router.post('/setup', loginLimiter, async (req, res) => {
     const input = parse(signupSchema.omit({ invite: true }), req.body);

@@ -1,6 +1,7 @@
 import { Suspense, useEffect, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router';
 import { useStats } from '../api/hooks';
+import { usePublicConfig } from '../auth/useAuth';
 import { AskHost } from './AskSheet';
 import { AppMark, Icon, type IconName } from './Icon';
 import { Spinner, StatusGlyph } from './ui';
@@ -28,6 +29,7 @@ const isTyping = (el: EventTarget | null) =>
  */
 export function Layout() {
   const attention = useAttention();
+  const { demo } = usePublicConfig();
   const navigate = useNavigate();
   const location = useLocation();
   const onDetail = useMatch('/applications/:id');
@@ -48,6 +50,10 @@ export function Layout() {
   }, [navigate]);
 
   return (
+    <>
+    {demo && (
+      <div className="pt-safe bg-ink py-1 text-center text-[12px] leading-4 font-semibold text-bg">Demo · fictional data, read-only</div>
+    )}
     <div className="min-h-dvh md:flex">
       {/* Fills the status-bar area when the PWA draws under it, so sticky headers never show content behind it. */}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[env(safe-area-inset-top)] bg-bg" />
@@ -80,6 +86,7 @@ export function Layout() {
         </nav>
       )}
     </div>
+    </>
   );
 }
 

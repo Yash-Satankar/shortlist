@@ -8,6 +8,7 @@ import { applicationContacts, applications, companies, contacts, statusEvents } 
 import { notFound } from '../lib/http';
 import { runLlm } from '../llm/service';
 import { getProfile } from '../profile/service';
+import { demoDraft, isDemo } from '../demo/runtime';
 
 /**
  * Follow-up drafts (email, LinkedIn connection note, LinkedIn message). Never sent: the user
@@ -84,6 +85,10 @@ export async function createDraft(db: DbOrTx, userId: string, req: DraftRequest)
     .filter(Boolean)
     .join('\n');
 
+  if (isDemo()) {
+    const d = demoDraft(req.channel, req.purpose, app, contact?.name?.trim().split(/\s+/)[0] ?? null, profile.fullName ?? 'Me');
+    return { channel: req.channel, subject: d.subject, body: req.channel === 'linkedin_note' ? fitToLimit(d.body, max) : d.body, maxChars: req.channel === 'linkedin_note' ? max : null, to: req.channel === 'email' ? (contact?.email ?? null) : null };
+  }
   const run = (system: string) => runLlm(db, { userId, task: 'chat', promptVersion: PROMPT_VERSION, system, input, schema: draftSchema, maxTokens: e.DRAFT_MAX_OUTPUT_TOKENS, cache: 'refresh' });
   let res = await run(SYSTEM(req.channel, max));
   let body = res.data.body;

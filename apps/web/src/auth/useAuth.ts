@@ -20,7 +20,7 @@ export function usePublicConfig() {
     queryFn: () => api<PublicConfig>('/config'),
     staleTime: Infinity,
   });
-  return { sessionTtlDays: data?.sessionTtlDays ?? 30, signupMode: data?.signupMode ?? 'closed', needsSetup: data?.needsSetup ?? false, emailEnabled: data?.emailEnabled ?? false, loaded: Boolean(data) };
+  return { sessionTtlDays: data?.sessionTtlDays ?? 30, signupMode: data?.signupMode ?? 'closed', needsSetup: data?.needsSetup ?? false, emailEnabled: data?.emailEnabled ?? false, demo: data?.demo ?? false, loaded: Boolean(data) };
 }
 
 export interface PublicConfig {
@@ -30,6 +30,8 @@ export interface PublicConfig {
   needsSetup: boolean;
   /** Email sending configured: "Forgot password?" works. */
   emailEnabled: boolean;
+  /** The public demo (fictional data, read-only). */
+  demo?: boolean;
 }
 
 /**

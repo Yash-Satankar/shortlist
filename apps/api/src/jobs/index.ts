@@ -5,6 +5,8 @@ import { llmCache } from '../db/schema';
 import { pollImap, purgeExpiredEmails } from '../email/poll';
 import { purgeExpiredSnapshots } from '../portal/service';
 import { purgeOldErrors } from '../lib/error-log';
+import { seedDemo } from '../demo/seed';
+import type { Db } from '../db/client';
 import type { JobDef } from './runner';
 
 /** Expired AI cache entries (each entry has its own expiry). */
@@ -21,6 +23,16 @@ export function jobDefinitions(): JobDef[] {
       cron: e.JOB_PURGE_CRON,
       run: async ({ db }) => ({ portalSnapshots: await purgeExpiredSnapshots(db), llmCache: await purgeExpiredLlmCache(db), emails: await purgeExpiredEmails(db), errors: await purgeOldErrors(db) }),
     },
+    ...(e.DEMO_MODE
+      ? [
+          {
+            // The demo's fictional data, rebuilt nightly so its dates stay current.
+            name: 'demo-refresh',
+            cron: e.DEMO_REFRESH_CRON,
+            run: ({ db }: { db: Db }) => seedDemo(db),
+          },
+        ]
+      : []),
     {
       name: 'email-poll',
       cron: e.EMAIL_POLL_CRON,

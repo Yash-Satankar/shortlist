@@ -130,6 +130,8 @@ export interface RunResult<T> {
  */
 export async function runLlm<S extends z.ZodType>(db: DbOrTx, args: RunInput<S>): Promise<RunResult<z.infer<S>>> {
   const e = env();
+  // The demo never calls a provider (its AI features are served from pre-generated content).
+  if (e.DEMO_MODE) throw new LlmError('provider_error', 'AI calls are off in the demo.');
   await assertFeature(db, args.userId, 'ai');
   if (LLM_TASK_FEATURE[args.task] !== 'ai') await assertFeature(db, args.userId, LLM_TASK_FEATURE[args.task]);
   if (args.input.length > e.LLM_MAX_INPUT_CHARS) throw new LlmError('input_too_long', `That’s too much text for one request (limit ${e.LLM_MAX_INPUT_CHARS.toLocaleString('en')} characters).`);

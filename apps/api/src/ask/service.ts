@@ -7,6 +7,7 @@ import { runLlm } from '../llm/service';
 import { getUserSettings } from '../users/service';
 import { exactAnswer, plannerSystem, planSchema, runExactQuery, type ExactResult } from './query';
 import { searchUserData, type Source } from './search';
+import { demoPlan, isDemo } from '../demo/runtime';
 
 export interface Citation {
   ref: string;
@@ -23,6 +24,7 @@ export type AskAnswer =
 
 /** Whether this user's emails are searched: their own switch, else the instance default. */
 export async function askIncludesEmails(db: DbOrTx, userId: string): Promise<boolean> {
+  if (isDemo()) return true; // fictional emails
   return (await getUserSettings(db, userId)).ask.includeEmails ?? env().ASK_INCLUDE_EMAILS_DEFAULT;
 }
 
@@ -66,15 +68,17 @@ export async function ask(db: DbOrTx, userId: string, question: string): Promise
 
   const { timezone } = await getUserSettings(db, userId);
   const t = today(timezone);
-  const plan = await runLlm(db, {
-    userId,
-    task: 'chat',
-    promptVersion: PLAN_PROMPT_VERSION,
-    system: plannerSystem(t.date, t.weekday, timezone),
-    input: `<question>\n${q}\n</question>`,
-    schema: planSchema,
-    maxTokens: 300,
-  });
+  const plan = isDemo()
+    ? { data: planSchema.parse(demoPlan(q, t.date)) }
+    : await runLlm(db, {
+        userId,
+        task: 'chat',
+        promptVersion: PLAN_PROMPT_VERSION,
+        system: plannerSystem(t.date, t.weekday, timezone),
+        input: `<question>\n${q}\n</question>`,
+        schema: planSchema,
+        maxTokens: 300,
+      });
 
   if (plan.data.kind !== 'search') {
     const result = await runExactQuery(db, userId, plan.data, timezone);
@@ -85,6 +89,17 @@ export async function ask(db: DbOrTx, userId: string, question: string): Promise
   const sources = await searchUserData(db, userId, q, { includeEmails });
   if (!sources.length) {
     return { kind: 'search', answer: 'I couldn’t find anything about that in your applications.', found: false, citations: [], emailsSearched: includeEmails };
+  }
+  if (isDemo()) {
+    // No model in the demo: show the matching records themselves.
+    const top = sources.slice(0, 5);
+    return {
+      kind: 'search',
+      answer: `In the demo, answers aren’t written by AI. These records match your question: ${top.map((s) => `${s.label} [${s.ref}]`).join(', ')}.`,
+      found: true,
+      citations: top.map(({ ref, type, id, applicationId, label, date }) => ({ ref, type, id, applicationId, label, date })),
+      emailsSearched: includeEmails,
+    };
   }
   const input = `<question>\n${q}\n</question>\n\n${sources
     .map((s) => `<source id="${s.ref}" type="${s.type}" title="${s.label.replace(/"/g, "'")}"${s.date ? ` date="${s.date.slice(0, 10)}"` : ''}>\n${s.text}\n</source>`)
