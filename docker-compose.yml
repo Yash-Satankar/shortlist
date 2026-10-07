@@ -1,21 +1,49 @@
+# Development: `pnpm db:up` starts Postgres only (the app runs with `pnpm dev`).
+# Self-hosting: `docker compose --profile app up -d` runs Postgres and the app (http://localhost:3000).
+# Copy .env.example to .env first and set at least ENCRYPTION_KEYS (pnpm keygen) and APP_ORIGIN.
 services:
   db:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
     environment:
-      POSTGRES_USER: jobtracker
-      POSTGRES_PASSWORD: jobtracker
-      POSTGRES_DB: jobtracker
+      POSTGRES_USER: ${POSTGRES_USER:-jobtracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jobtracker}
+      POSTGRES_DB: ${POSTGRES_DB:-jobtracker}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jobtracker -d jobtracker"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jobtracker} -d ${POSTGRES_DB:-jobtracker}"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  app:
+    profiles: [app]
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ${JT_ENV_FILE:-.env}
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SERVE_WEB: "true"
+      DATABASE_URL: postgres://${POSTGRES_USER:-jobtracker}:${POSTGRES_PASSWORD:-jobtracker}@db:5432/${POSTGRES_DB:-jobtracker}
+      # Behind your own reverse proxy (Caddy, nginx, Traefik) set TRUST_PROXY=1 in .env.
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+    # Migrations run automatically before every start (back up first when upgrading).
+    command: ["sh", "-c", "node apps/api/dist/scripts/migrate.js && exec node apps/api/dist/server.js"]
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   pgdata:

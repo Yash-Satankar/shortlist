@@ -1,5 +1,6 @@
-# One image runs the whole app: Express API + built web app (+ background jobs later).
+# One image runs the whole app: Express API + built web app + background jobs.
 # Railway: pre-deploy runs migrations with this image; the start command runs the server.
+# docker compose (self-hosting): the app service migrates, then starts (see docker-compose.yml).
 
 # ---- build: install everything, build web + api, then drop dev dependencies
 FROM node:24-bookworm-slim AS build
@@ -12,6 +13,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY apps/extension/package.json apps/extension/
+COPY apps/e2e/package.json apps/e2e/
 COPY packages/shared/package.json packages/shared/
 RUN pnpm install --frozen-lockfile
 

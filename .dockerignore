@@ -15,3 +15,9 @@ coverage/
 .git/
 .vscode/
 *.log
+
+# Local artifacts
+.screens/
+apps/e2e/test-results/
+apps/e2e/playwright-report/
+apps/extension/release/
